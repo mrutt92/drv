@@ -4,7 +4,7 @@ import sys
 VERBOSE = 2
 VERBOSE_MEMCTRL = 0
 CORES = 1
-THREADS = 1
+THREADS = 16
 CORE_DEBUG = {
     "init"      : False,
     "clock"     : False,
@@ -97,7 +97,7 @@ class SharedMemory(object):
         #     "access_time" : "32ns",
         #     "mem_size" : "512MiB",
         # })
-        self.memory = self.memctrl.setSubComponent("backend", "memHierarchy.dramsim3")
+        self.memory = self.memctrl.setSubComponent("backend", "Drv.DrvDramsim3MemBackend")
         self.memory.addParams({            
             "verbose" : VERBOSE_MEMCTRL,
             "config_ini" : DRAMSIM3+"/configs/HBM2_4Gb_x128.ini",

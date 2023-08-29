@@ -8,6 +8,7 @@
 #include <sst/elements/memHierarchy/memTypes.h>
 #include <sst/elements/memHierarchy/customcmd/customCmdMemory.h>
 #include <sst/elements/memHierarchy/membackend/simpleMemBackend.h>
+#include <sst/elements/memHierarchy/membackend/dramSim3Backend.h>
 #include "DrvAPIReadModifyWrite.hpp"
 #include "DrvAPIThreadState.hpp"
 
@@ -58,6 +59,7 @@ public:
     ser & rdata;
     ser & size;
     ser & pAddr;
+    ser & backendAddr;
   }
   ImplementSerializable(SST::Drv::AtomicReqData);
 
@@ -67,7 +69,7 @@ public:
   int64_t size;
   DrvAPI::DrvAPIMemAtomicType opcode;
   Interfaces::StandardMem::Addr pAddr;
-  
+  Interfaces::StandardMem::Addr backendAddr;  
 };
 
 
@@ -149,5 +151,29 @@ private:
   SST::Output output_;
 };
 
+/**
+ * @brief out specialize dramsim3 memory backend
+ *
+ * handles atomic memory operations
+ */
+class DrvDramsim3MemBackend : public SST::MemHierarchy::DRAMSim3Memory {
+public:
+    /* Element library info */
+    SST_ELI_REGISTER_SUBCOMPONENT(DrvDramsim3MemBackend, "Drv", "DrvDramsim3MemBackend", SST_ELI_ELEMENT_VERSION(1,0,0),
+                                  "Custom dramsim3 memory backend for drv element", SST::Drv::DrvDramsim3MemBackend)
+    /* parameters */
+    SST_ELI_DOCUMENT_PARAMS(
+                            {"verbose", "Sets the verbosity of the backend output", "0"}
+                            )
+
+    /* constructor */
+    DrvDramsim3MemBackend(ComponentId_t id, Params &params);
+
+    /* destructor */
+    ~DrvDramsim3MemBackend() override;
+
+    /* issue a custom request */
+    bool issueCustomRequest(ReqId, Interfaces::StandardMem::CustomData *) override;
+};
 }
 }

@@ -46,9 +46,15 @@ Interfaces::StandardMem::CustomData*
 DrvCmdMemHandler::ready(MemEventBase* ev) {
   output.verbose(CALL_INFO, 1, 0,"%s\n", __PRETTY_FUNCTION__);
   CustomMemEvent * cme = static_cast<CustomMemEvent*>(ev);
+  StandardMem::CustomData* cd = cme->getCustomData();
+  AtomicReqData *ard = dynamic_cast<AtomicReqData*>(cd);
+  if (!ard) {
+    output.fatal(CALL_INFO, -1, "Error: CustomData is not an AtomicReqData\n");
+  }
+  ard->backendAddr = translateGlobalToLocal(ard->pAddr);
   // We don't need to modify the data structure sent by the CPU, so just 
   // pass it on to the backend
-  return cme->getCustomData();
+  return ard;
 }
 
 /* When the memBackendConvertor returns a response, the memController will call this function, including
@@ -125,4 +131,44 @@ DrvSimpleMemBackend::issueCustomRequest(ReqId req_id, Interfaces::StandardMem::C
   }
   output_.fatal(CALL_INFO, -1, "Error: unknown custom request type\n");
   return false;
+}
+
+/**
+ * constructor
+ */
+DrvDramsim3MemBackend::DrvDramsim3MemBackend(ComponentId_t id, Params &params)
+  : DRAMSim3Memory(id, params) {
+  output->verbose(CALL_INFO, 1, 0, "%s\n", __PRETTY_FUNCTION__);
+}
+
+/**
+ * destructor
+ */
+DrvDramsim3MemBackend::~DrvDramsim3MemBackend() {
+  output->verbose(CALL_INFO, 1, 0, "%s\n", __PRETTY_FUNCTION__);    
+}
+
+/**
+ * handle custom requests for drv componenets
+ */
+bool DrvDramsim3MemBackend::issueCustomRequest(ReqId req_id, Interfaces::StandardMem::CustomData *data) {
+  output->verbose(CALL_INFO, 1, 0, "%s\n", __PRETTY_FUNCTION__);
+  AtomicReqData *atomic_data = dynamic_cast<AtomicReqData*>(data);
+  if (atomic_data) {
+    // todo: model the write after the read
+    output->verbose(CALL_INFO, 1, 0, "Received atomic request\n");
+    bool read_ok = memSystem->WillAcceptTransaction(atomic_data->backendAddr, false);
+    bool write_ok = memSystem->WillAcceptTransaction(atomic_data->backendAddr, true);    
+    if (!read_ok || !write_ok) {
+      output->verbose(CALL_INFO, 1, 0, "Will not accept transaction\n");
+      return false;
+    }
+    // send the request to the memory system
+    read_ok = memSystem->AddTransaction(atomic_data->backendAddr, false);
+    if (!read_ok) return false;
+    dramReqs[atomic_data->backendAddr].push_back(req_id);    
+    return true;
+  }
+  output->fatal(CALL_INFO, -1, "Error: unknown custom request type\n");
+  return false;    
 }

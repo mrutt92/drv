@@ -1,10 +1,10 @@
 import sst
 import sys
 
-VERBOSE = 0
+VERBOSE = 2
 VERBOSE_MEMCTRL = 0
-CORES = 64
-THREADS = 16
+CORES = 1
+THREADS = 1
 CORE_DEBUG = {
     "init"      : False,
     "clock"     : False,

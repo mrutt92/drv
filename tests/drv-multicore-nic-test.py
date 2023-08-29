@@ -3,8 +3,9 @@ import sys
 
 VERBOSE = 0
 VERBOSE_MEMCTRL = 0
-CORES = 64
-THREADS = 32
+CORES = 32
+THREADS = 16
+SHARED_MEMORIES = 2
 CORE_DEBUG = {
     "init"      : False,
     "clock"     : False,
@@ -150,14 +151,17 @@ for i in range(CORES):
     tiles.append(Tile(i))
 
 # build the shared memory
-shared_memory = SharedMemory(0)
+shared_memories = []
+for i in range(SHARED_MEMORIES):
+    shared_memory = SharedMemory(i)
+    shared_memories.append(shared_memory)
 
 # build the network crossbar
 chiprtr = sst.Component("chiprtr", "merlin.hr_router")
 chiprtr.addParams({
     # semantics parameters
     "id" : len(tiles),
-    "num_ports" : len(tiles)+1,
+    "num_ports" : len(tiles)+len(shared_memories),
     "topology" : "merlin.singlerouter",
     # performance models
     "xbar_bw" : "256GB/s",
@@ -188,9 +192,10 @@ for (i, tile) in enumerate(tiles):
         (chiprtr, "port%d" % i, "1ns")
     )
 
-# wire up the shared memory
-mem_rtr_link = sst.Link("mem_rtr_link")
-mem_rtr_link.connect(
-    (shared_memory.nic, "port", "1ns"),
-    (chiprtr, "port%d" % len(tiles), "1ns")
-)
+for (idx, shared_memory) in enumerate(shared_memories):
+    # wire up the shared memory
+    mem_rtr_link = sst.Link("mem_rtr_link_%d" % idx)
+    mem_rtr_link.connect(
+        (shared_memory.nic, "port", "1ns"),
+        (chiprtr, "port%d" % (len(tiles)+idx), "1ns")
+    )

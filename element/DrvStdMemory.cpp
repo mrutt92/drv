@@ -178,7 +178,7 @@ DrvStdMemory::handleEvent(SST::Interfaces::StandardMem::Request *req) {
                             "Sending write-unlock request addr=%" PRIx64 " size=%" PRIu64 "\n",
                             read_rsp->pAddr, read_rsp->size);
             mem_->send(wureq);
-        }]
+        }
 #endif
 
 #ifdef USE_STDMEM_PROVIDED
