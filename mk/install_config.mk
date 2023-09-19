@@ -1,7 +1,7 @@
 DRV_DIR ?= $(shell git rev-parse --show-toplevel)
 # CHANGEME - where do you want to install the libraries and
 # header files for drv
-DRV_INSTALL_DIR = /install
+DRV_INSTALL_DIR = $(DRV_DIR)/install
 
 DRV_BIN_DIR = $(DRV_INSTALL_DIR)/bin
 DRV_INCLUDE_DIR = $(DRV_INSTALL_DIR)/include
