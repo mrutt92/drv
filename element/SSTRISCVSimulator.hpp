@@ -3,7 +3,7 @@
 #include <sst/core/interfaces/stdMem.h>
 #include <map>
 namespace SST {
-namespace RISCV {
+namespace Drv {
 
 class RISCVCore;
 class RISCVSimHart;
@@ -37,7 +37,6 @@ public:
     void visitSD(RISCVHart &hart, RISCVInstruction &instruction) override;
 
     // atomics
-    void visitAMOSWAPW_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
     
     void visitECALL(RISCVHart &hart, RISCVInstruction &instruction) override;
     

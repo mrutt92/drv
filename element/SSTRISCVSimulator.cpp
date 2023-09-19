@@ -6,7 +6,7 @@
 #include "DrvCustomStdMem.hpp"
 
 namespace SST {
-namespace RISCV {
+namespace Drv {
 using namespace SST::Interfaces;
 
 bool RISCVSimulator::isMMIO(SST::Interfaces::StandardMem::Addr addr) {

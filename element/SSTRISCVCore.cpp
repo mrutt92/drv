@@ -2,7 +2,7 @@
 #include "SSTRISCVSimulator.hpp"
 
 namespace SST {
-namespace RISCV {
+namespace Drv {
 
 void RISCVCore::configureClock(Params &params) {
     std::string clock = params.find<std::string>("clock", "1GHz");

@@ -13,7 +13,7 @@
 #include "SSTRISCVHart.hpp"
 
 namespace SST {
-namespace RISCV {
+namespace Drv {
 
 class RISCVCore : public SST::Component {
 public:
@@ -23,7 +23,7 @@ public:
     // REGISTER THIS COMPONENT INTO THE ELEMENT LIBRARY
     SST_ELI_REGISTER_COMPONENT(
         RISCVCore,
-        "SSTRISCV",
+        "Drv",
         "RISCVCore",
         SST_ELI_ELEMENT_VERSION(1,0,0),
         "RISCV Core",

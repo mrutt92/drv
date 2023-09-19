@@ -1,6 +1,6 @@
 #include <RISCVHart.hpp>
 namespace SST {
-namespace RISCV {
+namespace Drv {
 
 class RISCVSimHart : public RISCVHart {
 public:
