@@ -36,7 +36,10 @@ $(drvsim-objects): %.o: %.cpp $(drvsim-headers)
 libDrv.so: $(drvsim-objects) $(drvsim-headers)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) -shared -o $@ $(drvsim-objects) $(LIBS)
 
-install: libDrv.so
+$(DRV_INCLUDE_DIR)/DrvCustomStdMem.hpp: $(DRV_DIR)/element/DrvCustomStdMem.hpp
+	cp $< $@
+
+install: libDrv.so $(DRV_INCLUDE_DIR)/DrvCustomStdMem.hpp
 	$(SST_REGISTER) Drv Drv_LIBDIR=$(CURDIR)
 
 clean:
