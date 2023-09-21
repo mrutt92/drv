@@ -1,5 +1,6 @@
 #SST_RISCV_DIR := $(shell git rev-parse --show-toplevel)
 #include $(SST_RISCV_DIR)/mk/config.mk
+DRV_DIR := $(shell git rev-parse --show-toplevel)
 
 CXX := riscv64-unknown-elf-g++
 CC  := riscv64-unknown-elf-gcc
@@ -86,3 +87,5 @@ clean:
 	rm -f *.o *.riscv
 
 
+run-%: %.riscv
+	sst $(DRV_DIR)/tests/riscvcrt.py -- $<
