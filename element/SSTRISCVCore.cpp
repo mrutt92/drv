@@ -89,7 +89,8 @@ void RISCVCore::loadProgramSegment(Elf64_Phdr* phdr) {
 void RISCVCore::loadProgram() {
     for (int pidx = 0; pidx < icache_->ehdr()->e_phnum; pidx++) {
         Elf64_Phdr *phdr = icache_->phdr(pidx);
-        if (phdr->p_type == PT_LOAD) {
+        if (phdr->p_type == PT_LOAD &&
+            ! (phdr->p_flags & PF_X)) {
             loadProgramSegment(phdr);
         }
     }

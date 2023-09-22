@@ -12,7 +12,7 @@ size_to_str = lambda x: str(x) + "B"
 # build the core
 core = sst.Component("core", "Drv.RISCVCore")
 core.addParams({
-    "verbose" : 2,
+    "verbose" : 0,
     "clock" : "2GHz",
     "num_harts" : 1,
     "load" : 1,

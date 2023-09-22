@@ -27,7 +27,7 @@ void RISCVSimulator::visitStoreMMIO(RISCVHart &shart, RISCVInstruction &i) {
         std::cout << ss.str() << std::endl;
         break;
     case MMIO_PRINT_CHAR:
-        std::cout << static_cast<char>(shart.x(i.rs2())) << std::endl;
+        std::cout << static_cast<char>(shart.x(i.rs2()));
         break;
     default:
         core_->output_.fatal(CALL_INFO, -1, "Unknown MMIO address: 0x%lx\n", addr);

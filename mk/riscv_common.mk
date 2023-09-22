@@ -17,6 +17,7 @@ ABI:=lp64d
 
 CXXFLAGS := -O2  -march=$(ARCH) -mabi=$(ABI)
 CFLAGS   := -O2  -march=$(ARCH) -mabi=$(ABI)
+LDFLAGS  :=
 
 -include $(DRV_DIR)/riscv-examples/platform_$(PLATFORM)/common.mk
 
@@ -38,7 +39,7 @@ $(CXXOBJECT): %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(TARGET): %.riscv: $(COBJECT) $(CXXOBJECT) $(ASMOBJECT)
-	$(CXX) $(CXXFLAGS) -o $@ $(filter %.o,$^)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(filter %.o,$^)
 
 .PHONY: clean
 clean:
