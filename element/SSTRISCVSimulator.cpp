@@ -1,4 +1,5 @@
 #include <sstream>
+#include <type_traits>
 #include "SSTRISCVSimulator.hpp"
 #include "SSTRISCVCore.hpp"
 #include "riscv64-unknown-elf/include/machine/syscall.h"
@@ -19,11 +20,11 @@ void RISCVSimulator::visitStoreMMIO(RISCVHart &shart, RISCVInstruction &i) {
     std::stringstream ss;
     switch (addr) {
     case MMIO_PRINT_INT:
-        std::cout << static_cast<T>(shart.sx(i.rs2())) << std::endl;;
+        std::cout << static_cast<std::make_signed_t<T>>(shart.sx(i.rs2())) << std::endl;;
         break;
     case MMIO_PRINT_HEX:
         ss << "0x" << std::hex << std::setfill('0') << std::setw(sizeof(T)*2);
-        ss << static_cast<T>(shart.x(i.rs2()));
+        ss << static_cast<std::make_unsigned_t<T>>(shart.x(i.rs2()));
         std::cout << ss.str() << std::endl;
         break;
     case MMIO_PRINT_CHAR:
