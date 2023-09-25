@@ -124,6 +124,43 @@ void RISCVSimulator::visitSD(RISCVHart &hart, RISCVInstruction &i) {
     visitStore<uint64_t>(hart, i);
 }
 
+void RISCVSimulator::visitAMOSWAPW(RISCVHart &hart, RISCVInstruction &i) {    
+    hart.pc() += 4;
+}
+
+void RISCVSimulator::visitAMOADDW(RISCVHart &hart, RISCVInstruction &i) {
+    hart.pc() += 4;
+}
+
+void RISCVSimulator::visitAMOSWAPD(RISCVHart &hart, RISCVInstruction &i) {
+    RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
+    StandardMem::Addr addr = shart.x(i.rs1());
+    AtomicReqData *data = new AtomicReqData();
+    data->pAddr = addr;
+    data->size = 8;
+    data->wdata.resize(8);
+    data->opcode = DrvAPI::DrvAPIMemAtomicSWAP;
+    *(uint64_t*)&data->wdata[0] = shart.x(i.rs2());
+    StandardMem::CustomReq *req = new StandardMem::CustomReq(data);
+    req->tid = core_->getHartId(shart);
+    shart.ready() = false;
+    int ird = i.rd();
+    RISCVCore::ICompletionHandler ch([&shart, ird, this](StandardMem::Request *req) {
+        // handle the atomic response
+        auto *rsp = static_cast<StandardMem::CustomResp *>(req);
+        auto *data = static_cast<AtomicReqData*>(rsp->data);        
+        shart.x(ird) = *(uint64_t*)&data->rdata[0];
+        shart.pc() += 4;
+        shart.ready() = true;
+        delete req;
+    });
+    core_->issueMemoryRequest(req, req->tid, ch);
+}
+
+void RISCVSimulator::visitAMOADDD(RISCVHart &hart, RISCVInstruction &i) {
+    hart.pc() += 4;
+}
+
 /////////
 // CSR //
 /////////

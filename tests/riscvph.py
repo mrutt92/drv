@@ -64,6 +64,10 @@ scratch.addParams({
     "access_time" : "2ns",
     "mem_size" : size_to_str(MEM_SIZE),
 })
+scratchcmdhandler = scratchmemctrl.setSubComponent("customCmdHandler", "Drv.DrvCmdMemHandler")
+scratchcmdhandler.addParams({
+    "verbose_level" : 0,
+})
 
 # build the dram memory controller
 drammemctrl = sst.Component("dram", "memHierarchy.MemController")
@@ -76,6 +80,10 @@ dram = drammemctrl.setSubComponent("backend", "Drv.DrvSimpleMemBackend")
 dram.addParams({
     "access_time" : "100ns",
     "mem_size" : size_to_str(DRAM_SIZE),
+})
+dramcmdhandler = drammemctrl.setSubComponent("customCmdHandler", "Drv.DrvCmdMemHandler")
+dramcmdhandler.addParams({
+    "verbose_level" : 0,
 })
 
 bus = sst.Component("bus", "memHierarchy.Bus")
