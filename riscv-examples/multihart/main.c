@@ -24,8 +24,8 @@ static inline void print_char(char x)
 
 int main()
 {
-    void *sp;
-    asm volatile ("mv %0, sp" : "=r" (sp));
-    print_hex((unsigned long)sp);
+    int hartid;
+    asm volatile ("csrr %0, mhartid" : "=r" (hartid));
+    print_int(hartid);
     return 0;
 }

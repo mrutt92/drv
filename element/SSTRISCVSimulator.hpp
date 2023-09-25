@@ -36,8 +36,21 @@ public:
     void visitSW(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitSD(RISCVHart &hart, RISCVInstruction &instruction) override;
 
-    // atomics
+    // csr instructions
+private:
+    uint64_t visitCSRRWUnderMask(RISCVHart &hart, uint64_t csr, uint64_t wval, uint64_t mask);
+
+public:
+    void visitCSRRW(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitCSRRS(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitCSRRC(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitCSRRWI(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitCSRRSI(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitCSRRCI(RISCVHart &hart, RISCVInstruction &instruction) override;
     
+    // atomics
+
+    // environment calls
     void visitECALL(RISCVHart &hart, RISCVInstruction &instruction) override;
     
     RISCVCore *core_; //!< the riscv core component
@@ -45,7 +58,13 @@ public:
     static constexpr uint64_t MMIO_BASE       = 0xFFFFFFFFFFFF0000;
     static constexpr uint64_t MMIO_PRINT_INT  = MMIO_BASE + 0x0000;
     static constexpr uint64_t MMIO_PRINT_HEX  = MMIO_BASE + 0x0008;
-    static constexpr uint64_t MMIO_PRINT_CHAR = MMIO_BASE + 0x0010;    
+    static constexpr uint64_t MMIO_PRINT_CHAR = MMIO_BASE + 0x0010;
+
+    // CSRs
+    static constexpr uint64_t CSR_MHARTID = 0xF14;
+    static constexpr uint64_t CSR_MSTATUS = 0x300;
+    
+    
 private:    
     template <typename R, typename T>
     void visitLoad(RISCVHart &hart, RISCVInstruction &instruction);

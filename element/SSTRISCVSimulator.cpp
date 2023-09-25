@@ -124,6 +124,73 @@ void RISCVSimulator::visitSD(RISCVHart &hart, RISCVInstruction &i) {
     visitStore<uint64_t>(hart, i);
 }
 
+/////////
+// CSR //
+/////////
+uint64_t RISCVSimulator::visitCSRRWUnderMask(RISCVHart &hart, uint64_t csr, uint64_t wval, uint64_t mask) {
+    RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
+    uint64_t rval = 0;
+    switch (csr) {
+    case CSR_MHARTID: // read-only
+        rval = core_->getHartId(shart);
+        break;
+    }
+    return rval;
+}
+
+void RISCVSimulator::visitCSRRW(RISCVHart &hart, RISCVInstruction &i) {
+    RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
+    uint64_t csr = i.Iimm();
+    uint64_t wval = shart.x(i.rs1());
+    uint64_t rval = visitCSRRWUnderMask(shart, csr, wval, 0xFFFFFFFFFFFFFFFF);
+    shart.x(i.rd()) = rval;
+    shart.pc() += 4;
+}
+
+void RISCVSimulator::visitCSRRS(RISCVHart &hart, RISCVInstruction &i) {
+    RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
+    uint64_t csr = i.Iimm();
+    uint64_t wval = shart.x(i.rs1());
+    uint64_t rval = visitCSRRWUnderMask(shart, csr, 0xFFFFFFFFFFFFFFFF, wval);
+    shart.x(i.rd()) = rval;
+    shart.pc() += 4;
+}
+
+void RISCVSimulator::visitCSRRC(RISCVHart &shart, RISCVInstruction &i) {
+    uint64_t csr = i.Iimm();
+    uint64_t wval = shart.x(i.rs1());
+    uint64_t rval = visitCSRRWUnderMask(shart, csr, 0x0000000000000000, wval);
+    shart.x(i.rd()) = rval;
+    shart.pc() += 4;
+}
+
+void RISCVSimulator::visitCSRRWI(RISCVHart &hart, RISCVInstruction &i) {
+    RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
+    uint64_t csr = i.Iimm();
+    uint64_t wval = i.rs1();
+    uint64_t rval = visitCSRRWUnderMask(shart, csr, wval, 0xFFFFFFFFFFFFFFFF);
+    shart.x(i.rd()) = rval;
+    shart.pc() += 4;
+}
+
+void RISCVSimulator::visitCSRRSI(RISCVHart &hart, RISCVInstruction &i) {
+    RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
+    uint64_t csr = i.Iimm();
+    uint64_t wval = i.rs1();
+    uint64_t rval = visitCSRRWUnderMask(shart, csr, 0xFFFFFFFFFFFFFFFF, wval);
+    shart.x(i.rd()) = rval;
+    shart.pc() += 4;
+}
+
+void RISCVSimulator::visitCSRRCI(RISCVHart &hart, RISCVInstruction &i) {
+    RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
+    uint64_t csr = i.Iimm();
+    uint64_t wval = i.rs1();
+    uint64_t rval = visitCSRRWUnderMask(shart, csr, 0x0000000000000000, wval);
+    shart.x(i.rd()) = rval;
+    shart.pc() += 4;
+}
+
 //////////////////
 // system calls //
 //////////////////

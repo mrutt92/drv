@@ -16,6 +16,7 @@ size_to_str = lambda x: str(x) + "B"
 parser = argparse.ArgumentParser()
 parser.add_argument("program", help="program to run")
 parser.add_argument("--harts", type=int, default=1, help="number of harts")
+parser.add_argument("--verbose-core", type=int, default=0, help="verbosity of core")
 args = parser.parse_args()
 
 # set stack pointers
@@ -32,12 +33,13 @@ print(
     Running {}:
     - harts: {}
     - sp: {}
-    """.format(args.program, args.harts, sp_str)
+    - verbose-core: {}
+    """.format(args.program, args.harts, sp_str, args.verbose_core)
 )
 # build the core
 core = sst.Component("core", "Drv.RISCVCore")
 core.addParams({
-    "verbose" : 2,
+    "verbose" : args.verbose_core,
     "clock" : "2GHz",
     "num_harts" : args.harts,
     "load" : 1,
