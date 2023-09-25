@@ -2,6 +2,7 @@
 #include <RV64IMInterpreter.hpp>
 #include <sst/core/interfaces/stdMem.h>
 #include <map>
+#include "DrvAPIReadModifyWrite.hpp"
 namespace SST {
 namespace Drv {
 
@@ -47,27 +48,31 @@ public:
     void visitCSRRWI(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitCSRRSI(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitCSRRCI(RISCVHart &hart, RISCVInstruction &instruction) override;
-    
+
     // atomics
+private:
+    template <typename T>
+    void visitAMO(RISCVHart &hart, RISCVInstruction &i, DrvAPI::DrvAPIMemAtomicType op);
+
     void visitAMOSWAPW(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOSWAPW_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOSWAPW_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOSWAPW_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOSWAPW_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOSWAPW_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOSWAPW_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
 
     void visitAMOADDW(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOADDW_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOADDW_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOADDW_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOADDW_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOADDW_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOADDW_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
     
     void visitAMOSWAPD(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOSWAPD_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOSWAPD_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOSWAPD_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOSWAPD_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOSWAPD_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOSWAPD_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
 
     void visitAMOADDD(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOADDD_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOADDD_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
-    // void visitAMOADDD_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOADDD_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOADDD_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOADDD_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
 
     // environment calls
     void visitECALL(RISCVHart &hart, RISCVInstruction &instruction) override;

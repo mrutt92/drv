@@ -29,17 +29,32 @@ static inline int hartid() {
     return hart;
 }
 
-int64_t x = -1;
-
-int main() {
-    int64_t id  = hartid();
-    print_int(id);
-    // swap id with x
+static inline int64_t amoswap(int64_t w, int64_t *p) {
     int64_t r;
     asm volatile ("amoswap.d %0, %1, 0(%2)"
                   : "=r" (r)
-                  : "r" (id), "r" (&x)
+                  : "r" (w), "r" (p)
                   : "memory");
-    print_int(r);
+    return r;
+}
+
+static inline int64_t amoadd(int64_t w, int64_t *p) {
+    int64_t r;
+    asm volatile ("amoadd.d %0, %1, 0(%2)"
+                  : "=r" (r)
+                  : "r" (w), "r" (p)
+                  : "memory");
+    return r;
+}
+
+int64_t x = -1;
+int64_t y =  0;
+
+int main() {
+    int64_t id  = hartid();
+    //print_int(id);
+    // swap id with x
+    //print_int(amoswap(id, &x));
+    print_int(amoadd(1, &y));
     return 0;
 }
