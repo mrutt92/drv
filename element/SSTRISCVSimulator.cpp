@@ -334,7 +334,7 @@ void RISCVSimulator::sysREAD(RISCVSimHart &shart, RISCVInstruction &i) {
 void RISCVSimulator::sysBRK(RISCVSimHart &shart, RISCVInstruction &i) {
     uint64_t addr = shart.a(0);
     core_->output_.verbose(CALL_INFO, 2, 0, "BRK: addr=%#lx\n", addr);
-    shart.a(0) = 0;
+    shart.a(0) = -1;
 }
 
 void RISCVSimulator::sysEXIT(RISCVSimHart &shart, RISCVInstruction &i) {
@@ -379,7 +379,7 @@ void RISCVSimulator::sysOPEN(RISCVSimHart &shart, RISCVInstruction &i) {
     RISCVCore::ICompletionHandler ch([&shart, this, flags, mode](StandardMem::Request *req) {
         auto *rsp = static_cast<StandardMem::ReadResp *>(req);
         char *path = (char *)&rsp->data[0];
-        int32_t my_flags = O_RDWR | O_CREAT | O_TRUNC;
+        int32_t my_flags = _type_translator.simulatorToNative_openflags(flags);
         mode_t my_mode = 0644;
         core_->output_.verbose(CALL_INFO, 2, 0
                                , "OPEN: path=%s, flags=%lx (my_flags=%lx), mode=%ld (my_mode=%lx)\n"
@@ -423,11 +423,9 @@ void RISCVSimulator::visitECALL(RISCVHart &hart, RISCVInstruction &i) {
     case SYS_close:
         sysCLOSE(shart, i);
         break;
-#if 0
     case SYS_open:
         sysOPEN(shart, i);
         break;
-#endif
     default:
         core_->output_.fatal(CALL_INFO, -1, "Unknown ECALL %lu\n", (unsigned long)shart.a(7));
     }

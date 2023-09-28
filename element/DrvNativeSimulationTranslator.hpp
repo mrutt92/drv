@@ -13,6 +13,7 @@ public:
     DrvNativeSimulationTranslator() {}
 
     std::vector<unsigned char> nativeToSimulator_stat(const struct stat *);
+    int simulatorToNative_openflags(int32_t sim_openflags);
 };
 }
 }

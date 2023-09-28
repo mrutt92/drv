@@ -1,5 +1,6 @@
 #include "DrvNativeSimulationTranslator.hpp"
 #include "rv64simtypes/stat.h"
+#include "rv64simtypes/fcntl.h"
 
 using namespace SST;
 using namespace Drv;
@@ -24,3 +25,23 @@ DrvNativeSimulationTranslator::nativeToSimulator_stat(const struct stat *i) {
     return ret;
 }
 
+
+int DrvNativeSimulationTranslator::simulatorToNative_openflags(int32_t sim_openflags) {
+    int ret = 0;
+    if (sim_openflags & RV64SIM_O_RDONLY) {
+        ret |= O_RDONLY;
+    }
+    if (sim_openflags & RV64SIM_O_WRONLY) {
+        ret |= O_WRONLY;
+    }
+    if (sim_openflags & RV64SIM_O_RDWR) {
+        ret |= O_RDWR;
+    }
+    if (sim_openflags & RV64SIM_O_CREAT) {
+        ret |= O_CREAT;
+    }
+    if (sim_openflags & RV64SIM_O_TRUNC) {
+        ret |= O_TRUNC;
+    }
+    return ret;
+}
