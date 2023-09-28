@@ -45,6 +45,15 @@ void RISCVCore::configureMemory(Params &params) {
 
 }
 
+void RISCVCore::configureAddressMap(Params &params) {
+    addressmap_ = loadUserSubComponent<Drv::DrvAddressMap>
+        ("addressmap", ComponentInfo::SHARE_NONE);
+    if (!addressmap_) {
+        output_.fatal(CALL_INFO, -1, "No address map specified\n");
+    }
+    output_.verbose(CALL_INFO, 1, 0, "Configured address map @ %p\n", addressmap_);
+}
+
 void RISCVCore::configureSimulator(Params &params) {
     sim_ = new RISCVSimulator(this);
 }
@@ -64,6 +73,7 @@ RISCVCore::RISCVCore(ComponentId_t id, Params& params)
     configureSimulator(params);
     configureHarts(params);
     configureMemory(params);
+    configureAddressMap(params);
     registerAsPrimaryComponent();
     primaryComponentDoNotEndSim();
 }
@@ -77,6 +87,7 @@ RISCVCore::~RISCVCore() {
 /* load program segment */
 void RISCVCore::loadProgramSegment(Elf64_Phdr* phdr) {
     output_.verbose(CALL_INFO, 1, 0, "Loading program segment: 0x%lx\n", phdr->p_vaddr);
+    Interfaces::StandardMem::Addr addr = addressmap_->addrVirtualToPhysical(phdr->p_vaddr);
     std::vector<uint8_t> data(phdr->p_memsz, 0);
     memcpy(&data[0], icache_->segment(phdr), phdr->p_filesz);
     // issue a memory request

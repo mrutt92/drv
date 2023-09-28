@@ -16,7 +16,8 @@ bool RISCVSimulator::isMMIO(SST::Interfaces::StandardMem::Addr addr) {
 
 template <typename T>
 void RISCVSimulator::visitStoreMMIO(RISCVHart &shart, RISCVInstruction &i) {
-    StandardMem::Addr addr = shart.x(i.rs1()) + i.Simm();
+    uint64_t vaddr = shart.x(i.rs1()) + i.Simm();
+    StandardMem::Addr addr = core_->virtualToPhysical(vaddr);
     std::stringstream ss;
     switch (addr) {
     case MMIO_PRINT_INT:
@@ -39,7 +40,8 @@ void RISCVSimulator::visitStoreMMIO(RISCVHart &shart, RISCVInstruction &i) {
 template <typename R, typename T>
 void RISCVSimulator::visitLoad(RISCVHart &hart, RISCVInstruction &i) {
    RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
-   StandardMem::Addr addr = shart.x(i.rs1()) + i.SIimm();
+   uint64_t vaddr = shart.x(i.rs1()) + i.SIimm();
+   StandardMem::Addr addr = core_->virtualToPhysical(vaddr);
    // create the read request
    StandardMem::Read *rd = new StandardMem::Read(addr, sizeof(T));
    rd->tid = core_->getHartId(shart);
@@ -60,7 +62,8 @@ void RISCVSimulator::visitLoad(RISCVHart &hart, RISCVInstruction &i) {
 template <typename T>
 void RISCVSimulator::visitStore(RISCVHart &hart, RISCVInstruction &i) {
     RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
-    StandardMem::Addr addr = shart.x(i.rs1()) + i.Simm();
+    uint64_t vaddr  = shart.x(i.rs1()) + i.Simm();
+    StandardMem::Addr addr = core_->virtualToPhysical(vaddr);
     if (isMMIO(addr)) {
         visitStoreMMIO<T>(shart, i);
         return;
@@ -84,7 +87,8 @@ void RISCVSimulator::visitStore(RISCVHart &hart, RISCVInstruction &i) {
 template <typename T>
 void RISCVSimulator::visitAMO(RISCVHart &hart, RISCVInstruction &i, DrvAPI::DrvAPIMemAtomicType op) {
     RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
-    StandardMem::Addr addr = shart.x(i.rs1());
+    uint64_t vaddr = shart.x(i.rs1());
+    StandardMem::Addr addr = core_->virtualToPhysical(vaddr);
     AtomicReqData *data = new AtomicReqData();
     data->pAddr = addr;
     data->size = sizeof(T);

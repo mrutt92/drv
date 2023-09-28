@@ -11,6 +11,7 @@
 #include <ICacheBacking.hpp>
 #include "SSTRISCVSimulator.hpp"
 #include "SSTRISCVHart.hpp"
+#include "DrvAddressMap.hpp"
 
 namespace SST {
 namespace Drv {
@@ -44,6 +45,7 @@ public:
     // DOCUMENT SUBCOMPONENTS
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
         {"memory", "Interface to a memory hierarchy", "SST::Interfaces::StandardMem"},
+        {"addressmap", "Map from virtual to physical addresses", "SST::Drv::DrvAddressMap"},
     )
 
     /**
@@ -125,6 +127,11 @@ public:
      * configure simulator
      */
     void configureSimulator(Params &params);
+
+    /**
+     * configure address map
+     */
+    void configureAddressMap(Params &params);
     
     /**
      * clock tick
@@ -176,9 +183,14 @@ public:
             it->second++;
         }
     }
+
+    SST::Interfaces::StandardMem::Addr virtualToPhysical(uint64_t vaddr) {
+        return addressmap_->addrVirtualToPhysical(vaddr);
+    }
     
     SST::Output output_; //!< output stream
     Interfaces::StandardMem *mem_; //!< memory interface
+    Drv::DrvAddressMap *addressmap_; //!< address map
     RISCVSimulator *sim_; //!< simulator
     ICacheBacking *icache_; //!< icache
     RISCVDecoder decoder_; //!< decoder

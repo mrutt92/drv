@@ -4,13 +4,21 @@
 #include <sst/core/link.h>
 #include <sst/core/event.h>
 #include <sst/core/interfaces/stdMem.h>
+#include "DrvAddressMap.hpp"
 namespace SST {
 namespace Drv {
 
-class DrvAddressMap : public SST::SubComponent {
+class DrvPANDOHammerAddressMap : public DrvAddressMap {
 public:
   // register this subcomponent into the element library
-  SST_ELI_REGISTER_SUBCOMPONENT_API(SST::Drv::DrvAddressMap)
+    SST_ELI_REGISTER_SUBCOMPONENT(
+        SST::Drv::DrvPANDOHammerAddressMap,
+        "Drv",
+        "DrvPANDOHammerAddressMap",
+        SST_ELI_ELEMENT_VERSION(1,0,0),
+        "PANDO Hammer Address Map",
+        SST::Drv::DrvAddressMap
+    )
 
   // document the parameters that this component accepts
   SST_ELI_DOCUMENT_PARAMS(
@@ -22,12 +30,12 @@ public:
     * @param[in] id The component id.
     * @param[in] params Parameters for this component.
     */
-  DrvAddressMap(SST::ComponentId_t id, SST::Params& params);
+  DrvPANDOHammerAddressMap(SST::ComponentId_t id, SST::Params& params);
 
   /**
    * destructor
    */
-  virtual ~DrvAddressMap();
+  virtual ~DrvPANDOHammerAddressMap();
     
   /**
    * @brief Convert a virtual address to a physical address
@@ -35,11 +43,12 @@ public:
    * @param addrVirtual The virtual address
    * @return SST::Interfaces::StandardMem::Addr The physical address
    */
-  virtual SST::Interfaces::StandardMem::Addr addrVirtualToPhysical(uint64_t virt) const;
+  virtual SST::Interfaces::StandardMem::Addr
+  addrVirtualToPhysical(uint64_t virt) const override;
 
-  virtual void init(unsigned int phase) {}
-  virtual void setup() {}
-  virtual void finish() {}
+  virtual void init(unsigned int phase) override {}
+  virtual void setup() override {}
+  virtual void finish() override {}
   
 private:
   SST::Output output_; //!< @brief The output stream for this component

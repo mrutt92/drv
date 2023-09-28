@@ -2,7 +2,6 @@
 
 using namespace SST;
 using namespace Drv;
-using namespace DrvAPI;
 
 DrvAddressMap::DrvAddressMap(SST::ComponentId_t id, SST::Params& params) :
     SubComponent(id) {
@@ -17,7 +16,7 @@ DrvAddressMap::DrvAddressMap(SST::ComponentId_t id, SST::Params& params) :
 DrvAddressMap::~DrvAddressMap() {
 }
 
-SST::Interfaces::StandardMem::Addr DrvAddressMap::addrVirtualToPhysical(const DrvAPIAddress & virt) const {
+SST::Interfaces::StandardMem::Addr DrvAddressMap::addrVirtualToPhysical(uint64_t virt) const {
     return static_cast<Interfaces::StandardMem::Addr>(virt);
 }
 

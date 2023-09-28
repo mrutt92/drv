@@ -52,6 +52,11 @@ core_iface.addParams({
     "verbose" : 1,
 })
 
+core_addressmap = core.setSubComponent("addressmap", "Drv.DrvPANDOHammerAddressMap")
+core_addressmap.addParams({
+    "verbose" : args.verbose_core,
+})
+
 # build the memory controller
 scratchmemctrl = sst.Component("scratch", "memHierarchy.MemController")
 scratchmemctrl.addParams({
