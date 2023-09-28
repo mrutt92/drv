@@ -76,7 +76,9 @@ RISCVCore::~RISCVCore() {
 
 /* load program segment */
 void RISCVCore::loadProgramSegment(Elf64_Phdr* phdr) {
-    output_.verbose(CALL_INFO, 1, 0, "Loading program segment: 0x%lx\n", phdr->p_paddr);
+    output_.verbose(CALL_INFO, 1, 0, "Loading program segment: (paddr = 0x%lx, vaddr = 0x%lx)\n"
+                    , phdr->p_paddr
+                    , phdr->p_vaddr);
     std::vector<uint8_t> data(phdr->p_memsz, 0);
     memcpy(&data[0], icache_->segment(phdr), phdr->p_filesz);
     // issue a memory request
@@ -89,9 +91,7 @@ void RISCVCore::loadProgramSegment(Elf64_Phdr* phdr) {
 void RISCVCore::loadProgram() {
     for (int pidx = 0; pidx < icache_->ehdr()->e_phnum; pidx++) {
         Elf64_Phdr *phdr = icache_->phdr(pidx);
-        if (phdr->p_type == PT_LOAD
-            //&& ! (phdr->p_flags & PF_X)
-            ) {
+        if (phdr->p_type == PT_LOAD) {
             loadProgramSegment(phdr);
         }
     }
