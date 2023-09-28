@@ -6,7 +6,7 @@ using namespace Drv;
 DrvAddressMap::DrvAddressMap(SST::ComponentId_t id, SST::Params& params) :
     SubComponent(id) {
     // get parameters
-    bool verbose = params.find<bool>("verbose", false);
+    int64_t verbose = params.find<int64_t>("verbose", false);
 
     // set up output
     output_.init("[DrvAddressMap @t:@f:@l: @p]", verbose, 0, SST::Output::STDOUT);
