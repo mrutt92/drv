@@ -15,9 +15,10 @@ vpath %.cpp $(DRV_DIR)/riscv-examples/platform_$(PLATFORM)
 ARCH:=rv64imafd
 ABI:=lp64d
 
-CXXFLAGS := -O2  -march=$(ARCH) -mabi=$(ABI)
-CFLAGS   := -O2  -march=$(ARCH) -mabi=$(ABI)
-LDFLAGS  :=
+CXXFLAGS += -O2  -march=$(ARCH) -mabi=$(ABI)
+CFLAGS   += -O2  -march=$(ARCH) -mabi=$(ABI)
+LDFLAGS  +=
+LIBS += 
 
 -include $(DRV_DIR)/riscv-examples/platform_$(PLATFORM)/common.mk
 
@@ -39,7 +40,7 @@ $(CXXOBJECT): %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(TARGET): %.riscv: $(COBJECT) $(CXXOBJECT) $(ASMOBJECT)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(filter %.o,$^)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(filter %.o,$^) $(LIBS)
 
 .PHONY: clean
 clean:
