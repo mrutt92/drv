@@ -10,4 +10,5 @@
 #include <DrvAPIAllocator.hpp>
 #include <DrvAPIGlobal.hpp>
 #include <DrvAPIOp.hpp>
+#include <DrvAPISysConfig.hpp>
 #endif
