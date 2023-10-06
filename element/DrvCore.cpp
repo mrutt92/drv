@@ -140,6 +140,27 @@ void DrvCore::configureOtherLinks(SST::Params &params) {
     loopback_->addSendLatency(1, "ns");
 }
 
+/**
+ * configure sysconfig
+ * @param[in] params Parameters to this component.
+ */
+void DrvCore::configureSysConfig(SST::Params &params) {
+    sys_config_.init(params);
+    DrvAPI::DrvAPISysConfig cfg = sys_config_.config();
+    output_->verbose(CALL_INFO, 1, DEBUG_INIT,
+                     "configured sysconfig: "
+                     "num_pxn = %" PRId64 ", "
+                     "pxn_pods = %" PRId64 ", "
+                     "pod_cores = %" PRId64 ", "
+                     "core_threads = %" PRId64
+                     "\n"
+                     ,cfg.numPXN()
+                     ,cfg.numPXNPods()
+                     ,cfg.numPodCores()
+                     ,cfg.numCoreThreads()
+                     );
+}
+
 void DrvCore::parseArgv(SST::Params &params) {
     std::string argv_str = params.find<std::string>("argv", "");
     std::stringstream ss(argv_str);

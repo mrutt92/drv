@@ -7,6 +7,7 @@
 #include "DrvEvent.hpp"
 #include "DrvMemory.hpp"
 #include "DrvThread.hpp"
+#include "DrvSysConfig.hpp"
 #include "DrvAPIMain.hpp"
 
 namespace SST {
@@ -114,7 +115,13 @@ public:
    * @param[in] params Parameters to this component.
    */
   void configureOtherLinks(SST::Params &params);
-  
+
+  /**
+   * configure sysconfig
+   * @param[in] params Parameters to this component.
+   */
+  void configureSysConfig(SST::Params &params);
+
   /**
    * select a ready thread
    */
@@ -246,6 +253,7 @@ private:
   uint64_t max_idle_cycles_; //!< maximum number of idle cycles
   uint64_t idle_cycles_; //!< number of idle cycles
   bool core_on_; //!< true if the core is on (clock handler is registered)
+  DrvSysConfig sys_config_; //!< system configuration
 public:
   int id_; //!< the core id
 };
