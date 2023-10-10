@@ -32,9 +32,7 @@ public:
       {"executable", "Path to user program"},
       {"argv","List of arguments for program", ""},
       /* system config */
-      {"sys_num_pxn", "Number of PXN in system", "1"},
-      {"sys_pxn_pods", "Number of pods per PXN", "1"},
-      {"sys_pod_cores", "Number of cores per pod", "1"},
+      DRV_SYS_CONFIG_PARAMETERS
       /* core config */
       {"threads", "Number of threads on this core", "1"},
       {"clock", "Clock rate of core", "125MHz"},

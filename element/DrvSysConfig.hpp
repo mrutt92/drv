@@ -14,6 +14,11 @@ public:
      */
     DrvSysConfig() {}
 
+#define DRV_SYS_CONFIG_PARAMETERS                       \
+    {"sys_num_pxn", "Number of PXN in system", "1"},    \
+    {"sys_pxn_pods", "Number of pods per PXN", "1"},    \
+    {"sys_pod_cores", "Number of cores per pod", "1"},
+
     /**
      * initialize the system configuration
      */
