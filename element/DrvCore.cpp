@@ -106,6 +106,7 @@ void DrvCore::configureThread(int thread, int threads) {
   threads_.back().getAPIThread().setArgs(argv_.size(), argv_.data());
   threads_.back().getAPIThread().setId(thread);
   threads_.back().getAPIThread().setCoreId(id_);
+  threads_.back().getAPIThread().setCoreThreads(threads);
 }
 
 /**

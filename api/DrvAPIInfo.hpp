@@ -40,8 +40,7 @@ inline int myPXNId() {
 }
 
 inline int myCoreThreads() {
-    //DrvAPIThread::current()->coreThreads();
-    return 0;
+    return DrvAPIThread::current()->coreThreads();
 }
 
 //////////////////////

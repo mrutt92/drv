@@ -81,6 +81,16 @@ public:
   int coreId() const { return core_id_; } //!< Get the core id
 
   /**
+   * @brief number of threads on this core
+   */
+  int coreThreads() const { return core_threads_; } //!< Get the number of threads on this core
+
+  /**
+   * @brief set the number of threads on this core
+   */
+  void setCoreThreads(int threads) { core_threads_ = threads; } //!< Set the number of threads on this core
+    
+  /**
    * @brief set the core id
    */
   void setCoreId(int core_id) { core_id_ = core_id; } //!< Set the core id
@@ -108,6 +118,7 @@ private:
   char **argv_;
   int id_; //!< Thread id
   int core_id_; //!< Core id
+  int core_threads_; //!< Number of threads on this core
 };
 }
 
