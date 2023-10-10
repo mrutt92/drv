@@ -40,6 +40,8 @@ public:
       {"clock", "Clock rate of core", "125MHz"},
       {"max_idle", "Max idle cycles before we unregister the clock", "1000000"},
       {"id", "ID for the core", "0"},
+      {"pod", "Pod ID of this core", "0"},
+      {"pxn", "PXN ID of this core", "0"},
       {"dram_base", "Base address of DRAM", "0x80000000"},
       {"dram_size", "Size of DRAM", "0x100000000"},
       {"l1sp_base", "Base address of L1SP", "0x00000000"},
@@ -270,6 +272,8 @@ private:
   DrvSysConfig sys_config_; //!< system configuration
 public:
   int id_; //!< the core id
+  int pod_; //!< pod id of this core
+  int pxn_; // !< pxn id of this core
 };
 }
 }

@@ -27,16 +27,14 @@ inline int myCoreId() {
  * return my pod id w.r.t my pxn
  */
 inline int myPodId() {
-    //DrvAPIThread::current()->podId();
-    return 0;
+    return DrvAPIThread::current()->podId();
 }
 
 /**
  * return my pxn id
  */
 inline int myPXNId() {
-    //DrvAPIThread::current()->pxnId();
-    return 0;
+    return DrvAPIThread::current()->pxnId();
 }
 
 inline int myCoreThreads() {

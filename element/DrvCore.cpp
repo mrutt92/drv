@@ -101,12 +101,14 @@ void DrvCore::configureClock(SST::Params &params) {
  */
 void DrvCore::configureThread(int thread, int threads) {
   output_->verbose(CALL_INFO, 2, DEBUG_INIT, "configuring thread (%2d/%2d)\n", thread, threads);
-  threads_.emplace_back();
-  threads_.back().getAPIThread().setMain(main_);
-  threads_.back().getAPIThread().setArgs(argv_.size(), argv_.data());
-  threads_.back().getAPIThread().setId(thread);
-  threads_.back().getAPIThread().setCoreId(id_);
-  threads_.back().getAPIThread().setCoreThreads(threads);
+  DrvAPI::DrvAPIThread& api_thread = threads_.emplace_back().getAPIThread();
+  api_thread.setMain(main_);
+  api_thread.setArgs(argv_.size(), argv_.data());
+  api_thread.setId(thread);
+  api_thread.setCoreId(id_);
+  api_thread.setCoreThreads(threads);
+  api_thread.setPodId(pod_);
+  api_thread.setPxnId(pxn_);
 }
 
 /**
@@ -190,6 +192,8 @@ DrvCore::DrvCore(SST::ComponentId_t id, SST::Params& params)
   , idle_cycles_(0)
   , core_on_(false) {
   id_ = params.find<int>("id", 0);
+  pod_ = params.find<int>("pod", 0);
+  pxn_ = params.find<int>("pxn", 0);
   registerAsPrimaryComponent();
   primaryComponentDoNotEndSim();
   configureOutput(params);

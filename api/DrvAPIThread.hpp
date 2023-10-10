@@ -99,7 +99,27 @@ public:
    * @brief set the thread id
    */
   void setId(int id) { id_ = id; } //!< Set the thread id
-  
+
+  /**
+   * @brief get the pod id w.r.t pxn
+   */
+  int podId() const { return pod_id_; } //!< Get the pod id w.r.t pxn
+
+  /**
+   * @brief set the pod id w.r.t pxn
+   */
+  void setPodId(int pod_id) { pod_id_ = pod_id; } //!< Set the pod id w.r.t pxn
+
+  /**
+   * @brief get the pxn id
+   */
+  int pxnId() const { return pxn_id_; } //!< Get the pxn id
+
+  /**
+   * @brief set the pxn id
+   */
+  void setPxnId(int pxn_id) { pxn_id_ = pxn_id; } //!< Set the pxn id
+    
   /**
    * @brief Get the current active thread
    * 
@@ -119,6 +139,8 @@ private:
   int id_; //!< Thread id
   int core_id_; //!< Core id
   int core_threads_; //!< Number of threads on this core
+  int pod_id_; //!< Pod id in PXN
+  int pxn_id_; //!< Pxn id
 };
 }
 

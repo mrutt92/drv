@@ -52,6 +52,8 @@ class Tile(object):
             "executable" : executable,
             "argv" : ' '.join(argv),
             "id" : id,
+            "pod" : 0,
+            "pxn" : 0,
         })
         self.core.addParams(SYSCONFIG)
         self.core_mem = self.core.setSubComponent("memory", "Drv.DrvStdMemory")
