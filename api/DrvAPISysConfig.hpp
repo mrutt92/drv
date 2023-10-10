@@ -36,6 +36,9 @@ public:
     int64_t numPXNPods() const { return data_.pxn_pods_; }
     int64_t numPodCores() const { return data_.pod_cores_; }
     int64_t numCoreThreads() const { return data_.core_threads_; }
+
+    static DrvAPISysConfig *Get() { return &sysconfig; }
+    static DrvAPISysConfig sysconfig;
 private:
     DrvAPISysConfigData data_;
 };

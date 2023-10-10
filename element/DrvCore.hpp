@@ -32,6 +32,10 @@ public:
       {"executable", "Path to user program"},
       {"argv","List of arguments for program", ""},
       /* system config */
+      {"sys_num_pxn", "Number of PXN in system", "1"},
+      {"sys_pxn_pods", "Number of pods per PXN", "1"},
+      {"sys_pod_cores", "Number of cores per pod", "1"},
+      /* core config */
       {"threads", "Number of threads on this core", "1"},
       {"clock", "Clock rate of core", "125MHz"},
       {"max_idle", "Max idle cycles before we unregister the clock", "1000000"},
@@ -236,7 +240,15 @@ public:
       reregisterClock(clocktc_, new SST::Clock::Handler<DrvCore>(this, &DrvCore::clockTick));
     }
   }
-  
+
+  /**
+   * set the application system configuration
+   */
+  void setSysConfigApp() {
+      DrvAPI::DrvAPISysConfig sys_cfg_app = sys_config_.config();
+      set_sys_config_app_(&sys_cfg_app);
+  }
+
 private:  
   std::unique_ptr<SST::Output> output_; //!< for logging
   std::vector<DrvThread> threads_; //!< the threads on this core
@@ -244,6 +256,8 @@ private:
   drv_api_main_t main_; //!< the main function in the executable
   drv_api_get_thread_context_t get_thread_context_; //!< the get_thread_context function in the executable
   drv_api_set_thread_context_t set_thread_context_; //!< the set_thread_context function in the executable
+  DrvAPIGetSysConfig_t get_sys_config_app_; //!< the get_sys_config function in the executable
+  DrvAPISetSysConfig_t set_sys_config_app_; //!< the set_sys_config function in the executable
   DrvMemory* memory_;  //!< the memory hierarchy
   SST::TimeConverter *clocktc_; //!< the clock time converter
   int done_; //!< number of threads that are done

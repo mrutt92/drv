@@ -63,6 +63,16 @@ void DrvCore::configureExecutable(SST::Params &params) {
     output_->fatal(CALL_INFO, -1, "unable to find DrvAPISetCurrentContext in executable: %s\n", dlerror());
   }
 
+  get_sys_config_app_ = (DrvAPIGetSysConfig_t)dlsym(executable_, "DrvAPIGetSysConfig");
+  if (!get_sys_config_app_) {
+      output_->fatal(CALL_INFO, -1, "unable to find DrvAPIGetSysConfig in executable: %s\n", dlerror());
+  }
+
+  set_sys_config_app_ = (DrvAPISetSysConfig_t)dlsym(executable_, "DrvAPISetSysConfig");
+  if (!set_sys_config_app_) {
+      output_->fatal(CALL_INFO, -1, "unable to find DrvAPISetSysConfig in executable: %s\n", dlerror());
+  }
+  
   output_->verbose(CALL_INFO, 1, DEBUG_INIT, "configured executable\n");  
 }
 
@@ -183,12 +193,14 @@ DrvCore::DrvCore(SST::ComponentId_t id, SST::Params& params)
   registerAsPrimaryComponent();
   primaryComponentDoNotEndSim();
   configureOutput(params);
+  configureSysConfig(params);
   configureClock(params);
   configureMemory(params);
   configureOtherLinks(params);
   configureExecutable(params);
   parseArgv(params);
   configureThreads(params);
+  setSysConfigApp();
 }
 
 DrvCore::~DrvCore() {

@@ -2,6 +2,7 @@
 #define DRV_API_THREAD_H
 #include <DrvAPIThreadState.hpp>
 #include <DrvAPIMain.hpp>
+#include <DrvAPISysConfig.hpp>
 #include <boost/coroutine2/all.hpp>
 #include <memory>
 namespace DrvAPI
