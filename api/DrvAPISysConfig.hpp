@@ -13,7 +13,6 @@ struct DrvAPISysConfigData
     int64_t num_pxn_; //!< number of PXNs in the system
     int64_t pxn_pods_; //!< number of pods per PXN
     int64_t pod_cores_; //!< number of cores per pod
-    int64_t core_threads_; //!< number of threads per core    
 };
 
 
@@ -35,7 +34,6 @@ public:
     int64_t numPXN() const { return data_.num_pxn_; }
     int64_t numPXNPods() const { return data_.pxn_pods_; }
     int64_t numPodCores() const { return data_.pod_cores_; }
-    int64_t numCoreThreads() const { return data_.core_threads_; }
 
     static DrvAPISysConfig *Get() { return &sysconfig; }
     static DrvAPISysConfig sysconfig;

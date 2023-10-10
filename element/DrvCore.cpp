@@ -167,7 +167,6 @@ void DrvCore::configureSysConfig(SST::Params &params) {
                      ,cfg.numPXN()
                      ,cfg.numPXNPods()
                      ,cfg.numPodCores()
-                     ,cfg.numCoreThreads()
                      );
 }
 
