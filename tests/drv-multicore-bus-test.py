@@ -3,8 +3,6 @@ import sys
 
 VERBOSE = 0
 VERBOSE_MEMCTRL = 0
-CORES = 64
-THREADS = 16
 CORE_DEBUG = {
     "init"      : False,
     "clock"     : False,
@@ -13,6 +11,8 @@ CORE_DEBUG = {
     "loopback"  : False,
 }
 
+CORES = 64
+THREADS = 16
 DRAM_BASE = 0x80000000
 L1SP_BASE = 0x00000000
 
