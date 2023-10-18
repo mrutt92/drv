@@ -1,5 +1,6 @@
-#SST_RISCV_DIR := $(shell git rev-parse --show-toplevel)
-#include $(SST_RISCV_DIR)/mk/config.mk
+ifndef _RISCV_COMMON_MK_
+_RISCV_COMMON_MK_ := 1
+
 DRV_DIR := $(shell git rev-parse --show-toplevel)
 include $(DRV_DIR)/mk/config.mk
 
@@ -49,3 +50,4 @@ SIM_OPTIONS ?=
 
 run: $(TARGET)
 	sst $(SCRIPT) -- $(TARGET) $(SIM_OPTIONS)
+endif
