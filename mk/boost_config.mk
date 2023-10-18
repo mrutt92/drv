@@ -1,7 +1,7 @@
 # CHANGME - set the path to your boost installation
 ifndef _BOOST_CONFIG_MK_
 _BOOST_CONFIG_MK_ = 1
-BOOST_INSTALL_DIR=$(HOME)/package-install/boost_1_82_0
+BOOST_INSTALL_DIR=/install
 BOOST_CXXFLAGS += -I$(BOOST_INSTALL_DIR)/include
 BOOST_LDFLAGS  += -L$(BOOST_INSTALL_DIR)/lib -Wl,-rpath=$(BOOST_INSTALL_DIR)/lib
 
