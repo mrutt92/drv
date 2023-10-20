@@ -16,8 +16,9 @@ vpath %.cpp $(DRV_DIR)/riscv-examples/platform_$(PLATFORM)
 ARCH:=rv64imafd
 ABI:=lp64d
 
-CXXFLAGS += -O2  -march=$(ARCH) -mabi=$(ABI)
-CFLAGS   += -O2  -march=$(ARCH) -mabi=$(ABI)
+COMPILE_FLAGS += -O2 -march=$(ARCH) -mabi=$(ABI)
+CXXFLAGS += $(COMPILE_FLAGS)
+CFLAGS   += $(COMPILE_FLAGS)
 LDFLAGS  +=
 LIBS     +=
 
