@@ -4,8 +4,8 @@ _RISCV_COMMON_MK_ := 1
 DRV_DIR := $(shell git rev-parse --show-toplevel)
 include $(DRV_DIR)/mk/config.mk
 
-CXX := $(RISCV_INSTALL_DIR)/bin/riscv64-unknown-elf-g++
-CC  := $(RISCV_INSTALL_DIR)/bin/riscv64-unknown-elf-gcc
+CXX := $(RISCV_INSTALL_DIR)/bin/riscv64-$(RISCV_ARCH)-g++
+CC  := $(RISCV_INSTALL_DIR)/bin/riscv64-$(RISCV_ARCH)-gcc
 
 PLATFORM ?= default
 

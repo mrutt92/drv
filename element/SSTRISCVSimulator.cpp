@@ -7,7 +7,7 @@
 #include <type_traits>
 #include "SSTRISCVSimulator.hpp"
 #include "SSTRISCVCore.hpp"
-#include "riscv64-unknown-elf/include/machine/syscall.h"
+#include "riscv64-unknown-elfpandodrvsim/include/machine/syscall.h"
 #include "DrvAPIReadModifyWrite.hpp"
 #include "DrvCustomStdMem.hpp"
 
@@ -412,7 +412,7 @@ void RISCVSimulator::sysOPEN(RISCVSimHart &shart, RISCVInstruction &i) {
     mode_t mode = static_cast<mode_t>(shart.a(2));
 
     // issue a read request for the filename
-    auto rd = new StandardMem::Read(path, 1024);
+    auto rd = new StandardMem::Read(path, core_->getMaxReqSize());
     rd->tid = core_->getHartId(shart);
     // make a handler
     shart.ready() = false;
