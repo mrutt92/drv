@@ -95,15 +95,37 @@ RISCVCore::~RISCVCore() {
 
 /* load program segment */
 void RISCVCore::loadProgramSegment(Elf64_Phdr* phdr) {
+    using Write = Interfaces::StandardMem::Write;
+    using Addr = Interfaces::StandardMem::Addr;
     output_.verbose(CALL_INFO, 1, 0, "Loading program segment: (paddr = 0x%lx, vaddr = 0x%lx)\n"
                     , phdr->p_paddr
                     , phdr->p_vaddr);
-    std::vector<uint8_t> data(phdr->p_memsz, 0);
-    memcpy(&data[0], icache_->segment(phdr), phdr->p_filesz);
-    // issue a memory request
-    using Write = Interfaces::StandardMem::Write;
-    Write *wr = new Write(phdr->p_paddr, data.size(), data, true);
-    mem_->send(wr);
+    uint8_t *segp = static_cast<uint8_t*>(icache_->segment(phdr));
+    size_t  segsz = phdr->p_filesz;
+    size_t  reqsz = getMaxReqSize();
+    Addr segpaddr = phdr->p_paddr;
+    // write data
+    for (;segsz > 0;) {
+        size_t wrsz = std::min(reqsz, segsz);
+        std::vector<uint8_t> data(wrsz, 0);
+        memcpy(&data[0], segp, wrsz);
+        Write *wr = new Write(segpaddr, wrsz, data, true);
+        mem_->send(wr);
+        segsz -= wrsz;
+        segpaddr += wrsz;
+        segp += wrsz;
+    }
+    // write zeros
+    segsz = phdr->p_memsz - phdr->p_filesz;
+    if (segsz > 0) {
+        size_t wrsz = std::min(reqsz, segsz);
+        std::vector<uint8_t> data(wrsz, 0);
+        Write *wr = new Write(segpaddr, wrsz, data, true);
+        mem_->send(wr);
+        segsz -= wrsz;
+        segpaddr += wrsz;
+        segp += wrsz;
+    }
 }
 
 /* load program */
