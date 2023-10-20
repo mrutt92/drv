@@ -68,6 +68,10 @@ void RISCVSimulator::visitLoad(RISCVHart &hart, RISCVInstruction &i) {
        shart.ready() = true;
        delete req;
    });
+   core_->output_.verbose(CALL_INFO, 0, RISCVCore::DEBUG_MEMORY
+                           ,"PC=%08" PRIx64 ": LOAD: 0x%016" PRIx64 "\n"
+                           ,static_cast<uint64_t>(shart.pc())
+                           ,static_cast<uint64_t>(addr));
    core_->issueMemoryRequest(rd, rd->tid, ch);
 }
 
@@ -92,6 +96,10 @@ void RISCVSimulator::visitStore(RISCVHart &hart, RISCVInstruction &i) {
         shart.ready() = true;
         delete req;
     });
+    core_->output_.verbose(CALL_INFO, 0, RISCVCore::DEBUG_MEMORY
+                            ,"PC=%08" PRIx64 ": STORE: 0x%016" PRIx64 "\n"
+                            ,static_cast<uint64_t>(shart.pc())
+                            ,static_cast<uint64_t>(addr));
     core_->issueMemoryRequest(wr, wr->tid, ch);
 }
 
