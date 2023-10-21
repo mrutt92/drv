@@ -214,7 +214,6 @@ void RISCVCore::handleMemEvent(RISCVCore::Request *req) {
         output_.fatal(CALL_INFO, -1, "Received memory request for unknown hart\n");
     }
     it->second(req);
-    rsp_handlers_.erase(it);
 }
 
 /* select the next hart to execute */

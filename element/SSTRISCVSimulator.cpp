@@ -335,20 +335,18 @@ void RISCVSimulator::sysWRITE(RISCVSimHart &hart, RISCVInstruction &i) {
     int fd = hart.sa(0);
     uint64_t buf = hart.a(1);
     uint64_t len = hart.a(2);
-    core_->output_.verbose(CALL_INFO, 2, 0, "WRITE: fd=%d, buf=%#lx, len=%lu\n", fd, buf, len);
+
+    std::function<void(std::vector<uint8_t>&)> completion
+        ([this, buf, &hart, fd, len](std::vector<uint8_t> &data) {
+            this->core_->output_.verbose(CALL_INFO, 2, 0, "WRITE: fd=%d, buf=%#lx, len=%lu\n", fd, buf, len);
+            hart.ready() = true;
+            hart.a(0) = write(fd, &data[0], len);
+        });
+
     // issue a request for the buffer
     // then call write when buffer returns
     hart.ready() = false;
-    RISCVCore::ICompletionHandler ch([&hart, fd, len](StandardMem::Request *req) {
-        // handle the write response
-        auto *rsp = static_cast<StandardMem::ReadResp *>(req);
-        hart.ready() = true;
-        hart.a(0) = write(fd, &rsp->data[0], len);
-        delete rsp;
-    });
-    auto rd = new StandardMem::Read(buf, len);
-    rd->tid = core_->getHartId(hart);
-    core_->issueMemoryRequest(rd, rd->tid, ch);
+    sysReadBuffer(hart, buf, len, std::move(completion));
 }
 
 void RISCVSimulator::sysREAD(RISCVSimHart &shart, RISCVInstruction &i) {
@@ -408,28 +406,45 @@ void RISCVSimulator::sysOPEN(RISCVSimHart &shart, RISCVInstruction &i) {
 
     // TODO: these flags need to be translated
     // to native flags for the running host
-    int32_t flags = shart.a(1);
-    mode_t mode = static_cast<mode_t>(shart.a(2));
+    int32_t flags = _type_translator.simulatorToNative_openflags(shart.a(1));
 
-    // issue a read request for the filename
-    auto rd = new StandardMem::Read(path, core_->getMaxReqSize());
-    rd->tid = core_->getHartId(shart);
-    // make a handler
+    std::function<void(std::vector<uint8_t>&)> completion
+        ([&shart, this, flags](std::vector<uint8_t> &data) {
+            mode_t mode = 0644;
+            char *path = (char *)&data[0];
+            core_->output_.verbose(CALL_INFO, 2, 0
+                                   , "OPEN: path=%s, flags=%" PRIx32 ", mode=%u\n"
+                                   , path, flags, mode);
+            if (strnlen(path, data.size()) == data.size()) {
+                // no null terminator found
+                core_->output_.fatal(CALL_INFO, -1, "OPEN: file name too long\n");
+            }
+            shart.a(0) = open(path, flags, mode);
+            shart.ready() = true;
+        });
     shart.ready() = false;
-    RISCVCore::ICompletionHandler ch([&shart, this, flags, mode](StandardMem::Request *req) {
-        auto *rsp = static_cast<StandardMem::ReadResp *>(req);
-        char *path = (char *)&rsp->data[0];
-        int32_t my_flags = _type_translator.simulatorToNative_openflags(flags);
-        mode_t my_mode = 0644;
-        core_->output_.verbose(CALL_INFO, 2, 0
-                               , "OPEN: path=%s, flags=%" PRIx32 " (my_flags=%" PRIx32 "), mode=%u (my_mode=%u)\n"
-                               , path, flags, my_flags, mode, my_mode);
-        // handle the read response
-        shart.a(0) = open((const char *)&rsp->data[0], my_flags, my_mode);
-        delete rsp;
-        shart.ready() = true;
+
+    // issue the read requests
+    sysReadBuffer(shart, path, 1024, std::move(completion));
+}
+
+void  RISCVSimulator::sysReadBuffer(RISCVSimHart &shart, StandardMem::Addr paddr, size_t n, std::function<void(std::vector<uint8_t>&)> && cont) {
+    // create a large request handler
+    size_t reqSz = core_->getMaxReqSize();
+    size_t nReqs = (n + reqSz - 1)/ reqSz;
+    std::shared_ptr<LargeReadHandler> handler(new LargeReadHandler(nReqs, std::move(cont)));
+
+    // create a completion handler for when small requests return
+    RISCVCore::ICompletionHandler ch([handler](StandardMem::Request *req) {
+        handler->recvRsp(req);
     });
-    core_->issueMemoryRequest(rd, rd->tid, ch);
+
+    for (size_t i = 0; i < nReqs; ++i) {
+        size_t sz = std::min(n - i * reqSz, reqSz);
+        auto rd = new StandardMem::Read(paddr + i * reqSz, sz);
+        rd->tid = core_->getHartId(shart);
+        core_->issueMemoryRequest(rd, rd->tid, ch);
+    }
 }
 
 void RISCVSimulator::sysCLOSE(RISCVSimHart &shart, RISCVInstruction &i) {
