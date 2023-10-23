@@ -49,6 +49,7 @@ public:
         {"debug_idle", "Debug idle cycles", "0"},
         {"debug_requests", "Debug requests", "0"},
         {"debug_responses", "Debug responses", "0"},
+        {"debug_syscalls", "Debug system calls", "0"},
     )
     // DOCUMENT SUBCOMPONENTS
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
@@ -105,10 +106,11 @@ public:
      */
     void loadProgram();
 
-    static constexpr uint32_t DEBUG_MEMORY = (1 << 0); //!< debug memory requests
-    static constexpr uint32_t DEBUG_IDLE   = (1 << 1); //!< debug idle cycles
-    static constexpr uint32_t DEBUG_REQ    = (1<<30); //!< debug messages we expect to see when receiving requests
-    static constexpr uint32_t DEBUG_RSP    = (1<<29); //!< debug messages we expect to see when receiving responses
+    static constexpr uint32_t DEBUG_MEMORY   = (1<< 0); //!< debug memory requests
+    static constexpr uint32_t DEBUG_IDLE     = (1<< 1); //!< debug idle cycles
+    static constexpr uint32_t DEBUG_SYSCALLS = (1<< 2); //!< debug system calls
+    static constexpr uint32_t DEBUG_REQ      = (1<<30); //!< debug messages we expect to see when receiving requests
+    static constexpr uint32_t DEBUG_RSP      = (1<<29); //!< debug messages we expect to see when receiving responses
     
     /**
      * configure output stream

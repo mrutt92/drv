@@ -24,6 +24,9 @@ void RISCVCore::configureOuptut(Params& params) {
     if (params.find<bool>("debug_responses", false)) {
         verbose_mask |= DEBUG_RSP;
     }
+    if (params.find<bool>("debug_syscalls", false)) {
+        verbose_mask |= DEBUG_SYSCALLS;
+    }
     output_.init("SSTRISCVCore[@p:@l]: ", verbose_level, verbose_mask, Output::STDOUT);
 }
 

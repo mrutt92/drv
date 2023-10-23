@@ -27,6 +27,7 @@ CORE_DEBUG = {
     "debug_responses" : False,
     "debug_loopback" : False,
     "debug_memory": False,
+    "debug_syscalls" : False,
 }
 
 # parse command line arguments
@@ -37,6 +38,7 @@ parser.add_argument("--dram-backend", type=str, default="simple", choices=['simp
 parser.add_argument("--debug-memory", action="store_true", help="enable memory debug")
 parser.add_argument("--debug-requests", action="store_true", help="enable debug of requests")
 parser.add_argument("--debug-responses", action="store_true", help="enable debug of responses")
+parser.add_argument("--debug-syscalls", action="store_true", help="enable debug of syscalls")
 parser.add_argument("--verbose-memory", type=int, default=0, help="verbosity of memory")
 
 arguments = parser.parse_args()
@@ -44,6 +46,7 @@ arguments = parser.parse_args()
 CORE_DEBUG['debug_memory'] = arguments.debug_memory
 CORE_DEBUG['debug_requests'] = arguments.debug_requests
 CORE_DEBUG['debug_responses'] = arguments.debug_responses
+CORE_DEBUG['debug_syscalls'] = arguments.debug_syscalls
 
 print("""
 PANDOHammerDrvR:

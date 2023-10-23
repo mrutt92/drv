@@ -339,7 +339,7 @@ void RISCVSimulator::sysWRITE(RISCVSimHart &hart, RISCVInstruction &i) {
 
     std::function<void(std::vector<uint8_t>&)> completion
         ([this, buf, &hart, fd, len](std::vector<uint8_t> &data) {
-            this->core_->output_.verbose(CALL_INFO, 2, 0, "WRITE: fd=%d, buf=%#lx, len=%lu\n", fd, buf, len);
+            this->core_->output_.verbose(CALL_INFO, 1, RISCVCore::DEBUG_SYSCALLS, "WRITE: fd=%d, buf=%#lx, len=%lu\n", fd, buf, len);
             hart.ready() = true;
             hart.a(0) = write(fd, &data[0], len);
         });
@@ -354,7 +354,7 @@ void RISCVSimulator::sysREAD(RISCVSimHart &shart, RISCVInstruction &i) {
     int fd = shart.sa(0);
     uint64_t buf = shart.a(1);
     uint64_t len = shart.a(2);
-    core_->output_.verbose(CALL_INFO, 2, 0, "READ: fd=%d, buf=%#lx, len=%lu\n", fd, buf, len);
+    core_->output_.verbose(CALL_INFO, 1, RISCVCore::DEBUG_SYSCALLS, "READ: fd=%d, buf=%#lx, len=%lu\n", fd, buf, len);
     // call read on a simulation space buffer
     std::vector<uint8_t> data(len);
     shart.a(0) = read(fd, &data[0], len);
@@ -372,7 +372,7 @@ void RISCVSimulator::sysREAD(RISCVSimHart &shart, RISCVInstruction &i) {
 
 void RISCVSimulator::sysBRK(RISCVSimHart &shart, RISCVInstruction &i) {
     uint64_t addr = shart.a(0);
-    core_->output_.verbose(CALL_INFO, 2, 0, "BRK: addr=%#lx\n", addr);
+    core_->output_.verbose(CALL_INFO, 1, RISCVCore::DEBUG_SYSCALLS, "BRK: addr=%#lx\n", addr);
     shart.a(0) = -1;
 }
 
@@ -384,7 +384,7 @@ void RISCVSimulator::sysEXIT(RISCVSimHart &shart, RISCVInstruction &i) {
 void RISCVSimulator::sysFSTAT(RISCVSimHart &shart, RISCVInstruction &i) {
     int fd = shart.sa(0);
     uint64_t stat_buf = shart.a(1);
-    core_->output_.verbose(CALL_INFO, 2, 0, "FSTAT: fd=%d, stat_buf=%#lx\n", fd, stat_buf);    
+    core_->output_.verbose(CALL_INFO, 1, RISCVCore::DEBUG_SYSCALLS, "FSTAT: fd=%d, stat_buf=%#lx\n", fd, stat_buf);
     struct stat stat_s;
     int r = fstat(fd, &stat_s);
     std::vector<unsigned char> sim_stat_s = _type_translator.nativeToSimulator_stat(&stat_s);
@@ -413,9 +413,9 @@ void RISCVSimulator::sysOPEN(RISCVSimHart &shart, RISCVInstruction &i) {
         ([&shart, this, flags](std::vector<uint8_t> &data) {
             mode_t mode = 0644;
             char *path = (char *)&data[0];
-            core_->output_.verbose(CALL_INFO, 2, 0
-                                   , "OPEN: path=%s, flags=%" PRIx32 ", mode=%u\n"
-                                   , path, flags, mode);
+            core_->output_.verbose(CALL_INFO, 1, RISCVCore::DEBUG_SYSCALLS
+                                   ,"OPEN: path=%s, flags=%" PRIx32 ", mode=%u\n"
+                                   ,path, flags, mode);
             if (strnlen(path, data.size()) == data.size()) {
                 // no null terminator found
                 core_->output_.fatal(CALL_INFO, -1, "OPEN: file name too long\n");
