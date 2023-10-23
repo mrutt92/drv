@@ -26,17 +26,18 @@ void RISCVSimulator::visitStoreMMIO(RISCVHart &hart, RISCVInstruction &i) {
     std::stringstream ss;
     switch (addr) {
     case MMIO_PRINT_INT:
-        std::cout << "PXN: " << std::setw(3) << core_->getPXNId() << " ";
-        std::cout << "POD: " << std::setw(2) << core_->getPodId() << " ";
-        std::cout << "CORE: " << std::setw(3) << core_->getCoreId() << " ";
-        std::cout << "THREAD: " << std::setw(2) << core_->getHartId(shart) << " ";
-        std::cout << ":" << static_cast<std::make_signed_t<T>>(shart.sx(i.rs2())) << std::endl;;
+        ss << "PXN: " << std::setw(3) << core_->getPXNId() << " ";
+        ss << "POD: " << std::setw(2) << core_->getPodId() << " ";
+        ss << "CORE: " << std::setw(3) << core_->getCoreId() << " ";
+        ss << "THREAD: " << std::setw(2) << core_->getHartId(shart) << " ";
+        ss << ": " << static_cast<std::make_signed_t<T>>(shart.sx(i.rs2()));
+        std::cout << ss.str() << std::endl;
         break;
     case MMIO_PRINT_HEX:
-        std::cout << "PXN: " << core_->getPXNId() << " ";
-        std::cout << "POD: " << core_->getPodId() << " ";
-        std::cout << "CORE: " << core_->getCoreId() << " ";
-        std::cout << "THREAD: " << std::setw(2) << core_->getHartId(shart) << " ";
+        ss << "PXN: " << std::setw(3) << core_->getPXNId() << " ";
+        ss << "POD: " << std::setw(2) << core_->getPodId() << " ";
+        ss << "CORE: " << std::setw(3) << core_->getCoreId() << " ";
+        ss << "THREAD: " << std::setw(2) << core_->getHartId(shart) << " ";
         ss << ": 0x" << std::hex << std::setfill('0') << std::setw(sizeof(T)*2);
         ss << static_cast<std::make_unsigned_t<T>>(shart.x(i.rs2()));
         std::cout << ss.str() << std::endl;
