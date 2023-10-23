@@ -358,16 +358,15 @@ void RISCVSimulator::sysREAD(RISCVSimHart &shart, RISCVInstruction &i) {
     // call read on a simulation space buffer
     std::vector<uint8_t> data(len);
     shart.a(0) = read(fd, &data[0], len);
+
     // issue a write request to the userspace buffer
+    std::function<void(void)> completion
+        ([&shart](void) {
+            shart.ready() = true;
+        });
+
     shart.ready() = false;
-    RISCVCore::ICompletionHandler ch([&shart](StandardMem::Request *req) {
-        // handle the write response
-        shart.ready() = true;
-        delete req;
-    });
-    auto wr = new StandardMem::Write(buf, len, data);
-    wr->tid = core_->getHartId(shart);
-    core_->issueMemoryRequest(wr, wr->tid, ch);
+    sysWriteBuffer(shart, buf, data, std::move(completion));
 }
 
 void RISCVSimulator::sysBRK(RISCVSimHart &shart, RISCVInstruction &i) {
@@ -429,7 +428,33 @@ void RISCVSimulator::sysOPEN(RISCVSimHart &shart, RISCVInstruction &i) {
     sysReadBuffer(shart, path, 1024, std::move(completion));
 }
 
-void  RISCVSimulator::sysReadBuffer(RISCVSimHart &shart, StandardMem::Addr paddr, size_t n, std::function<void(std::vector<uint8_t>&)> && cont) {
+/**
+ * Write an arbitrarily large buffer to the simulator's memory
+ */
+void RISCVSimulator::sysWriteBuffer(RISCVSimHart &shart, StandardMem::Addr paddr, std::vector<uint8_t> &data, std::function<void(void)> && cont) {
+    // create a large request handler
+    size_t reqSz = core_->getMaxReqSize();
+    size_t nReqs = (data.size() + reqSz - 1)/ reqSz;
+    std::shared_ptr<LargeWriteHandler> handler(new LargeWriteHandler(nReqs, std::move(cont)));
+
+    // create a completion handler for when small requests return
+    RISCVCore::ICompletionHandler ch([handler](StandardMem::Request *req) {
+        handler->recvRsp(req);
+    });
+
+    for (size_t i = 0; i < nReqs; ++i) {
+        size_t sz = std::min(data.size() - i * reqSz, reqSz);
+        std::vector<uint8_t> wdata(data.begin() + i * reqSz, data.begin() + i * reqSz + sz);
+        auto wr = new StandardMem::Write(paddr + i * reqSz, sz, wdata);
+        wr->tid = core_->getHartId(shart);
+        core_->issueMemoryRequest(wr, wr->tid, ch);
+    }
+}
+
+/**
+ * Read an arbitrarily large buffer from the simulator's memory
+ */
+void RISCVSimulator::sysReadBuffer(RISCVSimHart &shart, StandardMem::Addr paddr, size_t n, std::function<void(std::vector<uint8_t>&)> && cont) {
     // create a large request handler
     size_t reqSz = core_->getMaxReqSize();
     size_t nReqs = (n + reqSz - 1)/ reqSz;

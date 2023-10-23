@@ -190,6 +190,8 @@ private:
     void sysREAD(RISCVSimHart &shart, RISCVInstruction &i);
     void sysEXIT(RISCVSimHart &shart, RISCVInstruction &i);
     void sysReadBuffer(RISCVSimHart &shart, SST::Interfaces::StandardMem::Addr paddr, size_t n, std::function<void(std::vector<uint8_t>&)> && cont);
+    void sysWriteBuffer(RISCVSimHart &shart, SST::Interfaces::StandardMem::Addr paddr, std::vector<uint8_t> &data, std::function<void(void)> && cont);
+
     // TODO: implement these for stdio
     
     // void sysREADV(RISCVSimHart &shart, RISCVInstruction &i);
