@@ -1,3 +1,5 @@
+name: Run License Checks on Source Files
+
 on:
   push:
     branches["master"]
