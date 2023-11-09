@@ -42,6 +42,7 @@ public:
             throw std::runtime_error("Could not mmap file");
         }
         symtab_init();
+        bump_allocator_init();
     }
 
     ~PANDOHammerExe() {
@@ -76,9 +77,28 @@ public:
     DrvAPI::DrvAPIPointer<T> symbol(const std::string& symname, const Place &place) const {
         DrvAPIVAddress addr = symbol(symname);
         addr.global() = true;
+        if (addr.is_l1()) {
+            addr.pxn() = place.pxn;
+            addr.pod() = place.pod;
+            addr.core_y() = place.core_y;
+            addr.core_x() = place.core_x;
+        } else if (addr.is_l2()) {
+            addr.pxn() = place.pxn;
+            addr.pod() = place.pod;         
+        }
         return DrvAPI::DrvAPIPointer<T>(addr.encode());
     }
 
+    DrvAPIPointer<void> allocate(size_t size) {
+        // minimum allocation size is 16B
+        size = std::max(size, (size_t)16);
+        // align to 16B
+        size = (size + 15) & ~15;
+        // allocate
+        auto ret = bump_allocator_;
+        bump_allocator_ += size;
+        return ret;
+    }
 private:
     Elf64_Shdr *sections_begin() const {
         return (Elf64_Shdr*)((char*)ehdr_ + ehdr_->e_shoff);
@@ -117,38 +137,53 @@ private:
             }
         }
     }
-    
+
+    void bump_allocator_init() {
+        // add 1MB to the end of data section
+        bump_allocator_ = symbol<char>("end", Place{0,0,0,0}) + 1024*1024;
+        // align to 4KB
+        bump_allocator_ = (bump_allocator_ + 4095) & ~4095;
+    }
+
     FILE *fp_;
     Elf64_Ehdr *ehdr_;
     std::unordered_map<std::string, DrvAPIAddress> symtab_;
+    DrvAPI::DrvAPIPointer<char> bump_allocator_;
 };
 
 int CommandProcessor(int argc, char *argv[])
 {
-    printf("hello, from the command processor!\n");
-    for (int i = 0; i < argc; i++) {
-        printf("argv[%d] = %s\n", i, argv[i]);
-    }
     auto ph_exe = PANDOHammerExe::Open(argv[ARG_PH_EXE]);
     Place place{0,0,0,0};
 
     auto cp_ready = ph_exe->symbol<int64_t>("cp_ready", place);
     auto ph_ready = ph_exe->symbol<int64_t>("ph_ready", place);
 
-    printf("cp_ready = %s(%" PRIx64 ") phys=%s(%" PRIx64 ")\n"
-           ,DrvAPIVAddress(cp_ready).to_string().c_str()
-           ,(DrvAPIAddress)cp_ready
-           ,DrvAPIVAddress(cp_ready).to_physical(place.pod, place.pxn, place.core_y, place.core_x).to_string().c_str()
-           ,DrvAPIVAddress(cp_ready).to_physical(place.pod, place.pxn, place.core_y, place.core_x).encode()
-           );
-
     // wait for PH to be ready
     // it's important to wait for the PH first
     // since it needs to complete loading
-    while (*ph_ready == 0) {
-        printf("CP: waiting for PH to be ready\n");
+    int64_t num_ready = 0;
+    printf("CP: waiting for PH threads to be ready: Cores: %d, Threads/Core: %d\n"
+           ,numPodCores(), THREADS_PER_CORE);
+    
+    while ((num_ready = *ph_ready) < THREADS_PER_CORE*numPodCores()) {
+        DrvAPI::wait(100);
+    }    
+    
+    auto frontiers = ph_exe->symbol<frontier_data>("frontier", place);
+
+    frontier_ref curr = &frontiers[0];
+    frontier_ref next = &frontiers[1];
+    frontier_ref resv = &frontiers[2];
+
+    for (int i = 0; i < 3; i++) {
+        frontier_ref f = &frontiers[i];
+        f.size() = 0;
+        f.vertices() = ph_exe->allocate(sizeof(vertex_t)*1024);
+        f.is_dense() = false;
     }
-    *cp_ready = 1;
+    // FENCE here
+    *cp_ready = 1; // signal to ph core's that we are ready
     return 0;
 }
 

@@ -75,7 +75,7 @@ inline void wait(volatile int x) {
 ///////////
 // types //
 ///////////
-using vertex_t = int64_t;
+using vertex_t = int32_t;
 
 #ifdef COMMAND_PROCESSOR
 using vertex_pointer_t = DrvAPI::DrvAPIPointer<vertex_t>;
