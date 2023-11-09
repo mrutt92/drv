@@ -10,6 +10,8 @@
 #include <cstring>
 #include <unistd.h>
 #include <cstdio>
+#include <atomic>
+#include "common.hpp"
 
 #define __l1sp__ __attribute__((section(".dmem")))
 #define __l2sp__ __attribute__((section(".dram"))) // TODO: this is actually l2sp; need fix in linker script
@@ -25,73 +27,27 @@ int thread_safe_printf(const char* fmt, ...)
     return ret;
 }
 
-/**
- * no-op for x cycles
- */
-void wait(volatile int& x) {
-    for(int i  = 0; i < x; i++) {
-        asm volatile("nop");
-    }    
-}
 
-#define THREADS                                 \
-    (numPodCores()*myCoreThreads())
+__l2sp__ std::atomic<int64_t> ph_ready;
+__l2sp__ std::atomic<int64_t> cp_ready;
 
-struct barrier {
-    int count_;
-    int signal_;
-    int sense_;
-    
-    int& count() { return count_; }
-    int& signal() { return signal_; }
-    int& sense() { return sense_; }
-    
-    void sync() {
-        sync([](){});
-    }
-    
-    template <typename F>
-    void sync(F f) {
-        int signal_ = signal();
-        int count_ = atomic_fetch_add(&count(), 1);
-        if (count_ == THREADS-1) {
-            count() = 0;
-            f();
-            signal() = !signal_;
-        } else {
-            static constexpr int backoff_limit = 1000;
-            int backoff_counter = 8;
-            while (signal() == signal_) {
-                wait(backoff_counter);
-                backoff_counter = std::min(backoff_counter*2, backoff_limit);
-            }
-        }    
-    }
+__l2sp__ frontier_data        frontier[2];
 
-};
-
-
-
-__l2sp__ barrier barrier;
-
-__l2sp__ int counter = 0;
-
-#define THREAD_SAFE
 int main()
 {
-#ifdef THREAD_SAFE
-    for (int i = 0; i < myCoreThreads(); i++) {
-        barrier.sync();
-        if (i == myThreadId())
-            counter++;
-        barrier.sync();
+    thread_safe_printf("PH: Telling CP we're ready\n");
+    // let ph know we're ready
+    ph_ready.store(1, std::memory_order_relaxed);
+    
+    // command_processor_ready.store(-1, std::memory_order_relaxed);
+    int64_t ready = cp_ready.load(std::memory_order_relaxed);
+    ph_print_hex((unsigned long)&cp_ready);
+    int x = 0;
+    while (ready != 1) {
+        // wait for command processor to be ready
+        ready = cp_ready.load(std::memory_order_relaxed);
+        x++;
     }
-#else
-    counter++;
-#endif
-    thread_safe_printf("Core %d, Thread %d: counter = %d\n"
-                       ,myCoreId()
-                       ,myThreadId()
-                       ,counter);
+    thread_safe_printf("PH: Command processor ready\n");
     return 0;
 }
