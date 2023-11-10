@@ -10,7 +10,10 @@ CORES_PER_POD    := 1
 RISCV_CXXSOURCE += bfs.cpp
 
 # command processor compile flags
-COMMAND_PROCESSOR_COMPILE_FLAGS += -DCOMMAND_PROCESSOR -DTHREADS_PER_CORE=$(THREADS_PER_CORE)
+COMMAND_PROCESSOR_COMPILE_FLAGS += -DCOMMAND_PROCESSOR
+COMMAND_PROCESSOR_COMPILE_FLAGS += -DTHREADS_PER_CORE=$(THREADS_PER_CORE)
+COMMAND_PROCESSOR_COMPILE_FLAGS += -I$(DRV_DIR)/riscv-examples/bfs/sparse_matrix_helpers
+
 # command processor source files
 COMMAND_PROCESSOR_CXXSOURCE += bfs_cp.cpp
 
@@ -19,3 +22,11 @@ SIM_OPTIONS += --pod-cores=$(CORES_PER_POD)
 
 include $(DRV_DIR)/mk/riscv_common.mk
 include $(DRV_DIR)/mk/command_processor.mk
+
+run-%: $(RISCV_TARGET) $(COMMAND_PROCESSOR_TARGET)
+	$(eval graph=$(word 1, $(subst -, ,$*)))
+	$(eval root=$(word 2, $(subst -, ,$*)))
+	$(MAKE) -C $(DRV_DIR)/riscv-examples/bfs/sparse-inputs $(graph).mtx
+	sst $(SCRIPT) -- $(SIM_OPTIONS) $(RISCV_TARGET) \
+	$(DRV_DIR)/riscv-examples/bfs/sparse-inputs/$(graph).mtx \
+	$(root)
