@@ -14,36 +14,14 @@
 #include <array>
 #include "common.hpp"
 
+
 #define __l1sp__ __attribute__((section(".dmem")))
 #define __l2sp__ __attribute__((section(".dram"))) // TODO: this is actually l2sp; need fix in linker script
 
-int thread_safe_printf(const char* fmt, ...)
-{
-    char buf[256];
-    va_list va;
-    va_start(va, fmt);
-    int ret = vsnprintf(buf, sizeof(buf), fmt, va);
-    write(STDOUT_FILENO, buf, strlen(buf));
-    va_end(va);
-    return ret;
-}
-
-#define pr_info(fmt, ...)                                               \
-    thread_safe_printf("PH: Core %d, Thread %d: " fmt                   \
-                       ,myCoreId()                                      \
-                       ,myThreadId()                                    \
-                       ,##__VA_ARGS__)
-
-#define DEBUG
-#ifdef  DEBUG
-#define pr_dbg(fmt,...)                         \
-    pr_info(fmt, ##__VA_ARGS__)
-#else
-#define pr_dbg(fmt,...)
-#endif
 
 __l2sp__ std::atomic<int64_t> ph_ready;
 __l2sp__ std::atomic<int64_t> cp_ready;
+__l2sp__ std::atomic<int64_t> ph_done;
 
 // graph data
 __l2sp__ vertex_t g_V;
@@ -60,12 +38,14 @@ __l2sp__ int  g_mu;
 
 __l2sp__ frontier_data        frontier[3];
 
+__l2sp__ barrier_data         g_barrier_data;
+
 /**
  * @brief Wait for the CP to complete initialization
  */
 int wait_for_cp()
 {
-    pr_dbg("Telling CP we're ready\n");
+    //pr_dbg("Telling CP we're ready\n");
     // let ph know we're ready
     ph_ready.fetch_add(1, std::memory_order_relaxed);
     
@@ -78,15 +58,85 @@ int wait_for_cp()
         ready = cp_ready.load(std::memory_order_relaxed);
         x++;
     }
-    pr_dbg("Command processor ready\n");
+    //pr_dbg("Command processor ready\n");
+    return 0;
+}
 
+int signal_ph_done()
+{
+    ph_done.fetch_add(1, std::memory_order_relaxed);
+    return 0;
 }
 
 int main()
 {
-    for (int i = 0; i < 3; i++) {
-        frontier_ref f = &frontier[i];
-        pr_dbg("frontier[%d].vertices = %llx\n", i, f.vertices());
+    wait_for_cp();
+    //#define EMPTY_RUN    
+#ifndef EMPTY_RUN
+    barrier_ref barrier = &g_barrier_data;
+    barrier.sync([=](){
+        pr_dbg("g_V           = %d\n", g_V);
+        pr_dbg("g_E           = %d\n", g_E);
+        pr_dbg("g_fwd_offsets = %lx\n", (unsigned long)g_fwd_offsets);
+        pr_dbg("g_fwd_edges   = %lx\n", (unsigned long)g_fwd_edges);
+        pr_dbg("g_rev_offsets = %lx\n", (unsigned long)g_rev_offsets);
+        pr_dbg("g_rev_edges   = %lx\n", (unsigned long)g_rev_edges);
+        pr_dbg("g_distance    = %lx\n", (unsigned long)g_distance);
+        pr_dbg("threads = %d, cores = %d, threads_per_core = %d\n"
+               , threads(), numPodCores(), myCoreThreads());
+    });
+    // breadth first search
+    vertex_pointer_t l_distance = g_distance;
+    vertex_pointer_t l_fwd_offsets = g_fwd_offsets;
+    vertex_pointer_t l_fwd_edges = g_fwd_edges;
+    vertex_pointer_t l_rev_offsets = g_rev_offsets;
+    vertex_pointer_t l_rev_edges = g_rev_edges;
+    vertex_t iter = 0;
+
+    frontier_ref curr_frontier = &frontier[0];
+    frontier_ref next_frontier = &frontier[1];
+    frontier_ref tmp_frontier  = &frontier[2];
+
+
+    while (curr_frontier.size() != 0) {
+        vertex_t distance = iter+1;
+        if (1) {
+            // make frontier sparse if needed
+            curr_frontier = curr_frontier.to_sparse(tmp_frontier, barrier, g_V);
+            barrier.sync([=](){
+                pr_dbg("iteration %d: curr_frontier size = %d\n", iter, curr_frontier.size());
+                pr_dbg("curr_frontier is sparse\n");
+            });
+            vertex_t size = curr_frontier.size();
+            vertex_t contrib = 0;
+            for (vertex_t src_i = my_thread(); src_i < size; src_i += threads()) {
+            //for (vertex_t src_i = 0; src_i < size; src_i++) {
+                vertex_t src = curr_frontier.vertices(src_i);
+                vertex_t start = l_fwd_offsets[src];
+                vertex_t end = l_fwd_offsets[src+1];
+                for (vertex_t edge_i = start; edge_i < end; edge_i++) {
+                    vertex_t dst = l_fwd_edges[edge_i];
+                    // cas here when available
+                    if (l_distance[dst] == -1) {
+                        if (atomic_swap(&l_distance[dst], distance) == -1) {
+                            next_frontier.vertices(dst) = 1;
+                            contrib++;
+                        }
+                    }
+                }
+            }
+            atomic_fetch_add(&next_frontier.size(), contrib);
+            barrier.sync();
+            swap(curr_frontier, next_frontier);
+            next_frontier.clear(barrier, g_V);
+        }
+        iter++;
     }
+
+    //pr_dbg("PH: Done (curr_frontier.size() = %d\n"
+    //,curr_frontier.size()
+    //);
+#endif
+    signal_ph_done();
     return 0;
 }

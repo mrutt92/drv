@@ -3,8 +3,8 @@
 
 DRV_DIR := $(shell git rev-parse --show-toplevel)
 
-THREADS_PER_CORE := 1
-CORES_PER_POD    := 1
+THREADS_PER_CORE := 16
+CORES_PER_POD    := 8
 
 # pando hammer source files
 RISCV_CXXSOURCE += bfs.cpp
@@ -14,8 +14,15 @@ COMMAND_PROCESSOR_COMPILE_FLAGS += -DCOMMAND_PROCESSOR
 COMMAND_PROCESSOR_COMPILE_FLAGS += -DTHREADS_PER_CORE=$(THREADS_PER_CORE)
 COMMAND_PROCESSOR_COMPILE_FLAGS += -I$(DRV_DIR)/riscv-examples/bfs/sparse_matrix_helpers
 
+vpath %.cpp $(DRV_DIR)/riscv-examples/bfs/sparse_matrix_helpers
+vpath %.c   $(DRV_DIR)/riscv-examples/bfs/sparse_matrix_helpers
+
 # command processor source files
 COMMAND_PROCESSOR_CXXSOURCE += bfs_cp.cpp
+COMMAND_PROCESSOR_CXXSOURCE += breadth_first_search_graph.cpp
+COMMAND_PROCESSOR_CXXSOURCE += transpose_graph.cpp
+COMMAND_PROCESSOR_CXXSOURCE += read_graph.cpp
+COMMAND_PROCESSOR_CSOURCE   += mmio.c
 
 SIM_OPTIONS += --core-threads=$(THREADS_PER_CORE)
 SIM_OPTIONS += --pod-cores=$(CORES_PER_POD)
