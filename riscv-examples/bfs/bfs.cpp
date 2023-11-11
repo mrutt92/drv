@@ -72,7 +72,7 @@ int signal_ph_done()
 int main()
 {
     wait_for_cp();
-    //#define EMPTY_RUN    
+//#define EMPTY_RUN
 #ifndef EMPTY_RUN
     barrier_ref barrier = &g_barrier_data;
     barrier.sync([=](){
