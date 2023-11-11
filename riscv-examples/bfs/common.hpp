@@ -217,6 +217,32 @@ frontier_data_ref to_sparse(frontier_data_ref & tmp_frontier, barrier_ref barrie
     } 
     return *this;
 }
+
+frontier_data_ref to_dense(frontier_data_ref &tmp_frontier, barrier_ref barrier, vertex_t V) {
+    if (!is_dense()) {
+        // zero output frontier if needed
+        if (tmp_frontier.size() != 0) {
+            for (int v = my_thread(); v < V; v += threads()) {
+                tmp_frontier.vertices(v) = 0;
+            }
+        }
+        barrier.sync([=](){
+            tmp_frontier.size() = size();
+            tmp_frontier.is_dense() = true;
+        });
+        // insert sparse data into output frontier
+        for (int v_i = my_thread(); v_i < size(); v_i += threads()) {
+            int v = vertices(v_i);
+            tmp_frontier.vertices(v) = 1;            
+        }
+        barrier.sync();
+        frontier_data_ref tmp = tmp_frontier;
+        tmp_frontier = *this;
+        return tmp;
+    }
+    return *this;
+}
+
 void clear(barrier_ref barrier, vertex_t V) {
     barrier.sync();
     for (vertex_t v = my_thread(); v < V; v += threads()) {

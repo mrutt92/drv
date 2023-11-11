@@ -47,7 +47,8 @@ int wait_for_cp()
 {
     //pr_dbg("Telling CP we're ready\n");
     // let ph know we're ready
-    ph_ready.fetch_add(1, std::memory_order_relaxed);
+    int64_t n = ph_ready.fetch_add(1, std::memory_order_relaxed);
+    //pr_dbg("%d-th core ready\n", n);
     
     // command_processor_ready.store(-1, std::memory_order_relaxed);
     int64_t ready = cp_ready.load(std::memory_order_relaxed);
@@ -100,7 +101,89 @@ int main()
 
     while (curr_frontier.size() != 0) {
         vertex_t distance = iter+1;
-        if (1) {
+        barrier.sync([=](){
+            g_mu = 0;
+            g_mf = 0;
+        });
+
+        ////////////////////////////////////////////
+        // decide the direction of this iteration //
+        ////////////////////////////////////////////
+        if (!g_rev_not_fwd) {
+            // make frontier sparse if needed
+            curr_frontier = curr_frontier.to_sparse(tmp_frontier, barrier, g_V);
+
+            // do we switch from forward to reverse?
+            // 1. find sum (degree in frontier)
+            int mf_local = 0;
+            for (int src_i = my_thread(); src_i < curr_frontier.size(); src_i += threads()) {
+                // todo: hoist reading the pointer vertices out of this loop
+                int src = curr_frontier.vertices(src_i);
+                mf_local += l_fwd_offsets[src+1]-l_fwd_offsets[src];
+            }
+            atomic_fetch_add(&g_mf, mf_local);
+            // 2. find sum (degree unvisited)
+            int mu_local = 0;
+            for (int v = my_thread(); v < g_V; v += threads()) {
+                if (l_distance[v] == -1) {
+                    mu_local += l_fwd_offsets[v+1]-l_fwd_offsets[v];
+                }
+            }
+            atomic_fetch_add(&g_mu, mu_local);
+            barrier.sync([=](){
+                g_rev_not_fwd = (g_mf > (g_mu/20));
+                // std::cout << "Iteration " << std::setw(2) << iter
+                //           << ": " << std::setw(3) << g_mf << " mf, "
+                //           << std::setw(3) << g_mu << " mu, "
+                //           << (g_rev_not_fwd ? "rev" : "fwd") << std::endl;
+            });
+        } else {
+            // do we switch from reverse to forward?
+            //printf("Thread %d: deciding to switch back\n", my_thread());
+            barrier.sync([=](){
+                g_rev_not_fwd = (curr_frontier.size() >= (g_V/20));
+                // std::cout << "Iteration " << std::setw(2) << iter
+                //           << ": curr_frontier.size()=" << std::setw(3) << curr_frontier.size()
+                //           << ", (V/20) = (" << V << "/20) = " << (V/20) << ", "
+                //           << (g_rev_not_fwd ? "rev" : "fwd") << std::endl;
+            });
+        }
+        barrier.sync();
+
+        if (g_rev_not_fwd) {
+            barrier.sync([=](){
+                pr_dbg("iteration %d: curr_frontier size = %d\n", iter, curr_frontier.size());
+                pr_dbg("curr_frontier is sparse\n");
+            });
+            // make frontier dense if needed
+            curr_frontier = curr_frontier.to_dense(tmp_frontier, barrier, g_V);
+            // traverse backards
+            vertex_t contrib = 0;
+            for (int dst = my_thread(); dst < g_V; dst += threads()) {
+                if (l_distance[dst] == -1) {
+                    vertex_t src_start = l_rev_offsets[dst];
+                    vertex_t src_stop = l_rev_offsets[dst+1];
+                    for (vertex_t src_i = src_start; src_i < src_stop; src_i++) {
+                        vertex_t src = l_rev_edges[src_i];
+                        if (curr_frontier.vertices(src) == 1) {
+                            l_distance[dst] = distance;
+                            next_frontier.vertices(dst) = 1;
+                            contrib++;
+                            break;
+                        }
+                    }
+                }
+            }
+            atomic_fetch_add(&next_frontier.size(), contrib);
+
+            // wait for all threads to finish
+            barrier.sync();
+
+            // swap frontiers
+            swap(curr_frontier, next_frontier);
+            next_frontier.clear(barrier, g_V);
+
+        } else {
             // make frontier sparse if needed
             curr_frontier = curr_frontier.to_sparse(tmp_frontier, barrier, g_V);
             barrier.sync([=](){
