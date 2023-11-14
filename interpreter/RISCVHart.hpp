@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cassert>
+
 class RISCVHart {
 public:
     using InternalFPType = double;
@@ -57,16 +58,17 @@ public:
     };
 
     /**
-     * Mutable reference specialization for floating point types
+     * Mutable reference for floating point types
      */
-    class reference_handle<float> {
-        refernce_handle(InternalFPType &ref)
+    template <typename FPType>
+    class fp_reference_handle {
+        fp_reference_handle(InternalFPType &ref)
             : _ref(ref) {
         }
 
-        operator float() const { return static_cast<float>(_ref); }
+        operator FPType() const { return static_cast<FPType>(_ref); }
 
-        reference_handle &operator=(float val) {
+        fp_reference_handle &operator=(FPType val) {
             _ref = static_cast<InternalFPType>(val);
             return *this;
         }
@@ -75,14 +77,15 @@ public:
     };
 
     /**
-     * Const reference specialization for floating point types
+     * Const reference for floating point types
      */
-    class const_reference_handle<float> {
-        const_reference_handle(const InternalFPType &ref)
+    template <typename FPType>
+    class const_fp_reference_handle {
+        const_fp_reference_handle(const InternalFPType &ref)
             : _ref(ref) {
         }
 
-        operator float() const { return static_cast<float>(_ref); }
+        operator FPType() const { return static_cast<FPType>(_ref); }
 
         const InternalFPType &_ref;
     };
@@ -133,15 +136,15 @@ public:
 
 
     template <typename IdxT>
-    reference_handle<float> sf(IdxT i) {
+    fp_reference_handle<float> sf(IdxT i) {
         assert(i < 32);
-        return reference_handle<float>(_f[i]);
+        return fp_reference_handle<float>(_f[i]);
     }
 
     template <typename IdxT>
-    const const_reference_handle<float> sf(IdxT i) const {
+    const const_fp_reference_handle<float> sf(IdxT i) const {
         assert(i < 32);
-        return const_reference_handle<float>(_f[i]);
+        return const_fp_reference_handle<float>(_f[i]);
     }
     
     reference_handle<uint64_t> pc() {
