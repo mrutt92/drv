@@ -10,10 +10,14 @@
 #include <cassert>
 class RISCVHart {
 public:
-    uint64_t _x[32];
-    uint64_t _f[32];
-    uint64_t _pc;
+    using InternalFPType = double;
 
+    uint64_t        _x[32];
+    InternalFPType  _f[32];
+    uint64_t        _pc;
+    /**
+     * mutable reference
+     */
     template <typename ScalarT>
     class reference_handle {
     public:
@@ -37,6 +41,9 @@ public:
         bool _zero;
     };
 
+    /**
+     * const reference
+     */
     template <typename ScalarT>
     class const_reference_handle {
     public:
@@ -47,6 +54,37 @@ public:
         operator ScalarT() const { return _zero ? static_cast<ScalarT>(0) : _ref; }
         const ScalarT &_ref;
         bool _zero;
+    };
+
+    /**
+     * Mutable reference specialization for floating point types
+     */
+    class reference_handle<float> {
+        refernce_handle(InternalFPType &ref)
+            : _ref(ref) {
+        }
+
+        operator float() const { return static_cast<float>(_ref); }
+
+        reference_handle &operator=(float val) {
+            _ref = static_cast<InternalFPType>(val);
+            return *this;
+        }
+
+        InternalFPType &_ref;
+    };
+
+    /**
+     * Const reference specialization for floating point types
+     */
+    class const_reference_handle<float> {
+        const_reference_handle(const InternalFPType &ref)
+            : _ref(ref) {
+        }
+
+        operator float() const { return static_cast<float>(_ref); }
+
+        const InternalFPType &_ref;
     };
     
     template <typename IdxT>
@@ -91,6 +129,19 @@ public:
     const const_reference_handle<int64_t> sa(IdxT i) const {
         assert(i < 8);
         return sx(10 + i);
+    }
+
+
+    template <typename IdxT>
+    reference_handle<float> sf(IdxT i) {
+        assert(i < 32);
+        return reference_handle<float>(_f[i]);
+    }
+
+    template <typename IdxT>
+    const const_reference_handle<float> sf(IdxT i) const {
+        assert(i < 32);
+        return const_reference_handle<float>(_f[i]);
     }
     
     reference_handle<uint64_t> pc() {
