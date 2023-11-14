@@ -37,11 +37,13 @@ public:
     void visitLBU(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitLHU(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitLWU(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitFLW(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitLD(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitSB(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitSH(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitSW(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitSD(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitFSW(RISCVHart &hart, RISCVInstruction &instruction) override;
 
     // csr instructions
 private:

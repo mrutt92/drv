@@ -11,7 +11,7 @@
 
 class RISCVHart {
 public:
-    using InternalFPType = double;
+    using InternalFPType = float;
 
     uint64_t        _x[32];
     InternalFPType  _f[32];
@@ -62,6 +62,7 @@ public:
      */
     template <typename FPType>
     class fp_reference_handle {
+    public:
         fp_reference_handle(InternalFPType &ref)
             : _ref(ref) {
         }
@@ -81,6 +82,7 @@ public:
      */
     template <typename FPType>
     class const_fp_reference_handle {
+    public:
         const_fp_reference_handle(const InternalFPType &ref)
             : _ref(ref) {
         }
@@ -136,6 +138,18 @@ public:
 
 
     template <typename IdxT>
+    fp_reference_handle<InternalFPType> f(IdxT i) {
+        assert(i < 32);
+        return fp_reference_handle<InternalFPType>(_f[i]);
+    }
+
+    template <typename IdxT>
+    const const_fp_reference_handle<InternalFPType> f(IdxT i) const {
+        assert(i < 32);
+        return const_fp_reference_handle<InternalFPType>(_f[i]);
+    }
+
+    template <typename IdxT>
     fp_reference_handle<float> sf(IdxT i) {
         assert(i < 32);
         return fp_reference_handle<float>(_f[i]);
@@ -146,7 +160,19 @@ public:
         assert(i < 32);
         return const_fp_reference_handle<float>(_f[i]);
     }
-    
+
+    template <typename IdxT>
+    fp_reference_handle<double> df(IdxT i) {
+        assert(i < 32);
+        return fp_reference_handle<double>(_f[i]);
+    }
+
+    template <typename IdxT>
+    const const_fp_reference_handle<double> sf(IdxT i) const {
+        assert(i < 32);
+        return const_fp_reference_handle<double>(_f[i]);
+    }    
+
     reference_handle<uint64_t> pc() {
         return reference_handle<uint64_t>(_pc, false);
     }
