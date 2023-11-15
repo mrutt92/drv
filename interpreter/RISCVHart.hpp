@@ -193,7 +193,12 @@ public:
         std::stringstream ss;
         ss << "pc: " << std::hex << pc() << std::endl;
         for (int i = 0; i < 32; i++) {
-            ss << "x" << std::dec << i << ": " << std::hex << x(i) << std::endl;
+            ss << "x[" << std::setw(2) << std::dec << i << "]: ";
+            ss << std::hex << x(i) << std::endl;
+        }
+        for (int i = 0; i < 32; i++) {
+            ss << "f[" << std::setw(2) << std::dec << i << "]: ";
+            ss << f(i) << std::endl;
         }
         return ss.str();
     }
