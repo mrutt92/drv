@@ -8,14 +8,24 @@
 #include <sstream>
 #include <iomanip>
 #include <cassert>
-
+#include <cfenv>
+#include <cstring>
 class RISCVHart {
 public:
     using InternalFPType = float;
 
     uint64_t        _x[32];
     InternalFPType  _f[32];
+    int             _rm;
     uint64_t        _pc;
+
+    RISCVHart()
+        : _rm(FE_TONEAREST)
+        , _pc(0) {
+        memset(_x, 0, sizeof(_x));
+        memset(_f, 0, sizeof(_f));        
+    }
+
     /**
      * mutable reference
      */
@@ -187,6 +197,10 @@ public:
 
     const const_reference_handle<uint64_t> sp() const {
         return x(2);
+    }
+
+    int &rm() {
+        return _rm;
     }
     
     std::string to_string() const {

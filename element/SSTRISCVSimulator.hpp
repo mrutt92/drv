@@ -2,7 +2,7 @@
 // Copyright (c) 2023 University of Washington
 
 #pragma once
-#include <RV64IMInterpreter.hpp>
+#include <RV64IMFInterpreter.hpp>
 #include <sst/core/interfaces/stdMem.h>
 #include <map>
 #include <functional>
@@ -18,7 +18,7 @@ class RISCVSimHart;
 /**
  * @brief a riscv simulator
  */
-class RISCVSimulator : public RV64IMInterpreter {
+class RISCVSimulator : public RV64IMFInterpreter {
 public:
     /**
      * constructor
