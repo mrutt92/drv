@@ -134,5 +134,85 @@ public:
         hart.pc() += 4;
     }
 
+    void visitFCVT_S_W_DYN(RISCVHart &hart, RISCVInstruction &i) override {
+        RoundingModeGuard guard(hart.rm());
+        hart.f(i.rd()) = hart.sx(i.rs1());
+        hart.pc() += 4;
+    }
+
+    void visitFCVT_S_WU_DYN(RISCVHart &hart, RISCVInstruction &i) override {
+        RoundingModeGuard guard(hart.rm());
+        hart.f(i.rd()) = hart.x(i.rs1());
+        hart.pc() += 4;
+    }
+
+    void visitFMV_X_W(RISCVHart &hart, RISCVInstruction &i) override {
+        union {
+            uint32_t u_;
+            float    f_;
+        } u;
+        u.f_ = hart.sf(i.rs1());
+        hart.sx(i.rd()) = u.u_;
+        hart.pc() += 4;
+    }
+
+    void visitFMV_W_X(RISCVHart &hart, RISCVInstruction &i) override {
+        union {
+            uint32_t u_;
+            float    f_;
+        } u;
+        u.u_ = { static_cast<uint32_t>(hart.x(i.rs1())) };
+        hart.sf(i.rd()) = u.f_;
+        hart.pc() += 4;
+    }
+
+    void visitFEQ_S(RISCVHart &hart, RISCVInstruction &i) override {
+        float f1 = hart.sf(i.rs1());
+        float f2 = hart.sf(i.rs2());
+        // TODO: signal nan in control register when we implement that
+        hart.x(i.rd())
+            = std::isnan(f1)||std::isnan(f2)
+            ? 0
+            : hart.sf(i.rs1()) == hart.sf(i.rs2());
+        hart.pc() += 4;
+    }
+
+    void visitFLT_S(RISCVHart &hart, RISCVInstruction &i) override {
+        float f1 = hart.sf(i.rs1());
+        float f2 = hart.sf(i.rs2());
+        if (std::isnan(f1) || std::isnan(f2)) {
+            std::string which = std::isnan(f1) ? "rs1" : "rs2";
+            throw std::runtime_error("FLT_S: nan in " + which);
+        }
+        hart.x(i.rd()) = hart.sf(i.rs1()) < hart.sf(i.rs2());
+    }
+
+    void visitFLE_S(RISCVHart &hart, RISCVInstruction &i) override {
+        float f1 = hart.sf(i.rs1());
+        float f2 = hart.sf(i.rs2());
+        if (std::isnan(f1) || std::isnan(f2)) {
+            std::string which = std::isnan(f1) ? "rs1" : "rs2";
+            throw std::runtime_error("FLE_S: nan in " + which);
+        }
+        hart.x(i.rd()) = hart.sf(i.rs1()) <= hart.sf(i.rs2());
+    }
+
+    void visitFCLASS_S(RISCVHart &hart, RISCVInstruction &i) override {
+        float f = hart.sf(i.rs1());
+        uint32_t result = 0;
+        if (std::isnan(f)) {
+            result = 0x200;
+        } else if (std::isinf(f)) {
+            result = 0x100;
+        } else if (f == 0.0) {
+            result = 0x0;
+        } else if (f > 0.0) {
+            result = 0x80;
+        } else {
+            result = 0x180;
+        }
+        hart.x(i.rd()) = result;
+        hart.pc() += 4;
+    }
 };
 #endif
