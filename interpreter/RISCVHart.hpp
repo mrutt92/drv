@@ -11,57 +11,16 @@
 #include <cfenv>
 #include <cstring>
 
-namespace riscvbits {
-template <typename UINT, unsigned HI, unsigned LO, unsigned TAG=0>
-struct bitrange_handle {
-public:
-    typedef UINT uint_type;
-    static constexpr unsigned HI_BIT = HI;
-    static constexpr unsigned LO_BIT = LO;
-
-    bitrange_handle(UINT &i) : i(i) {}
-    ~bitrange_handle() = default;
-    bitrange_handle(bitrange_handle &&o) = default;
-    bitrange_handle &operator=(bitrange_handle &&o) = default;
-    bitrange_handle(const bitrange_handle &o) = default;
-    bitrange_handle &operator=(const bitrange_handle &o) = default;
-
-    static constexpr UINT lo() {
-        return LO;
-    }
-    static constexpr UINT hi() {
-        return HI;
-    }
-    static constexpr UINT bits() {
-        return HI - LO + 1;
-    }
-
-    static constexpr UINT mask()
-    {
-        return ((1ull << (HI - LO + 1)) - 1) << LO;
-    }
-
-    static UINT getbits(UINT in)
-    {
-        return (in & mask()) >> LO;
-    }
-
-    static void setbits(UINT &in, UINT val)
-    {
-        in &= ~mask();
-        in |=  mask() & (val << LO);
-    }
-
-    operator UINT() const { return getbits(i); }
-
-    bitrange_handle &operator=(UINT val) {
-        setbits(i, val);
-        return *this;
-    }
-
-    UINT &i;
-};
+namespace riscvbits
+{
+/**
+ * @brief set a bit in a value
+ */
+template <typename UINT>
+static inline void setbit(UINT &val, UINT bit, bool set) {
+    val = (val & ~(1 << bit)) | ((UINT)set << bit);
 }
+} // namespace riscvbits
 
 class RISCVHart {
 public:
@@ -71,6 +30,20 @@ public:
     InternalFPType  _f[32];
     int             _rm;
     uint64_t        _pc;
+
+    /**
+     * @brief floating point class bitmasks
+     */
+    static constexpr uint64_t FCLASS_IS_NEG_INF       = 1<<0;
+    static constexpr uint64_t FCLASS_IS_NEG_NORMAL    = 1<<1;
+    static constexpr uint64_t FCLASS_IS_NEG_SUBNORMAL = 1<<2;
+    static constexpr uint64_t FCLASS_IS_NEG_ZERO      = 1<<3;
+    static constexpr uint64_t FCLASS_IS_POS_ZERO      = 1<<4;
+    static constexpr uint64_t FCLASS_IS_POS_SUBNORMAL = 1<<5;
+    static constexpr uint64_t FCLASS_IS_POS_NORMAL    = 1<<6;
+    static constexpr uint64_t FCLASS_IS_POS_INF       = 1<<7;
+    static constexpr uint64_t FCLASS_IS_SIGNAL_NAN    = 1<<8;
+    static constexpr uint64_t FCLASS_IS_QUIET_NAN     = 1<<9;
 
     RISCVHart()
         : _rm(FE_TONEAREST)

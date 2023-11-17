@@ -127,6 +127,13 @@ public:
         hart.pc() += 4;
     }
 
+    void visitFCVT_L_S_DYN(RISCVHart &hart, RISCVInstruction &i) override {
+        RoundingModeGuard guard(hart.rm());
+        int64_t result = std::rintf(hart.sf(i.rs1()));
+        hart.sx(i.rd()) = result;
+        hart.pc() += 4;
+    }
+
     void visitFCVT_WU_S_DYN(RISCVHart &hart, RISCVInstruction &i) override {
         RoundingModeGuard guard(hart.rm());
         uint32_t result = std::rintf(hart.sf(i.rs1()));
@@ -134,15 +141,39 @@ public:
         hart.pc() += 4;
     }
 
+    void visitFCVT_LU_S_DYN(RISCVHart &hart, RISCVInstruction &i) override {
+        RoundingModeGuard guard(hart.rm());
+        uint64_t result = std::rintf(hart.sf(i.rs1()));
+        hart.x(i.rd()) = result;
+        hart.pc() += 4;
+    }
+
     void visitFCVT_S_W_DYN(RISCVHart &hart, RISCVInstruction &i) override {
         RoundingModeGuard guard(hart.rm());
-        hart.f(i.rd()) = hart.sx(i.rs1());
+        int32_t result = static_cast<int32_t>(hart.x(i.rs1()));
+        hart.f(i.rd()) = result;
+        hart.pc() += 4;
+    }
+
+    void visitFCVT_S_L_DYN(RISCVHart &hart, RISCVInstruction &i) override {
+        RoundingModeGuard guard(hart.rm());
+        int64_t result = static_cast<int64_t>(hart.x(i.rs1()));
+        hart.f(i.rd()) = result;
         hart.pc() += 4;
     }
 
     void visitFCVT_S_WU_DYN(RISCVHart &hart, RISCVInstruction &i) override {
         RoundingModeGuard guard(hart.rm());
-        hart.f(i.rd()) = hart.x(i.rs1());
+        uint32_t result = static_cast<uint32_t>(hart.x(i.rs1()));
+        hart.f(i.rd()) = result;
+        hart.pc() += 4;
+    }
+
+
+    void visitFCVT_S_LU_DYN(RISCVHart &hart, RISCVInstruction &i) override {
+        RoundingModeGuard guard(hart.rm());
+        uint64_t result = static_cast<uint64_t>(hart.x(i.rs1()));
+        hart.f(i.rd()) = result;
         hart.pc() += 4;
     }
 
@@ -185,6 +216,7 @@ public:
             throw std::runtime_error("FLT_S: nan in " + which);
         }
         hart.x(i.rd()) = hart.sf(i.rs1()) < hart.sf(i.rs2());
+        hart.pc() += 4;
     }
 
     void visitFLE_S(RISCVHart &hart, RISCVInstruction &i) override {
@@ -195,22 +227,32 @@ public:
             throw std::runtime_error("FLE_S: nan in " + which);
         }
         hart.x(i.rd()) = hart.sf(i.rs1()) <= hart.sf(i.rs2());
+        hart.pc() += 4;
     }
 
     void visitFCLASS_S(RISCVHart &hart, RISCVInstruction &i) override {
         float f = hart.sf(i.rs1());
-        uint32_t result = 0;
-        if (std::isnan(f)) {
-            result = 0x200;
-        } else if (std::isinf(f)) {
-            result = 0x100;
-        } else if (f == 0.0) {
-            result = 0x0;
-        } else if (f > 0.0) {
-            result = 0x80;
-        } else {
-            result = 0x180;
-        }
+        uint64_t result = 0;
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_NEG_INF,
+                          std::isinf(f) && std::signbit(f));
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_POS_INF,
+                          std::isinf(f) && !std::signbit(f));
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_NEG_NORMAL,
+                          std::fpclassify(f) == FP_NORMAL && std::signbit(f));
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_POS_NORMAL,
+                          std::fpclassify(f) == FP_NORMAL && !std::signbit(f));
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_NEG_SUBNORMAL,
+                          std::fpclassify(f) == FP_SUBNORMAL && std::signbit(f));
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_POS_SUBNORMAL,
+                          std::fpclassify(f) == FP_SUBNORMAL && !std::signbit(f));
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_NEG_ZERO,
+                          std::fpclassify(f) == FP_ZERO && std::signbit(f));
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_POS_ZERO,
+                          std::fpclassify(f) == FP_ZERO && !std::signbit(f));
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_SIGNAL_NAN,
+                          false);
+        riscvbits::setbit(result, RISCVHart::FCLASS_IS_QUIET_NAN,
+                          std::isnan(f));
         hart.x(i.rd()) = result;
         hart.pc() += 4;
     }
