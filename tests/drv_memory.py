@@ -180,7 +180,7 @@ class MainMemoryBank(SharedMemoryBank):
             })
             return backend
         elif (arguments.dram_backend == "ramulator"):
-            backend = self.memctrl.setSubComponent("backend", "memHierarchy.ramulator")
+            backend = self.memctrl.setSubComponent("backend", "Drv.DrvRamulatorMemBackend")
             backend.addParams({
                 "verbose_level" : arguments.verbose_memory,
                 "configFile" : arguments.dram_backend_config,
