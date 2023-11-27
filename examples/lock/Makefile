@@ -14,7 +14,7 @@ tests := $(foreach membackend,$(MEM_BACKENDS),run-$(membackend))
 
 all-SIM_OPTIONS += --pod-cores=4 --core-threads=2
 
-ramulator-SIM_OPTIONS := --dram-backend-config $(RAMULATOR_DIR)/configs/HBM-config.cfg
+ramulator-SIM_OPTIONS := --dram-backend-config $(RAMULATOR_TEST_CONFIG)
 
 run-%: $(APP_NAME).so
 	$(eval SIM_OPTIONS=$($*-SIM_OPTIONS))

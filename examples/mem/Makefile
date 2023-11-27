@@ -12,7 +12,7 @@ MEM_BACKENDS := $(MEM_BACKENDS-yes)
 
 tests := $(foreach membackend,$(MEM_BACKENDS),run-$(membackend))
 
-ramulator-SIM_OPTIONS := --dram-backend-config $(RAMULATOR_DIR)/configs/HBM-config.cfg
+ramulator-SIM_OPTIONS := --dram-backend-config $(RAMULATOR_TEST_CONFIG)
 
 run-%: $(APP_NAME).so
 	$(eval SIM_OPTIONS=$($*-SIM_OPTIONS))
