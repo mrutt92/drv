@@ -18,8 +18,7 @@ DrvAPIThread::DrvAPIThread()
 }
 
 void DrvAPIThread::start() {
-    thread_context_
-        = std::make_unique<coro_t::pull_type>([this](coro_t::push_type &sink) {
+    auto coro_function = [this](coro_t::push_type &sink) {
         this->main_context_ = &sink;
         this->yield();
         while (true) {
@@ -30,7 +29,13 @@ void DrvAPIThread::start() {
             }
             this->yield();
         }
-    });
+    };
+    if (stack_in_modeled_memory_) {
+        modeled_memory_stack_allocator allocator;
+        thread_context_ = std::make_unique<coro_t::pull_type>(allocator, coro_function);
+    } else {
+        thread_context_ = std::make_unique<coro_t::pull_type>(coro_function);
+    }
 }
 
 /* should only be called from the thread context */
