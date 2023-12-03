@@ -198,6 +198,11 @@ public:
   void setup() override;
 
   /**
+   * start the threads
+   */
+  void startThreads();
+
+  /**
    * finish the component
    */
   void finish() override;

@@ -26,6 +26,11 @@ public:
   ~DrvAPIThread(){}
 
   /**
+   * @brief Start the thread
+   */
+  void start();
+
+  /**
    * @brief Yield back to the main context
    *
    * @param state

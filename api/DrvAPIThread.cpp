@@ -10,10 +10,14 @@
 using namespace DrvAPI;
 
 DrvAPIThread::DrvAPIThread()
-    : state_(new DrvAPIThreadIdle)
+    : thread_context_(nullptr)
+    , state_(new DrvAPIThreadIdle)
     , main_(nullptr)
     , argc_(0)
     , argv_(nullptr) {
+}
+
+void DrvAPIThread::start() {
     thread_context_
         = std::make_unique<coro_t::pull_type>([this](coro_t::push_type &sink) {
         this->main_context_ = &sink;

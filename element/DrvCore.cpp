@@ -128,7 +128,13 @@ void DrvCore::configureThreads(SST::Params &params) {
   done_ = threads;
   last_thread_ = threads - 1;
 }
-    
+
+void DrvCore::startThreads() {
+    for (auto& thread : threads_) {
+        thread.getAPIThread().start();
+    }
+}
+
 /**
  * configure the memory
  */
@@ -259,6 +265,7 @@ void DrvCore::setup() {
   if (stdmem) {
     stdmem->setup();
   }
+  startThreads();
 }
 
 /**
