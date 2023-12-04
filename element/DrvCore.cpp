@@ -115,6 +115,7 @@ void DrvCore::configureThread(int thread, int threads) {
   api_thread.setCoreThreads(threads);
   api_thread.setPodId(pod_);
   api_thread.setPxnId(pxn_);
+  api_thread.setStackInL1SP(stack_in_l1sp_);
 }
 
 /**
@@ -122,6 +123,7 @@ void DrvCore::configureThread(int thread, int threads) {
  */
 void DrvCore::configureThreads(SST::Params &params) {
   int threads = params.find<int>("threads", 1);
+  stack_in_l1sp_ = params.find<bool>("stack_in_l1sp", false);
   output_->verbose(CALL_INFO, 1, DEBUG_INIT, "configuring %d threads\n", threads);
   for (int thread = 0; thread < threads; thread++)
     configureThread(thread, threads);

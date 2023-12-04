@@ -15,28 +15,6 @@ class DrvAPIThread
 public:
   using coro_t = boost::coroutines2::coroutine<void>;
 
- /**
-  * class that allocates a stack buffer for the coroutine
-  * this allocates memory from the modeled memHierarcy memories
-  */
-  struct modeled_memory_stack_allocator {
-  public:
-      modeled_memory_stack_allocator() = default;
-
-      boost::context::stack_context allocate() {
-          boost::context::stack_context sctx;
-          // implement
-          // 1. determine end of l1sp statics
-          // 2. divide the stack size by the number of threads
-          // 3. calculate the start of the stack for this thread
-          // 4. get the native stack pointer using toNative()
-          return sctx;
-      }
-      void deallocate(boost::context::stack_context &sctx) {
-          // implement
-      }
-  };
-
   /**
    * @brief Construct a new DrvAPIThread object
    */
@@ -149,6 +127,20 @@ public:
    * @brief set the pxn id
    */
   void setPxnId(int pxn_id) { pxn_id_ = pxn_id; } //!< Set the pxn id
+
+  /**
+   * @brief using l1sp for stack
+   */
+  bool stackInL1SP() const {
+      return stack_in_modeled_memory_;
+  }
+
+  /**
+   * @brief using l1sp for stack
+   */
+  void setStackInL1SP(bool stack_in_l1sp) {
+      stack_in_modeled_memory_ = stack_in_l1sp;
+  }
     
   /**
    * @brief Get the current active thread

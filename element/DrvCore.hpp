@@ -43,6 +43,7 @@ public:
       {"id", "ID for the core", "0"},
       {"pod", "Pod ID of this core", "0"},
       {"pxn", "PXN ID of this core", "0"},
+      {"stack_in_l1sp", "Use modeled memory backing store for stack", "0"},
       {"dram_base", "Base address of DRAM", "0x80000000"},
       {"dram_size", "Size of DRAM", "0x100000000"},
       {"l1sp_base", "Base address of L1SP", "0x00000000"},
@@ -281,8 +282,10 @@ private:
   SST::Link *loopback_; //!< the loopback link
   uint64_t max_idle_cycles_; //!< maximum number of idle cycles
   uint64_t idle_cycles_; //!< number of idle cycles
-  bool core_on_; //!< true if the core is on (clock handler is registered)
+  bool core_on_; //!< true if the core is on (clock handler is registered)  
   DrvSysConfig sys_config_; //!< system configuration
+  bool stack_in_l1sp_ = false; //!< true if the stack is in L1SP backing store
+
 public:
   int id_; //!< the core id
   int pod_; //!< pod id of this core
