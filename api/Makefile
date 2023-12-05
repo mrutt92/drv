@@ -40,6 +40,7 @@ libdrvapi-headers += $(DRV_DIR)/api/DrvAPIOp.hpp
 libdrvapi-headers += $(DRV_DIR)/api/DrvAPISysConfig.hpp
 libdrvapi-headers += $(DRV_DIR)/api/DrvAPIInfo.hpp
 libdrvapi-headers += $(DRV_DIR)/api/DrvAPIAddressToNative.hpp
+libdrvapi-headers += $(DRV_DIR)/api/DrvAPISystem.hpp
 libdrvapi-headers += $(DRV_DIR)/api/DrvAPI.hpp
 libdrvapi-install-headers := $(foreach header,$(libdrvapi-headers),$(DRV_INCLUDE_DIR)/$(notdir $(header)))
 

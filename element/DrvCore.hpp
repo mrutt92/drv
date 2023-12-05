@@ -10,6 +10,7 @@
 #include "DrvEvent.hpp"
 #include "DrvMemory.hpp"
 #include "DrvThread.hpp"
+#include "DrvSystem.hpp"
 #include "DrvSysConfig.hpp"
 #include "DrvAPIMain.hpp"
 
@@ -274,7 +275,6 @@ private:
   drv_api_set_thread_context_t set_thread_context_; //!< the set_thread_context function in the executable
   DrvAPIGetSysConfig_t get_sys_config_app_; //!< the get_sys_config function in the executable
   DrvAPISetSysConfig_t set_sys_config_app_; //!< the set_sys_config function in the executable
-  DrvMemory* memory_;  //!< the memory hierarchy
   SST::TimeConverter *clocktc_; //!< the clock time converter
   int done_; //!< number of threads that are done
   int last_thread_; //!< last thread that was executed
@@ -285,8 +285,11 @@ private:
   bool core_on_; //!< true if the core is on (clock handler is registered)  
   DrvSysConfig sys_config_; //!< system configuration
   bool stack_in_l1sp_ = false; //!< true if the stack is in L1SP backing store
+  std::shared_ptr<DrvSystem> system_callbacks_ = nullptr; //!< the system callbacks
 
 public:
+  DrvMemory* memory_;  //!< the memory hierarchy
+
   int id_; //!< the core id
   int pod_; //!< pod id of this core
   int pxn_; // !< pxn id of this core

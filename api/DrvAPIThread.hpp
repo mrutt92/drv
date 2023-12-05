@@ -6,6 +6,7 @@
 #include <DrvAPIThreadState.hpp>
 #include <DrvAPIMain.hpp>
 #include <DrvAPISysConfig.hpp>
+#include <DrvAPISystem.hpp>
 #include <boost/coroutine2/all.hpp>
 #include <memory>
 namespace DrvAPI
@@ -23,7 +24,7 @@ public:
   /**
    * @brief Destroy the DrvAPIThread object
    */
-  ~DrvAPIThread(){}
+   ~DrvAPIThread(){}
 
   /**
    * @brief Start the thread
@@ -141,6 +142,24 @@ public:
   void setStackInL1SP(bool stack_in_l1sp) {
       stack_in_modeled_memory_ = stack_in_l1sp;
   }
+
+  /**
+   * @brief Get the system object
+   *
+   * @return std::shared_ptr<DrvAPISystem>
+   */
+  std::shared_ptr<DrvAPISystem> getSystem() const {
+      return system_;
+  }
+
+  /**
+   * @brief Set the system object
+   *
+   * @param sys
+   */
+  void setSystem(const std::shared_ptr<DrvAPISystem> &sys) {
+      system_ = sys;
+  }
     
   /**
    * @brief Get the current active thread
@@ -152,6 +171,7 @@ public:
   thread_local static DrvAPIThread *g_current_thread; //!< The current active thread  
 
 private:
+  std::shared_ptr<DrvAPISystem> system_ = nullptr; //!< System object
   std::unique_ptr<coro_t::pull_type> thread_context_; //!< Thread context, coroutine that can be resumed
   coro_t::push_type *main_context_; //!< Main context, can be yielded back to
   std::shared_ptr<DrvAPIThreadState> state_; //!< Thread state
