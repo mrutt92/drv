@@ -60,7 +60,6 @@ public:
 
         // 4. get the native stack pointer using toNative()
         size_t _;
-        std::cout << "calling toNativePointer(" << std::hex << stack_top << ")" << std::endl;
         thread_->addressToNative(stack_top, &sctx.sp, &_);
         sctx.size = thread_stack_bytes;
         return sctx;
@@ -155,11 +154,6 @@ void DrvAPIThread::nativeToAddress(void *native, DrvAPIAddress *address, std::si
     // 3. check that the native pointer is within the l1sp
     uintptr_t start = reinterpret_cast<uintptr_t>(l1sp_base_native);
     uintptr_t check = reinterpret_cast<uintptr_t>(native);
-    std::stringstream ss;
-    ss << "DrvAPIThread::nativeToAddress() start = " << std::hex << start << std::endl;
-    ss << "DrvAPIThread::nativeToAddress() check = " << std::hex << check << std::endl;
-    ss << "DrvAPIThread::nativeToAddress() l1sp_base_size = " << std::hex << l1sp_base_size << std::endl;
-    std::cout << ss.str();
     if (check < start || check >= start + l1sp_base_size) {
         std::stringstream ss;
         ss << "DrvAPIThread::nativeToAddress() native pointer " << std::hex << check << " is not within l1sp";
