@@ -23,17 +23,14 @@ namespace DrvAPI
  */
 void DrvAPIAddressToNative(DrvAPIAddress address, void **native, size_t *size)
 {
-    DrvAPIThread::current()->setState
-        (std::make_shared<DrvAPIToNativePointer>(address));
-    DrvAPIThread::current()->yield();
-    auto toNative = std::dynamic_pointer_cast<DrvAPIToNativePointer>
-        (DrvAPIThread::current()->getState());
-    if (toNative) {
-        *native = toNative->getNativePointer();
-        *size = toNative->getRegionSize();
-        return;
-    }
-    throw std::runtime_error("DrvAPIAddressToNative: unexpected post-yield state");
+    address = DrvAPIVAddress::to_physical
+        (address
+         ,myPXNId()
+         ,myPodId()
+         ,myCoreY()
+         ,myCoreX()
+         ).encode();
+    DrvAPIThread::current()->getSystem()->addressToNative(address, native, size);
 }
 
 }
