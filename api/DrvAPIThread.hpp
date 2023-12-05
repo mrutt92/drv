@@ -160,7 +160,17 @@ public:
   void setSystem(const std::shared_ptr<DrvAPISystem> &sys) {
       system_ = sys;
   }
-    
+
+  /**
+   * @brief Convert a DrvAPIAddress to a native pointer
+   */
+  void addressToNative(DrvAPIAddress address, void **native, std::size_t *size);
+
+  /**
+   * @brief Convert a DrvAPIAddress to a native pointer
+   */
+  void nativeToAddress(void *native, DrvAPIAddress *address, std::size_t *size);
+
   /**
    * @brief Get the current active thread
    * 

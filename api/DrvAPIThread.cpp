@@ -8,7 +8,7 @@
 #include "DrvAPIAddressMap.hpp"
 #include "DrvAPIAddressToNative.hpp"
 #include <iostream>
-
+#include <sstream>
 using namespace DrvAPI;
 
 
@@ -20,12 +20,8 @@ struct modeled_memory_stack_allocator {
 public:
     modeled_memory_stack_allocator() = default;
     modeled_memory_stack_allocator
-    (uint64_t pxn, uint64_t pod, uint64_t core, uint64_t thread, uint64_t threads)
-        : pxn_(pxn)
-        , pod_(pod)
-        , core_(core)
-        , thread_(thread)
-        , threads_(threads) {
+    (DrvAPIThread *thread)
+        : thread_(thread) {
     }
 
     boost::context::stack_context allocate() {
@@ -34,33 +30,37 @@ public:
         auto &l1sp_statics = DrvAPI::DrvAPISection::GetSection(DrvAPIMemoryL1SP);
 
         DrvAPI::DrvAPIAddress l1sp_static_base =
-            l1sp_statics.getBase(pxn_, pod_, core_);
+            l1sp_statics.getBase(thread_->pxnId(), thread_->podId(), thread_->coreId());
 
         DrvAPI::DrvAPIAddress l1sp_static_end
             = l1sp_static_base
             + l1sp_statics.getSize();
 
-        l1sp_static_end
-            = DrvAPI::toGlobalAddress
-            (l1sp_static_end, pxn_, pxn_,coreYFromId(core_), coreXFromId(core_));
+        l1sp_static_end = DrvAPI::toGlobalAddress
+            (l1sp_static_end
+             ,thread_->pxnId()
+             ,thread_->pxnId()
+             ,coreYFromId(thread_->coreId())
+             ,coreXFromId(thread_->coreId())
+             );
 
 
         // 2. determine the total available stack size and divide amongst theads
         // this is just the rest of l1sp
         uint64_t stack_bytes = coreL1SPSize() - l1sp_statics.getSize();
         uint64_t stack_words = stack_bytes / sizeof(uint64_t);
-        uint64_t thread_stack_words = stack_words / threads_;
+        uint64_t thread_stack_words = stack_words / thread_->coreThreads();
         uint64_t thread_stack_bytes = thread_stack_words * sizeof(uint64_t);
 
         // 3. calculate the top of the stack for this thread
         DrvAPI::DrvAPIAddress stack_top
             = l1sp_static_end
-            + (thread_+1)*thread_stack_bytes
-            - sizeof(uint64_t);
+            + (thread_->threadId()+1)*thread_stack_bytes;
 
         // 4. get the native stack pointer using toNative()
         size_t _;
-        DrvAPIAddressToNative(stack_top, &sctx.sp, &_);
+        std::cout << "calling toNativePointer(" << std::hex << stack_top << ")" << std::endl;
+        thread_->addressToNative(stack_top, &sctx.sp, &_);
         sctx.size = thread_stack_bytes;
         return sctx;
     }
@@ -69,11 +69,7 @@ public:
         sctx.size = 0;
     }
 
-    uint64_t pxn_  = 0;
-    uint64_t pod_  = 0;
-    uint64_t core_ = 0;
-    uint64_t thread_ = 0;
-    uint64_t threads_ = 0;
+    DrvAPIThread *thread_ = nullptr;
 };
 
 DrvAPIThread::DrvAPIThread()
@@ -98,8 +94,7 @@ void DrvAPIThread::start() {
         }
     };
     if (stack_in_modeled_memory_) {
-        modeled_memory_stack_allocator allocator
-            (pxn_id_, pod_id_, core_id_, id_, core_threads_);
+        modeled_memory_stack_allocator allocator(this);
         thread_context_ = std::make_unique<coro_t::pull_type>(allocator, coro_function);
     } else {
         thread_context_ = std::make_unique<coro_t::pull_type>(coro_function);
@@ -120,6 +115,58 @@ void DrvAPIThread::yield() {
 /* should only be called from the main context */
 void DrvAPIThread::resume() {
     (*thread_context_)();
+}
+
+/* callable from anywhere */
+void DrvAPIThread::addressToNative(DrvAPIAddress address, void **native, std::size_t *size) {
+    address = DrvAPIVAddress::to_physical
+        (address
+         , pxn_id_
+         , pod_id_
+         , coreYFromId(core_id_)
+         , coreXFromId(core_id_)
+         ).encode();
+    getSystem()->addressToNative(address, native, size);
+}
+
+/* callable from anywhere */
+void DrvAPIThread::nativeToAddress(void *native, DrvAPIAddress *address, std::size_t *size) {
+    /* we are only going to support this function when using modeled memory for stack
+       and we are only going to support this pointers to our own l1sp
+    */
+    // 1. check that we are using modeled memory for stack
+    if (!stack_in_modeled_memory_) {
+        std::stringstream ss;
+        throw std::runtime_error( "DrvAPIThread::nativeToAddress() only supported when using modeled memory for stack");
+    }
+    // 2. get native pointer to the base of l1sp
+    DrvAPIAddress l1sp_base = toGlobalAddress
+        (DrvAPIVAddress::MyL1Base().encode()
+         ,pxnId()
+         ,podId()
+         ,coreYFromId(coreId())
+         ,coreXFromId(coreId())
+         );
+    void *l1sp_base_native = nullptr;
+    size_t l1sp_base_size = 0;
+    addressToNative(l1sp_base, &l1sp_base_native, &l1sp_base_size);
+
+    // 3. check that the native pointer is within the l1sp
+    uintptr_t start = reinterpret_cast<uintptr_t>(l1sp_base_native);
+    uintptr_t check = reinterpret_cast<uintptr_t>(native);
+    std::stringstream ss;
+    ss << "DrvAPIThread::nativeToAddress() start = " << std::hex << start << std::endl;
+    ss << "DrvAPIThread::nativeToAddress() check = " << std::hex << check << std::endl;
+    ss << "DrvAPIThread::nativeToAddress() l1sp_base_size = " << std::hex << l1sp_base_size << std::endl;
+    std::cout << ss.str();
+    if (check < start || check >= start + l1sp_base_size) {
+        std::stringstream ss;
+        ss << "DrvAPIThread::nativeToAddress() native pointer " << std::hex << check << " is not within l1sp";
+        throw std::runtime_error(ss.str());
+    }
+
+    *address = l1sp_base + (check - start);
+    *size = l1sp_base_size - (check - start);
 }
 
 thread_local DrvAPIThread *DrvAPIThread::g_current_thread = nullptr;
