@@ -55,7 +55,8 @@ public:
         // 3. calculate the top of the stack for this thread
         DrvAPI::DrvAPIAddress stack_top
             = l1sp_static_end
-            + (thread_->threadId()+1)*thread_stack_bytes;
+            + (thread_->threadId()+1)*thread_stack_bytes
+            - sizeof(uint64_t);
 
         // 4. get the native stack pointer using toNative()
         size_t _;
