@@ -219,7 +219,7 @@ DrvCore::DrvCore(SST::ComponentId_t id, SST::Params& params)
   , idle_cycles_(0)
   , core_on_(false)
   , system_callbacks_(std::make_shared<DrvSystem>(*this)) {
-    id_ = params.find<int>("id", 0);
+  id_ = params.find<int>("id", 0);
   pod_ = params.find<int>("pod", 0);
   pxn_ = params.find<int>("pxn", 0);
   registerAsPrimaryComponent();
