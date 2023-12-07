@@ -15,25 +15,50 @@
     } while (0)
 
 
+struct id_type {
+    int64_t pxn;
+    int64_t pod;
+    int64_t core;
+    int64_t thread;
+};
+
+DRV_API_REF_CLASS_BEGIN(id_type)
+DRV_API_REF_CLASS_DATA_MEMBER(id_type, pxn)
+DRV_API_REF_CLASS_DATA_MEMBER(id_type, pod)
+DRV_API_REF_CLASS_DATA_MEMBER(id_type, core)
+DRV_API_REF_CLASS_DATA_MEMBER(id_type, thread)
+DRV_API_REF_CLASS_END(id_type)
+
+
 int ToAddressMain(int argc, char *argv[])
 {
     using namespace DrvAPI;
-    uint64_t x = 0;
+    struct id_type id;
     DrvAPIAddress addr = 0;
     std::size_t size = 0;
-    DrvAPINativeToAddress(&x, &addr, &size);
+    DrvAPINativeToAddress(&id, &addr, &size);
 
-    DrvAPIPointer<uint64_t> as_sim_pointer = addr;
-    uint64_t wval = 0xdeadbeef;
-    pr_info("Writing %010" PRIx64 " to Simulator Address %" PRIx64"\n"
-            ,wval
-            ,addr
-            );
-    *as_sim_pointer = 0xdeadbeef;
-    pr_info("Reading %010" PRIx64 " from Native Address %p\n"
-            ,x
-            ,&x
-            );
+    id_type_ref id_ref = DrvAPIPointer<id_type>(addr);
+
+    id_ref.pxn() = myPXNId();
+    id_ref.pod() = myPodId();
+    id_ref.core() = myCoreId();
+    id_ref.thread() = myThreadId();
+
+    id_type *native = nullptr;
+    size_t _;
+    DrvAPIAddressToNative(&id_ref, (void**)&native, &_);
+    if (native != &id) {
+        pr_info("FAIL: AddressToNative(NativeToAddress(&id)) != &id\n");
+    } else if (id.pxn != myPXNId() ||
+        id.pod != myPodId() ||
+        id.core != myCoreId() ||
+        id.thread != myThreadId()) {
+        pr_info("FAIL: id fields don't match mine\n");
+    } else {
+        pr_info("PASS: all checks succeeded \n");
+    }
+
     return 0;
 }
 

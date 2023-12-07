@@ -4,6 +4,7 @@
 DRV_DIR := $(shell git rev-parse --show-toplevel)
 include $(DRV_DIR)/mk/config.mk
 APP_NAME := to_address
-SIM_OPTIONS += --pod-cores=1 --core-threads=1
+SIM_OPTIONS += --pxn-pods=2 --pod-cores=4 --core-threads=1
 SIM_OPTIONS += --drvx-stack-in-l1sp
+SIM_OPTIONS += --num-pxn=2
 include $(DRV_DIR)/mk/application_common.mk
