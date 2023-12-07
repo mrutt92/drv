@@ -61,7 +61,7 @@ public:
         // 4. get the native stack pointer using toNative()
         size_t _;
         thread_->addressToNative(stack_top, &sctx.sp, &_);
-        sctx.size = thread_stack_bytes;
+        sctx.size = thread_stack_bytes - sizeof(uint64_t);
         return sctx;
     }
     void deallocate(boost::context::stack_context &sctx) {
