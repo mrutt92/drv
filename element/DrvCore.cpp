@@ -236,7 +236,6 @@ DrvCore::DrvCore(SST::ComponentId_t id, SST::Params& params)
 }
 
 DrvCore::~DrvCore() {
-    threads_.clear();
     // the last thing we should is close the executable
     // this keeps the vtable entries valid for dynamic classes
     // created in the user code
@@ -276,6 +275,7 @@ void DrvCore::setup() {
  * finish the component
  */
 void DrvCore::finish() {
+  threads_.clear();
   auto stdmem = dynamic_cast<DrvStdMemory*>(memory_);
   if (stdmem) {
     stdmem->finish();
