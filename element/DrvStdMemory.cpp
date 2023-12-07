@@ -67,6 +67,14 @@ DrvStdMemory::toNativePointer(DrvAPI::DrvAPIAddress paddr, void **ptr, size_t *s
     }
 
     std::tie(addr_range_start, addr_range_stop, memory_controller) = *(--it);
+
+    // check that the address is within the range
+    if (paddr < addr_range_start || paddr > addr_range_stop) {
+        output_.fatal(CALL_INFO, -1,
+                      "Could not find memory controller for address %" PRIx64 "\n",
+                      paddr);
+    }
+
     auto *backing = dynamic_cast<SST::MemHierarchy::Backend::BackingMMAP*>
         (memory_controller->backing_);
     /* we only support if the backing store is a BackingMMAP */
