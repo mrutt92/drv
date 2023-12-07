@@ -119,14 +119,14 @@ void DrvAPIThread::resume() {
 
 /* callable from anywhere */
 void DrvAPIThread::addressToNative(DrvAPIAddress address, void **native, std::size_t *size) {
-    address = DrvAPIVAddress::to_physical
+    DrvAPIAddress phys_address = DrvAPIVAddress::to_physical
         (address
          , pxn_id_
          , pod_id_
          , coreYFromId(core_id_)
          , coreXFromId(core_id_)
          ).encode();
-    getSystem()->addressToNative(address, native, size);
+    getSystem()->addressToNative(phys_address, native, size);
 }
 
 /* callable from anywhere */
