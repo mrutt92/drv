@@ -32,14 +32,14 @@ public:
         DrvAPI::DrvAPIAddress l1sp_static_base =
             l1sp_statics.getBase(thread_->pxnId(), thread_->podId(), thread_->coreId());
 
-        DrvAPI::DrvAPIAddress l1sp_static_end
+        DrvAPI::DrvAPIAddress l1sp_static_end_local
             = l1sp_static_base
             + l1sp_statics.getSize();
 
-        l1sp_static_end = DrvAPI::toGlobalAddress
-            (l1sp_static_end
+        DrvAPI::DrvAPIAddress l1sp_static_end = DrvAPI::toGlobalAddress
+            (l1sp_static_end_local
              ,thread_->pxnId()
-             ,thread_->pxnId()
+             ,thread_->podId()
              ,coreYFromId(thread_->coreId())
              ,coreXFromId(thread_->coreId())
              );
