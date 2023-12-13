@@ -403,6 +403,18 @@ uint64_t RISCVSimulator::visitCSRRWUnderMask(RISCVHart &hart, uint64_t csr, uint
         shart.rm() &= ~mask;
         shart.rm() |= wval & mask;
         break;
+    case CSR_MSTATUS: // read-only
+        core_->output_.verbose(CALL_INFO, 1, 0, "Warning: CSR MSTATUS not implemented\n");
+        break;
+    case CSR_MIE: // read-only
+        core_->output_.verbose(CALL_INFO, 1, 0, "Warning: CSR MIE not implemented\n");
+        break;
+    case CSR_MTVEC: // read-only
+        core_->output_.verbose(CALL_INFO, 1, 0, "Warning: CSR MTVEC not implemented\n");
+        break;
+    case CSR_MEPC: // read-only
+        core_->output_.verbose(CALL_INFO, 1, 0, "Warning: CSR MEPC not implemented\n");
+        break;
     case CSR_CYCLE: // read-only
         rval = core_->clocktc_->convertFromCoreTime(core_->getCurrentSimCycle());
         break;
