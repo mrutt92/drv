@@ -55,6 +55,7 @@ public:
         {"debug_requests", "Debug requests", "0"},
         {"debug_responses", "Debug responses", "0"},
         {"debug_syscalls", "Debug system calls", "0"},
+        {"isa_test", "Report ISA tests results", "0"},
     )
     // DOCUMENT SUBCOMPONENTS
     SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
@@ -140,7 +141,7 @@ public:
     static constexpr uint32_t DEBUG_SYSCALLS = (1<< 2); //!< debug system calls
     static constexpr uint32_t DEBUG_REQ      = (1<<30); //!< debug messages we expect to see when receiving requests
     static constexpr uint32_t DEBUG_RSP      = (1<<29); //!< debug messages we expect to see when receiving responses
-    
+    static constexpr uint32_t ISA_TEST       = (1<<31); //!< report ISA tests results
     /**
      * configure output stream
      */

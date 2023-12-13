@@ -526,6 +526,14 @@ void RISCVSimulator::sysBRK(RISCVSimHart &shart, RISCVInstruction &i) {
 void RISCVSimulator::sysEXIT(RISCVSimHart &shart, RISCVInstruction &i) {
     shart.ready() = false;
     shart.exit() = true;
+    shart.exitCode() = shart.sa(0);
+    if (shart.exitCode() == 0) {
+        core_->output_.verbose(CALL_INFO, 1, RISCVCore::ISA_TEST, "TEST PASS\n");
+    } else {
+        core_->output_.verbose(CALL_INFO, 1, RISCVCore::ISA_TEST, "TEST FAILED (TEST %" PRId64 ")\n"
+                               ,shart.exitCode()
+                               );
+    }
 }
 
 void RISCVSimulator::sysFSTAT(RISCVSimHart &shart, RISCVInstruction &i) {
