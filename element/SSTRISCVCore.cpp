@@ -31,10 +31,11 @@ void RISCVCore::configureOuptut(Params& params) {
     if (params.find<bool>("debug_syscalls", false)) {
         verbose_mask |= DEBUG_SYSCALLS;
     }
-    if (params.find<bool>("isa_test", false)) {
-        verbose_mask |= ISA_TEST;
-    }
     output_.init("SSTRISCVCore[@p:@l]: ", verbose_level, verbose_mask, Output::STDOUT);
+
+    int isa_test = params.find<bool>("isa_test", 0);
+    test_name_ = params.find<std::string>("test_name", "");
+    isa_test_output_.init("", isa_test, 0, Output::STDOUT);
 }
 
 void RISCVCore::configureHarts(Params &params) {
