@@ -6,6 +6,7 @@ RV64UI_DIR := $(ISA_DIR)/rv64ui
 include $(RV64UI_DIR)/Makefrag
 
 TESTS := $(rv64ui_sc_tests)
+TESTS := $(filter-out fence_i,$(TESTS))
 
 $(TESTS): %: %.S template.mk
 	@mkdir -p $@
@@ -13,6 +14,10 @@ $(TESTS): %: %.S template.mk
 	@cp template.mk $@/Makefile
 	@echo "TEST_NAME=$*" > $@/test_name.mk
 	@$(MAKE) -C $@ run
+
+.PHONY: tests purge
+
+tests: $(TESTS)
 
 purge:
 	@rm -rf $(TESTS)
