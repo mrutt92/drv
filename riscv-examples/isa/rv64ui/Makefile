@@ -12,8 +12,9 @@ $(TESTS): %: %.S template.mk
 	@mkdir -p $@
 	@cp $*.S $@
 	@cp template.mk $@/Makefile
-	@echo "TEST_NAME=$*" > $@/test_name.mk
-	@$(MAKE) -C $@ run
+	$(eval TEST_NAME="$(shell echo $* | tr [a-z] [A-Z])")
+	@echo "TEST_NAME=$(TEST_NAME)" > $@/test_name.mk
+	@$(MAKE) -C $@ run | tee run.log | grep "$(TEST_NAME) TEST"
 
 .PHONY: tests purge
 
