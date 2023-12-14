@@ -531,7 +531,7 @@ void RISCVSimulator::sysEXIT(RISCVSimHart &shart, RISCVInstruction &i) {
         core_->output_.verbose(CALL_INFO, 0, RISCVCore::ISA_TEST, "TEST PASS\n");
     } else {
         core_->output_.verbose(CALL_INFO, 0, RISCVCore::ISA_TEST, "TEST FAILED (TEST %" PRId64 ")\n"
-                               ,shart.exitCode()
+                               ,(shart.exitCode() >> 1)
                                );
     }
 }
