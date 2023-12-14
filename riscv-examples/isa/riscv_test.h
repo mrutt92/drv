@@ -251,6 +251,8 @@ reset_vector:                                                           \
 1:
 #else
 #define RVTEST_CODE_BEGIN                                               \
+        .option push;                                                   \
+        .option norelax;                                                \
         .section .text.init;                                            \
         .align  6;                                                      \
         .weak stvec_handler;                                            \
