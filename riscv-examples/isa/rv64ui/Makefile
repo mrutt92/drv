@@ -9,10 +9,10 @@ TESTS := $(rv64ui_sc_tests)
 
 $(TESTS): %: %.S template.mk
 	@mkdir -p $@
-	cp $*.S $@
-	cp template.mk $@/Makefile
-	echo "TEST_NAME=$*" > $@/test_name.mk
-	$(MAKE) -C $@ run
+	@cp $*.S $@
+	@cp template.mk $@/Makefile
+	@echo "TEST_NAME=$*" > $@/test_name.mk
+	@$(MAKE) -C $@ run
 
 purge:
-	rm -rf $(TESTS)
+	@rm -rf $(TESTS)
