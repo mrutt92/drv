@@ -419,7 +419,7 @@ uint64_t RISCVSimulator::visitCSRRWUnderMask(RISCVHart &hart, uint64_t csr, uint
         rval = core_->clocktc_->convertFromCoreTime(core_->getCurrentSimCycle());
         break;
     default:
-        core_->output_.fatal(CALL_INFO, -1, "CSR %" PRIx64 " is not implemented", csr);
+        core_->output_.fatal(CALL_INFO, -1, "CSR %" PRIx64 " is not implemented\n", csr);
     }
     return rval;
 }
