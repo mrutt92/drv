@@ -41,6 +41,7 @@ DrvStdMemory::DrvStdMemory(SST::ComponentId_t id, SST::Params& params, DrvCore *
  * 
  */
 DrvStdMemory::~DrvStdMemory() {
+    delete mem_;
 }
 
 /**
