@@ -11,7 +11,6 @@ using namespace SST;
 using namespace Drv;
 using namespace Interfaces;
 
-//#define USE_STDMEM_PROVIDED
 
 /**
  * @brief Construct a new DrvStdMemory object
@@ -160,11 +159,6 @@ DrvStdMemory::sendRequest(DrvCore *core
                         "Sending atomic request addr=%" PRIx64 " size=%" PRIu64 "\n",
                         addr, size);
         core->addAtomicStat(DrvAPI::DrvAPIPAddress{addr});
-#ifdef USE_STDMEM_PROVIDED
-        StandardMem::ReadLock *req = new StandardMem::ReadLock(addr, size);
-        req->tid = core->getThreadID(thread);
-        mem_->send(req);
-#else
         AtomicReqData *data = new AtomicReqData();
         data->pAddr = addr;
         data->size = size;
@@ -179,7 +173,6 @@ DrvStdMemory::sendRequest(DrvCore *core
         StandardMem::CustomReq *req = new StandardMem::CustomReq(data);
         req->tid = core->getThreadID(thread);
         mem_->send(req);
-#endif
         return;
     }
 
