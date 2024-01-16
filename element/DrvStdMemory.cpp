@@ -234,34 +234,12 @@ DrvStdMemory::handleEvent(SST::Interfaces::StandardMem::Request *req) {
             read_req->setResult(&read_rsp->data[0]);
             read_req->complete();            
         }
-#ifdef USE_STDMEM_PROVIDED
-        // perform modify-write, if this was an atomic request
-        auto atomic_req = std::dynamic_pointer_cast<DrvAPI::DrvAPIMemAtomic>(thread->getAPIThread().getState());
-        if (atomic_req) {
-            // read the result and modify it
-            atomic_req->setResult(&read_rsp->data[0]);
-            atomic_req->modify();
-            // now send a write-unlock
-            std::vector<uint8_t> data(atomic_req->getSize());
-            atomic_req->getPayload(&data[0]);
-            StandardMem::WriteUnlock *wureq = new StandardMem::WriteUnlock(read_rsp->pAddr, read_rsp->size, data);
-            wureq->tid = read_rsp->tid;
-            output_.verbose(CALL_INFO, 10, DrvMemory::VERBOSE_REQ,
-                            "Sending write-unlock request addr=%" PRIx64 " size=%" PRIu64 "\n",
-                            read_rsp->pAddr, read_rsp->size);
-            mem_->send(wureq);
-        }]
-#endif
 
-#ifdef USE_STDMEM_PROVIDED
-        if (!(read_req || atomic_req)) {
-#else
         if (!read_req) {
-#endif
             output_.fatal(CALL_INFO, -1, "Failed to find memory request for tid=%" PRIu32 "\n", read_rsp->tid);
         }
     }
-#ifndef USE_STDMEM_PROVIDED
+
     auto custom_rsp = dynamic_cast<StandardMem::CustomResp*>(req);
     AtomicReqData* areq_data = nullptr;
     if (custom_rsp) {
@@ -280,16 +258,12 @@ DrvStdMemory::handleEvent(SST::Interfaces::StandardMem::Request *req) {
             delete areq_data;
         }
     }
-#endif
+
     // must delete the request
     delete req;
 
     // fatally error if we don't know the response type
-#ifdef USE_STDMEM_PROVIDED
-    if (!(write_rsp || read_rsp)) {
-#else
     if (!(write_rsp || read_rsp || (custom_rsp && areq_data))) {
-#endif
         output_.fatal(CALL_INFO, -1, "Unknown memory response type\n");
     }
     core_->assertCoreOn();
