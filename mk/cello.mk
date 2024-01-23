@@ -1,0 +1,16 @@
+ifndef CELLO_MK
+CELLO_MK=1
+DRV_DIR ?= $(shell git rev-parse --show-toplevel)
+
+CELLO_BACKEND  :=  DRVX
+CELLO_CXXFLAGS += -I$(DRV_DIR)/cello
+
+vpath %.cpp $(DRV_DIR)/cello
+vpath %.c   $(DRV_DIR)/cello
+
+CELLO_CXXSOURCES_DRVX += cello_core_drvx.cpp
+
+CELLO_LDFLAGS_DRVX +=
+CELLO_LDFLAGS_DRVR +=
+
+endif
