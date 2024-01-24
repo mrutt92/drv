@@ -8,19 +8,19 @@ namespace cello
 /**
  * task base class
  */
-struct __task {
+struct task {
 public:
-    __task() {}
+    task() {}
     virtual void execute() = 0;
 };
 
 /**
  * task implementation
  */
-struct __task_impl : public __task {
+struct task_impl : public task {
 public:
     template <typename F>
-    __task_impl(F f) : f_(f) {}
+    task_impl(F f) : f_(f) {}
     void execute() override { f_(); }
 private:
     std::function<void()> f_;
@@ -31,7 +31,7 @@ private:
  * 
  * @param task 
  */
-void spawn(__task *task);
+void spawn(task *task);
 
 /**
  * @brief yield execution of this task
