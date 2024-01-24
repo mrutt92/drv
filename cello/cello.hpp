@@ -2,6 +2,7 @@
 #define CELLO_HPP
 #include <DrvAPI.hpp>
 #include <functional>
+#include <inttypes.h>
 namespace cello
 {
 
@@ -18,13 +19,13 @@ public:
 /**
  * task implementation
  */
+template <typename F>
 struct task_impl : public task {
 public:
-    template <typename F>
     task_impl(F f) : f_(f) {}
     void execute() override { f_(); }
 private:
-    std::function<void()> f_;
+    F f_;
 };
 
 /**
@@ -87,10 +88,8 @@ void join() {
  * join the joiner
  */
 void sync() {
-    int64_t j = atomic_add(&joined(), 1) + 1;
-    while (j < count()) {
+    while (joined() < count()) {
         yield();
-        j = joined();
     }
 }
 DRV_API_REF_CLASS_DATA_MEMBER(joiner, count)
@@ -101,19 +100,20 @@ DRV_API_REF_CLASS_END(joiner)
 // Parallel invoke //
 /////////////////////
 template <typename F>
-void parallel_invoke_impl(cello::joiner_ref &jref, F && f) {
+void parallel_invoke_impl(cello::joiner_ref jref, F && f) {
     jref.add(1);
     f();
     jref.join();
 }
 
 template <typename F, typename ...Fs>
-void parallel_invoke_impl(cello::joiner_ref &jref, F && f, Fs && ...fs) {
+void parallel_invoke_impl(cello::joiner_ref jref, F && f, Fs && ...fs) {
     jref.add(1);
-    cello::task_impl child([&jref, f](){
+    auto child_func = [jref, f] () mutable {
         f();
         jref.join();
-    });
+    };
+    cello::task_impl<decltype(child_func)> child(child_func);
     spawn(&child);
     parallel_invoke_impl(jref, std::forward<Fs>(fs)...);
 }
