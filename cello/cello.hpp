@@ -1,7 +1,7 @@
 #ifndef CELLO_HPP
 #define CELLO_HPP
 #include <DrvAPI.hpp>
-
+#include <functional>
 namespace cello
 {
 
@@ -17,13 +17,13 @@ public:
 /**
  * task implementation
  */
-template <typename F>
 struct __task_impl : public __task {
 public:
+    template <typename F>
     __task_impl(F f) : f_(f) {}
     void execute() override { f_(); }
 private:
-    F f_;
+    std::function<void()> f_;
 };
 
 /**

@@ -22,11 +22,11 @@ long fibonacci(long n) {
     y_ptr = y_addr;
     sync_ptr = sync_addr;
 
-    auto fib_sub = [n, x_ptr, sync_ptr]() {
+    cello::__task_impl fib_task([n, x_ptr, sync_ptr]() {
         *x_ptr = fibonacci(n - 1);
         atomic_add(sync_ptr, -1);
-    };
-    cello::__task_impl<decltype(fib_sub)> fib_task(fib_sub);
+    });
+
     cello::spawn(&fib_task);
     
     *y_ptr = fibonacci(n - 2);

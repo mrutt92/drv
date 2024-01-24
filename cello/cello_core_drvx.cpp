@@ -142,7 +142,7 @@ int cello_start(int argc, char *argv[])
             CelloMain(argc, argv);
             terminate = 1;
         };
-        __task_impl<decltype(call_main)> main_task (call_main);
+        __task_impl main_task (call_main);
         
         spawn(&main_task);        
     }
