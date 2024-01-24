@@ -184,7 +184,7 @@ public:
   /**
    * @brief Convert a DrvAPIAddress to a native pointer
    */
-  void nativeToAddress(void *native, DrvAPIAddress *address, std::size_t *size);
+  void nativeToAddress(const void *native, DrvAPIAddress *address, std::size_t *size);
 
   /**
    * @brief Get the current active thread

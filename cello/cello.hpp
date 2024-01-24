@@ -5,6 +5,7 @@
 namespace cello
 {
 
+
 /**
  * task base class
  */
@@ -49,6 +50,80 @@ inline long tid() {
 inline long num_threads() {
     using namespace DrvAPI;
     return numPXNs()*numPXNPods()*numPodCores()*numCoreThreads();
+}
+
+/**
+ * joiner
+ */
+struct joiner {
+public:
+    joiner() {}
+
+    int64_t count = 0;
+    int64_t joined = 0;
+};
+
+DRV_API_REF_CLASS_BEGIN(joiner)
+/**
+ * initialize the joiner
+ */
+void init() {
+    count() = 0;
+    joined() = 0;
+}
+/**
+ * add to the joiner
+ */
+void add(int64_t num) {
+    atomic_add(&count(), num);
+}
+/**
+ * join the joiner
+ */
+void join() {
+    atomic_add(&joined(), 1);
+}
+/**
+ * join the joiner
+ */
+void sync() {
+    int64_t j = atomic_add(&joined(), 1) + 1;
+    while (j < count()) {
+        yield();
+        j = joined();
+    }
+}
+DRV_API_REF_CLASS_DATA_MEMBER(joiner, count)
+DRV_API_REF_CLASS_DATA_MEMBER(joiner, joined)
+DRV_API_REF_CLASS_END(joiner)
+
+/////////////////////
+// Parallel invoke //
+/////////////////////
+template <typename F>
+void parallel_invoke_impl(cello::joiner_ref &jref, F && f) {
+    jref.add(1);
+    f();
+    jref.join();
+}
+
+template <typename F, typename ...Fs>
+void parallel_invoke_impl(cello::joiner_ref &jref, F && f, Fs && ...fs) {
+    jref.add(1);
+    cello::task_impl child([&jref, f](){
+        f();
+        jref.join();
+    });
+    spawn(&child);
+    parallel_invoke_impl(jref, std::forward<Fs>(fs)...);
+}
+
+template <typename ...Fs>
+void parallel_invoke(Fs && ...fs) {
+    cello::joiner joiner;
+    cello::joiner_ref jref(&joiner);
+    parallel_invoke_impl(jref, std::forward<Fs>(fs)...);
+    jref.sync();
 }
 
 }
