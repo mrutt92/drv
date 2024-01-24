@@ -89,6 +89,13 @@ public:
         ~value_handle() = default;
 
         /**
+         * get value
+         */
+        value_type get() const {
+            return DrvAPI::read<T>(vaddr_);
+        }
+
+        /**
          * cast operator to type T
          */
         operator value_type() const {
@@ -226,6 +233,9 @@ public:
     ~type##_ref() = default;                                            \
     DrvAPI::DrvAPIPointer<type> operator&() {                           \
         return ptr_;                                                    \
+    }                                                                   \
+    static type##_ref FromPointer(const DrvAPI::DrvAPIPointer<type>&ptr) { \
+        return type##_ref(ptr);                                         \
     }                                                                   \
     DrvAPI::DrvAPIPointer<type> ptr_;
 
