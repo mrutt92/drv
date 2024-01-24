@@ -238,6 +238,9 @@ public:
     DrvAPI::DrvAPIPointer<type> operator&() {                           \
         return ptr_;                                                    \
     }                                                                   \
+    DrvAPI::DrvAPIPointer<type> addressof() {                           \
+        return ptr_;                                                    \
+    }                                                                   \
     static type##_ref FromPointer(const DrvAPI::DrvAPIPointer<type>&ptr) { \
         return type##_ref(ptr);                                         \
     }                                                                   \
