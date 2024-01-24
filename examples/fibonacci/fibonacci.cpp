@@ -8,25 +8,16 @@ long fibonacci(long n) {
     if (n <= 1) {
         return n;
     }
-    
-    size_t _;
-    
-    cello::joiner joiner;
-    cello::joiner_ref jref(&joiner);
-    jref.add(2);
 
     DrvAPIVar<long> x, y;
-    cello::task_impl fib_task([n, &x, jref] () mutable {
-        x = fibonacci(n - 1);
-        jref.join();
-    });
-
-    cello::spawn(&fib_task);
-    
-    y = fibonacci(n - 2);
-
-    jref.sync();
-
+    cello::parallel_invoke(
+        [&x, n] () mutable {
+            x = fibonacci(n - 1);
+        },
+        [&y, n] () mutable {
+            y = fibonacci(n - 2);
+        }
+    );
     return (long)x + (long)y;
 }
 
