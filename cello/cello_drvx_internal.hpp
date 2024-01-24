@@ -51,7 +51,7 @@ private:
  */
 struct task_queue {
 public:
-    std::deque<__task*>*queue = nullptr;
+    std::deque<task*>*queue = nullptr;
     int32_t lock = 0;    
 };
 
@@ -60,24 +60,24 @@ DRV_API_REF_CLASS_BEGIN(task_queue)
  * initialize the task queue
  */
 void init() {
-    queue() = new std::deque<__task*>();
+    queue() = new std::deque<task*>();
     lock() = 0;
 }
 void destroy() {
     delete queue();
 }
 
-void push_front(__task* task) {
+void push_front(task* task) {
     lock_guard guard(&lock());
     queue().get()->push_front(task);
 }
 
-void push_back(__task* task) {
+void push_back(task* task) {
     lock_guard guard(&lock());
     queue().get()->push_back(task);
 }
 
-__task* pop_front() {
+task* pop_front() {
     lock_guard guard(&lock());
     if (queue().get()->empty()) {
         return nullptr;
@@ -87,7 +87,7 @@ __task* pop_front() {
     return task;
 }
 
-__task* pop_back() {
+task* pop_back() {
     lock_guard guard(&lock());
     if (queue().get()->empty()) {
         return nullptr;

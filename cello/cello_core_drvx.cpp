@@ -48,7 +48,9 @@ task_queue_ref task_queue_of(const thread_id_t &tid) {
 //////////////////////////////////
 // each pxn has a copy of these //
 //////////////////////////////////
+
 StaticMainMem<int64_t>  num_threads_ready; // how many threads have initialized
+
 /* return the copy of num_threads_ready on pxn 0 */
 DrvAPIPointer<int64_t> num_threads_ready_ptr() {
     DrvAPIVAddress vaddr = static_cast<DrvAPIAddress>(&num_threads_ready);
@@ -58,6 +60,7 @@ DrvAPIPointer<int64_t> num_threads_ready_ptr() {
 }
 
 StaticMainMem<int64_t>  terminate; // should terminate
+
 /* return the copy of terminate on pxn 0 */
 DrvAPIPointer<int64_t> terminate_ptr() {
     DrvAPIVAddress vaddr = static_cast<DrvAPIAddress>(&terminate);
@@ -80,7 +83,7 @@ void steal() {
     task_queue_ref victim_queue = task_queue_of(victim);
 
     // pop from the victim's back
-    __task *task = victim_queue.pop_back();
+    task *task = victim_queue.pop_back();
     if (task != nullptr) {
         // execute the task
         task->execute();
@@ -93,7 +96,7 @@ void steal() {
  */
 void find_work() {
     // first try to pop from your own queue
-    __task *task = my_task_queue().pop_front();
+    task *task = my_task_queue().pop_front();
     if (task != nullptr) {
         // execute the task
         task->execute();
@@ -109,7 +112,7 @@ void find_work() {
  * 
  * @param task 
  */
-void spawn(__task *task) {
+void spawn(task *task) {
     // new tasks are placed at front
     pr_dbg("spawning task onto queue @ 0x%016" PRIx64 "\n", (DrvAPIAddress)&my_task_queue());    
     my_task_queue().push_front(task);    
@@ -142,7 +145,7 @@ int cello_start(int argc, char *argv[])
             CelloMain(argc, argv);
             terminate = 1;
         };
-        __task_impl main_task (call_main);
+        task_impl main_task (call_main);
         
         spawn(&main_task);        
     }

@@ -22,7 +22,7 @@ long fibonacci(long n) {
     y_ptr = y_addr;
     sync_ptr = sync_addr;
 
-    cello::__task_impl fib_task([n, x_ptr, sync_ptr]() {
+    cello::task_impl fib_task([n, x_ptr, sync_ptr]() {
         *x_ptr = fibonacci(n - 1);
         atomic_add(sync_ptr, -1);
     });
