@@ -120,6 +120,7 @@ struct thread_id_t {
  * get the task queue of a specific thread
  */
 task_queue_ref task_queue_of(const thread_id_t &tid);
+
 }
 
 #endif

@@ -82,9 +82,9 @@ public:
          */
         value_handle(const DrvAPIAddress &vaddr) :vaddr_(vaddr) {}        
         value_handle() = delete;
-        value_handle(const value_handle &other) = delete;
+        value_handle(const value_handle &other) = default;
         value_handle(value_handle &&other) = default;
-        value_handle &operator=(const value_handle &other) = delete;
+        value_handle &operator=(const value_handle &other) = default;
         value_handle &operator=(value_handle &&other) = default;
         ~value_handle() = default;
 
@@ -223,8 +223,12 @@ public:
     class type##_ref {                                                  \
     public:                                                             \
     type##_ref(const DrvAPI::DrvAPIPointer<type>&ptr) : ptr_(ptr) {}    \
-    type##_ref(const DrvAPI::DrvAPIAddress &vaddr) : ptr_(vaddr) {}     \
     type##_ref(uint64_t vaddr) : ptr_(vaddr) {}                         \
+    explicit type##_ref(const type* ptr) {                              \
+        std::size_t _; DrvAPI::DrvAPIAddress addr;                      \
+        DrvAPI::DrvAPINativeToAddress(ptr, &addr, &_);                  \
+        ptr_ = addr;                                                    \
+    }                                                                   \
     type##_ref() = delete;                                              \
     type##_ref(const type##_ref &other) = default;                      \
     type##_ref(type##_ref &&other) = default;                           \

@@ -130,7 +130,7 @@ void DrvAPIThread::addressToNative(DrvAPIAddress address, void **native, std::si
 }
 
 /* callable from anywhere */
-void DrvAPIThread::nativeToAddress(void *native, DrvAPIAddress *address, std::size_t *size) {
+void DrvAPIThread::nativeToAddress(const void *native, DrvAPIAddress *address, std::size_t *size) {
     /* we are only going to support this function when using modeled memory for stack
        and we are only going to support this pointers to our own l1sp
     */
