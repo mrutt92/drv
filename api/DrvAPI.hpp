@@ -19,4 +19,5 @@
 #include <DrvAPIAddressToNative.hpp>
 #include <DrvAPINativeToAddress.hpp>
 #include <DrvAPISystem.hpp>
+#include <DrvAPIVar.hpp>
 #endif
