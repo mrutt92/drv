@@ -100,33 +100,17 @@ DRV_API_REF_CLASS_END(joiner)
 // Parallel invoke //
 /////////////////////
 
-
-/**
- * @brief parallel invoke multiple functors
- * joins with a previously created joiner
- */
-template <typename F1, typename F2>
-void parallel_invoke_sync(cello::joiner_ref jref, F1 && f1, F2 && f2) {
-    // define child task that executes f1
-    struct child_func : task {
-        child_func(cello::joiner_ref jref, F1 &&f) : _jref(jref), _f(f) {}
-        void execute() override {
-            _f();
-            _jref.join();
-        }
-        cello::joiner_ref _jref;
-        F1 _f;
-    };
-
-    // spawn the child task
-    child_func child(jref, std::forward<F1>(f1));
-    spawn(&child);
-
-    // execute f2 directly
-    f2();
-    jref.join();
-    jref.sync();
-}
+// define child task that executes f1
+template <typename F>
+struct invoke_child : task {
+    invoke_child(cello::joiner_ref jref, F &&f) : _jref(jref), _f(f) {}
+    void execute() override {
+        _f();
+        _jref.join();
+    }
+    cello::joiner_ref _jref;
+    F _f;
+};
 
 /**
  * @brief parallel invoke two functors
@@ -139,23 +123,35 @@ void parallel_invoke(F1 && f1, F2 && f2) {
     cello::joiner_ref jref(&joiner);
     jref.add(1);
 
-    // define child task that executes f1
-    struct child_func : task {
-        child_func(cello::joiner_ref jref, F1 &&f) : _jref(jref), _f(f) {}
-        void execute() override {
-            _f();
-            _jref.join();
-        }
-        cello::joiner_ref _jref;
-        F1 _f;
-    };
-
     // spawn the child task
-    child_func child(jref, std::forward<F1>(f1));
+    invoke_child<F1> child(jref, std::forward<F1>(f1));
     spawn(&child);
 
     // execute f2 directly
     f2();
+    jref.sync();
+}
+
+/**
+ * @brief parallel invoke two functors
+ * returns when all functors have completed
+ */
+template <typename F1, typename F2, typename F3>
+void parallel_invoke(F1 && f1, F2 && f2, F3 && f3) {
+    // create a joiner
+    cello::joiner joiner;
+    cello::joiner_ref jref(&joiner);
+    jref.add(1);
+
+    
+    // spawn the child task
+    invoke_child<F1> child1(jref, std::forward<F1>(f1));
+    invoke_child<F2> child2(jref, std::forward<F2>(f2));
+    spawn(&child1);
+    spawn(&child2);
+
+    // execute f2 directly
+    f3();
     jref.sync();
 }
 
