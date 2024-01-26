@@ -89,6 +89,19 @@ bool insert_dense_fast(int32_t v) {
     return (o & (1 << j)) == 0;
 }
 
+/* should only be called on a dense frontier */
+bool dense_contains(int32_t v) {
+#ifdef DEBUG
+    if (!dense()) {
+         throw std::runtime_error("dense_contains called on sparse frontier");
+    }
+#endif
+    int32_t i = v / 32;
+    int32_t j = v % 32;
+    int32_t o = vertices(i);
+    return (o & (1 << j)) != 0;
+}
+
 DRV_API_REF_CLASS_DATA_MEMBER(frontier_data, size)
 DRV_API_REF_CLASS_DATA_MEMBER(frontier_data, dense)
 DRV_API_REF_CLASS_DATA_MEMBER(frontier_data, capacity)
@@ -106,12 +119,6 @@ void swap(frontier& a, frontier& b) {
     frontier_data tmp_data;
     frontier tmp (&tmp_data);
 
-    // printf("<=== before swap ===>\n");
-    // printf("a: size=%d, dense=%d, capacity=%d, vertices=%lx\n",
-    //        (int32_t)a.size(), (int32_t)a.dense(), (int32_t)a.capacity(), (DrvAPIAddress)(pointer<int>)a.vertices());
-    // printf("b: size=%d, dense=%d, capacity=%d, vertices=%lx\n",
-    //        (int32_t)b.size(), (int32_t)b.dense(), (int32_t)b.capacity(), (DrvAPIAddress)(pointer<int>)b.vertices());
-    
     tmp.size() = (int32_t)a.size();
     tmp.dense() = (int32_t)a.dense();
     tmp.capacity() = (int32_t)a.capacity();
@@ -126,12 +133,6 @@ void swap(frontier& a, frontier& b) {
     b.dense() = (int32_t)tmp.dense();
     b.capacity() = (int32_t)tmp.capacity();
     b.vertices() = (pointer<int32_t>)tmp.vertices();
-
-    // printf("<=== after swap ===>\n");
-    // printf("a: size=%d, dense=%d, capacity=%d, vertices=%lx\n",
-    //        (int32_t)a.size(), (int32_t)a.dense(), (int32_t)a.capacity(), (DrvAPIAddress)(pointer<int>)a.vertices());
-    // printf("b: size=%d, dense=%d, capacity=%d, vertices=%lx\n",
-    //        (int32_t)b.size(), (int32_t)b.dense(), (int32_t)b.capacity(), (DrvAPIAddress)(pointer<int>)b.vertices());
 }
 
 /**
@@ -178,7 +179,7 @@ void to_dense(frontier &dst, frontier &src) {
         cello::parallel_for(0, (int32_t) src.size(), 1, [=](int32_t i) mutable {
             dst.insert_dense_fast(src.vertices(i));
         });
-        dst.size() = src.size();
+        dst.size() = (int32_t)src.size();
     }
 }
 
@@ -244,27 +245,73 @@ int CelloMain(int argc, char* argv[]) {
     curr.insert(root);
     int32_t level = 0;
     distance[root] = level;
-    
+    bool rev_not_fwd = false;
     while (curr.size() != 0) {
         level++;
         next.dense() = 1;
-        next.clear();
-        // set curr to sparse
-        to_sparse(temp, curr);
-        swap(temp, curr);
-        printf("curr.size() = %d\n", (int32_t)curr.size());
-        cello::parallel_for(0, (int32_t)curr.size(), 1, [=] (int32_t i) mutable {
-            int32_t s = curr.vertices(i);
-            int32_t s_start = fwd_offsets[s];
-            int32_t s_stop = fwd_offsets[s+1];
-            for (int32_t d_i = s_start; d_i < s_stop; d_i++) {
-                int32_t d = fwd_edges[d_i];
-                if (distance[d] == -1) {
-                    distance[d] = level;
-                    next.insert(d);
+        next.clear();        
+        // decide direction
+        DrvAPIVar<int32_t> mu = 0, mf = 0;
+        if (!rev_not_fwd) {
+            to_sparse(temp, curr);
+            swap(temp, curr);
+            // find sum degree in frontier
+            cello::parallel_for(0, (int32_t)curr.size(), 1, [=, &mf] (int32_t i) mutable {
+                int32_t src = curr.vertices(i);
+                int32_t src_start = fwd_offsets[src];
+                int32_t src_stop = fwd_offsets[src+1];
+                atomic_add(mf.address(), src_stop - src_start);
+            });
+            // find sum degree unvisited
+            cello::parallel_for(0, v, 1, [=, &mu] (int32_t i) mutable {
+                if (distance[i] == -1) {
+                    int32_t src_start = fwd_offsets[i];
+                    int32_t src_stop = fwd_offsets[i+1];
+                    atomic_add(mu.address(), src_stop - src_start);
                 }
-            }
-        });
+            });
+            rev_not_fwd = (int32_t)mf > ((int32_t)mu/20);
+        } else {
+            rev_not_fwd = curr.size() < v/20;
+        }
+        // traversal
+        if (rev_not_fwd) {
+            // set curr to dense
+            to_dense(temp, curr);
+            swap(temp, curr);
+            printf("reverse: curr.size() = %d\n", (int32_t)curr.size());
+            cello::parallel_for(0, v, 1, [=] (int32_t d) mutable {
+                if (distance[d] == -1) {
+                    int32_t s_start = rev_offsets[d];
+                    int32_t s_stop = rev_offsets[d+1];
+                    for (int32_t s_i = s_start; s_i < s_stop; s_i++) {
+                        int32_t s = rev_edges[s_i];
+                        if (curr.dense_contains(s)) {
+                            distance[d] = level;
+                            next.insert(d);
+                            break;
+                        }
+                    }
+                }
+            });
+        } else {
+            // set curr to sparse
+            to_sparse(temp, curr);
+            swap(temp, curr);
+            printf("forward: curr.size() = %d\n", (int32_t)curr.size());        
+            cello::parallel_for(0, (int32_t)curr.size(), 1, [=] (int32_t i) mutable {
+                int32_t s = curr.vertices(i);
+                int32_t s_start = fwd_offsets[s];
+                int32_t s_stop = fwd_offsets[s+1];
+                for (int32_t d_i = s_start; d_i < s_stop; d_i++) {
+                    int32_t d = fwd_edges[d_i];
+                    if (distance[d] == -1) {
+                        distance[d] = level;
+                        next.insert(d);
+                    }
+                }
+            });
+        }
         swap(curr, next);
     }
 

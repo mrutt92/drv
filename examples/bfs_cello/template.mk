@@ -19,7 +19,7 @@ SIM_OPTIONS += --core-threads=$(threads) --pod-cores=$(cores)
 SIM_OPTIONS += --pxn-pods=$(pods) --num-pxn=$(pxns)
 SIM_OPTIONS += --drvx-stack-in-l1sp
 SIM_ARGS += $(APP_PATH)/sparse-inputs/$(graph).mtx $(start)
-
+SIM_THREADS := 2
 include $(DRV_DIR)/mk/config.mk
 include $(DRV_DIR)/mk/application_common.mk
 
