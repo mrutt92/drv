@@ -141,8 +141,7 @@ void parallel_invoke(F1 && f1, F2 && f2, F3 && f3) {
     // create a joiner
     cello::joiner joiner;
     cello::joiner_ref jref(&joiner);
-    jref.add(1);
-
+    jref.add(2);
     
     // spawn the child task
     invoke_child<F1> child1(jref, std::forward<F1>(f1));

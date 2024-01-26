@@ -7,6 +7,7 @@
 #include <breadth_first_search_graph.hpp>
 #include <inttypes.h>
 #define DEBUG
+
 using namespace DrvAPI;
 
 template <typename T>
@@ -206,33 +207,25 @@ int CelloMain(int argc, char* argv[]) {
     pointer<int32_t> rev_edges = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, e*sizeof(int32_t));
     pointer<int32_t> distance = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, v*sizeof(int32_t));
 
-#ifdef PARALLEL_SETUP
     cello::parallel_invoke(
         [=](){
-#endif
             cello::parallel_for(0, v+1, 1, [=] (int32_t i) {
                 fwd_offsets[i] = ref_fwd_offsets[i];
                 rev_offsets[i] = ref_rev_offsets[i];                                   
             });
-#ifdef PARALLEL_SETUP
         },
         [=](){
-#endif
             cello::parallel_for(0, e, 1, [=] (int32_t i) {
                 fwd_edges[i] = ref_fwd_edges[i];
                 rev_edges[i] = ref_rev_edges[i];                                   
             });
-#ifdef PARALLEL_SETUP
         },
         [=](){
-#endif
             cello::parallel_for(0, v, 1, [=] (int32_t i) {
                 distance[i] = -1;
             });
-#ifdef PARALLEL_SETUP
         }
     );
-#endif
     // todo: fix parallel invoke (3)
     
     double csr_end_time = DrvAPI::seconds();
