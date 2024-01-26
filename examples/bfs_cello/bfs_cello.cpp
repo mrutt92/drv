@@ -37,9 +37,9 @@ void destroy() {
 }
 
 void clear() {
-    if (sparse()) {
+    size() = 0;
+    if (dense()) {
         size() = 0;
-    } else {
         cello::parallel_for(0, capacity()/32, 1, [=](int32_t i) {
             vertices(i) = 0;
         });
@@ -84,7 +84,7 @@ bool insert_dense_fast(int32_t v) {
 #endif
     int32_t i = v / 32;
     int32_t j = v % 32;
-    int32_t o =atomic_or(&vertices(i), 1 << j);
+    int32_t o = atomic_or(&vertices(i), 1 << j);
     return (o & (1 << j)) == 0;
 }
 
@@ -249,45 +249,42 @@ int CelloMain(int argc, char* argv[]) {
     temp.init(true, v);
 
     curr.insert(root);
+    int32_t level = 0;
+    distance[root] = level;
     
     while (curr.size() != 0) {
+        level++;
+        next.dense() = 1;
         next.clear();
         // set curr to sparse
-        //printf("to_sparse\n");
         to_sparse(temp, curr);
-        //printf("swap\n");
         swap(temp, curr);
-        //printf("curr size = %d\n", (int)curr.size());
+        printf("curr.size() = %d\n", (int32_t)curr.size());
         cello::parallel_for(0, (int32_t)curr.size(), 1, [=] (int32_t i) mutable {
             int32_t s = curr.vertices(i);
-            //printf("s = %d\n", s);
             int32_t s_start = fwd_offsets[s];
             int32_t s_stop = fwd_offsets[s+1];
-            //printf("s = %d: s_start = %d, s_stop = %d\n", s, s_start, s_stop);
             for (int32_t d_i = s_start; d_i < s_stop; d_i++) {
                 int32_t d = fwd_edges[d_i];
-                //printf("distance[%d] = %d\n", d, (int32_t)distance[d]);
                 if (distance[d] == -1) {
-                    //printf("updating %d -> %d\n", s, d);
-                    distance[d] = distance[s] + 1;
+                    distance[d] = level;
                     next.insert(d);
                 }
             }
         });
         swap(curr, next);
-        printf("next.size() = %d, curr.size() = %d\n", (int)next.size(), (int)curr.size());
-        // bool do_clear = next.size() > 0;
-        // std::swap(swap, next);
-        // next.dense() = 1;        
-
-        // if (do_clear)
-        //     next.clear();
     }
 
     double bfs_end_time = DrvAPI::seconds();
     printf("BFS TIME: %2.9lf s\n", bfs_end_time - bfs_start_time);
     DrvAPI::outputStatistics();
-    
+
+    cello::parallel_for(0, v, 1, [=] (int32_t i) {
+        if (distance[i] != ref_distance[i]) {
+            printf("distance[%d] = %d, ref_distance[%d] = %d\n",
+                   i, (int)distance[i], i, ref_distance[i]);            
+        }
+    });
     return 0;
 }
 
