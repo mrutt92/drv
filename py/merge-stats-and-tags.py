@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024 University of Washington
+
 import pandas as pd
 import argparse
 import sys
