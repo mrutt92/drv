@@ -6,6 +6,7 @@
 namespace cello
 {
 
+static constexpr int CELLO_TAG = 1;
 
 /**
  * task base class
@@ -117,7 +118,7 @@ struct invoke_child : task {
  * returns when all functors have completed
  */
 template <typename F1, typename F2>
-void parallel_invoke(F1 && f1, F2 && f2) {
+void parallel_invoke_impl(F1 && f1, F2 && f2) {
     // create a joiner
     cello::joiner joiner;
     cello::joiner_ref jref(&joiner);
@@ -136,8 +137,20 @@ void parallel_invoke(F1 && f1, F2 && f2) {
  * @brief parallel invoke two functors
  * returns when all functors have completed
  */
+template <typename F1, typename F2>
+void parallel_invoke(F1 && f1, F2 && f2) {
+    DrvAPI::DrvAPITagGuard grd(CELLO_TAG);
+    parallel_invoke_impl
+        ([&](){ DrvAPI::DrvAPITagGuard grd(DrvAPI::DEFAULT_TAG); f1(); },
+         [&](){ DrvAPI::DrvAPITagGuard grd(DrvAPI::DEFAULT_TAG); f2(); });
+}
+
+/**
+ * @brief parallel invoke two functors
+ * returns when all functors have completed
+ */
 template <typename F1, typename F2, typename F3>
-void parallel_invoke(F1 && f1, F2 && f2, F3 && f3) {
+void parallel_invoke_impl(F1 && f1, F2 && f2, F3 && f3) {
     // create a joiner
     cello::joiner joiner;
     cello::joiner_ref jref(&joiner);
@@ -152,6 +165,19 @@ void parallel_invoke(F1 && f1, F2 && f2, F3 && f3) {
     // execute f2 directly
     f3();
     jref.sync();
+}
+
+/**
+ * @brief parallel invoke two functors
+ * returns when all functors have completed
+ */
+template <typename F1, typename F2, typename F3>
+void parallel_invoke(F1 && f1, F2 && f2, F3 && f3) {
+    DrvAPI::DrvAPITagGuard grd(CELLO_TAG);
+    parallel_invoke_impl
+        ([&](){ DrvAPI::DrvAPITagGuard grd(DrvAPI::DEFAULT_TAG); f1(); },
+         [&](){ DrvAPI::DrvAPITagGuard grd(DrvAPI::DEFAULT_TAG); f2(); },
+         [&](){ DrvAPI::DrvAPITagGuard grd(DrvAPI::DEFAULT_TAG); f3(); });    
 }
 
 //////////////////
@@ -200,7 +226,7 @@ struct loop_info {
 };
 
 template <typename Idx, typename F>
-void parallel_for(const cello::loop_info<Idx> &info, F && body) {
+void parallel_for_impl(const cello::loop_info<Idx> &info, F && body) {
     if (info.leafs() == 0) {
         return;
     } else if (info.leafs() == 1) {
@@ -212,7 +238,7 @@ void parallel_for(const cello::loop_info<Idx> &info, F && body) {
             child_branch(const cello::loop_info<Idx> &info, F && body) :
                 info(info), body(body) {}
             void operator()() {
-                cello::parallel_for(info, body);
+                cello::parallel_for_impl(info, body);
             }
             loop_info<Idx> info;
             F body;
@@ -223,6 +249,14 @@ void parallel_for(const cello::loop_info<Idx> &info, F && body) {
              );
         return;
     }    
+}
+
+template <typename Idx, typename F>
+void parallel_for(const cello::loop_info<Idx> &info, F && body) {
+    DrvAPI::DrvAPITagGuard grd(CELLO_TAG);    
+    parallel_for_impl
+        (info,
+         [&](Idx i){ DrvAPI::DrvAPITagGuard grd(DrvAPI::DEFAULT_TAG); body(i); });
 }
 
 template <typename Idx, typename F>

@@ -131,6 +131,7 @@ void yield() {
 
 int cello_start(int argc, char *argv[])
 {
+    DrvAPI::DrvAPITagGuard guard(CELLO_TAG);
     DrvAPIMemoryAllocatorInit();
 
     // initialize your threads queue
@@ -142,8 +143,14 @@ int cello_start(int argc, char *argv[])
         while (*num_threads_ready_ptr() != num_threads())
             nop(32);
         auto call_main = [argc, argv](){
-            CelloMain(argc, argv);
-            terminate = 1;
+            {
+                DrvAPI::DrvAPITagGuard guard(DrvAPI::DEFAULT_TAG);
+                CelloMain(argc, argv);
+            }
+            {
+                DrvAPI::DrvAPITagGuard guard(CELLO_TAG);
+                *terminate_ptr() = 1;
+            }
         };
         task_impl <decltype(call_main)> main_task (call_main);
         
