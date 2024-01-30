@@ -18,6 +18,7 @@ APP_EXE ?= $(APP_PATH)/$(test-name)/$(APP_NAME).so
 SIM_OPTIONS += --core-threads=$(threads) --pod-cores=$(cores)
 SIM_OPTIONS += --pxn-pods=$(pods) --num-pxn=$(pxns)
 SIM_OPTIONS += --drvx-stack-in-l1sp
+SIM_OPTIONS += --core-stats --stats-load-level=3
 SIM_ARGS += $(APP_PATH)/sparse-inputs/$(graph).mtx $(start)
 SIM_THREADS := 2
 include $(DRV_DIR)/mk/config.mk
