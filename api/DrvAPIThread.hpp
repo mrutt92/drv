@@ -11,6 +11,9 @@
 #include <memory>
 namespace DrvAPI
 {
+
+static constexpr int DEFAULT_TAG = 0; //!< default tag
+
 class DrvAPIThread
 {
 public:
@@ -208,8 +211,9 @@ private:
   int core_threads_; //!< Number of threads on this core
   int pod_id_; //!< Pod id in PXN
   int pxn_id_; //!< Pxn id
-  int tag_ = 0; //!< Execution tag
   bool stack_in_modeled_memory_ = false; //!< Stack is in modeled memory
+  // for profiling
+  int tag_ = DEFAULT_TAG; //!< Execution tag
 };
 
 /**
