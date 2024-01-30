@@ -166,11 +166,6 @@ void to_sparse(frontier &dst, frontier &src) {
  * @param src a sparse frontier
  */
 void to_dense(frontier &dst, frontier &src) {
-#ifdef DEBUG
-    if (!src.sparse()) {
-        throw std::runtime_error("to_dense called on dense frontier");
-    }
-#endif
     if (src.dense()) {
         swap(dst, src);
     } else {
@@ -232,7 +227,7 @@ int CelloMain(int argc, char* argv[]) {
     double csr_end_time = DrvAPI::seconds();
 
     printf("CSR CONSTRUCTION TIME: %2.9lf s\n", csr_end_time - csr_start_time);    
-    DrvAPI::outputStatistics();
+    DrvAPI::outputStatistics("csr_construction");
 
     double bfs_start_time = DrvAPI::seconds();
     // phase 2. run bfs
@@ -317,7 +312,7 @@ int CelloMain(int argc, char* argv[]) {
 
     double bfs_end_time = DrvAPI::seconds();
     printf("BFS TIME: %2.9lf s\n", bfs_end_time - bfs_start_time);
-    DrvAPI::outputStatistics();
+    DrvAPI::outputStatistics("breadth_first_search");
 
     cello::parallel_for(0, v, 1, [=] (int32_t i) {
         if (distance[i] != ref_distance[i]) {
