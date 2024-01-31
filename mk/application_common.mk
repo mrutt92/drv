@@ -56,3 +56,13 @@ SIM_THREADS ?= 1
 run: $(APP_NAME).so
 	$(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS)
 
+run-valgrind: $(APP_NAME).so
+	valgrind --trace-children=yes $(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS)
+
+run-time: $(APP_NAME).so
+	time $(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS)
+
+TAG_BREAKDOWN_OPTIONS ?=
+.PHONY: show_tag_breakdown
+show_tag_breakdown:
+	python3 $(DRV_DIR)/py/tag_breakdown.py $(dir $(APP_EXE))/stats.csv $(dir $(APP_EXE))/tags.csv $(TAG_BREAKDOWN_OPTIONS)
