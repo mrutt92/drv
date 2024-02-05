@@ -190,6 +190,28 @@ public:
   void nativeToAddress(const void *native, DrvAPIAddress *address, std::size_t *size);
 
   /**
+   * @brief check for stack overflow
+   */
+  void checkStackOverflow();
+
+  /**
+   * @brief Get the stack remaining
+   *
+   * @return the remaining stack size
+   * 
+   * should only be called inside of the thread's context
+   */
+  size_t getStackRemaining() const {
+      if (stack_in_modeled_memory_) {
+          char *sp;
+          asm volatile("movq %%rsp, %0" : "=r"(sp));
+          return sp-(char*)stack_bottom_;
+      } else {
+          return std::numeric_limits<size_t>::max();
+      }
+  }
+
+  /**
    * @brief Get the current active thread
    * 
    * @return DrvAPIThread* 
@@ -214,6 +236,9 @@ private:
   bool stack_in_modeled_memory_ = false; //!< Stack is in modeled memory
   // for profiling
   int tag_ = DEFAULT_TAG; //!< Execution tag
+public:
+    void *stack_top_ = nullptr;
+    void *stack_bottom_ = nullptr;
 };
 
 /**

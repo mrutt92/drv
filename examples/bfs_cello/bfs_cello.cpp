@@ -202,26 +202,41 @@ int CelloMain(int argc, char* argv[]) {
     pointer<int32_t> fwd_edges = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, e*sizeof(int32_t));
     pointer<int32_t> rev_edges = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, e*sizeof(int32_t));
     pointer<int32_t> distance = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, v*sizeof(int32_t));
-
+    //#define PARALLEL_INIT
+#ifdef PARALLEL_INIT
     cello::parallel_invoke(
-        [=](){
+            [=](){
+#endif
+            printf("Initializing offsets\n");
             cello::parallel_for(0, v+1, 1, [=] (int32_t i) {
                 fwd_offsets[i] = ref_fwd_offsets[i];
-                rev_offsets[i] = ref_rev_offsets[i];                                   
+                rev_offsets[i] = ref_rev_offsets[i];
             });
+            printf("Initializing offsets done\n");
+#ifdef PARALLEL_INIT
         },
         [=](){
+#endif
+            printf("Initializing edges\n");
             cello::parallel_for(0, e, 1, [=] (int32_t i) {
                 fwd_edges[i] = ref_fwd_edges[i];
-                rev_edges[i] = ref_rev_edges[i];                                   
+                rev_edges[i] = ref_rev_edges[i];
             });
+            printf("Initializing edges done\n");
+#ifdef PARALLEL_INIT
         },
         [=](){
+#endif
+            printf("Initializing distance\n");
             cello::parallel_for(0, v, 1, [=] (int32_t i) {
                 distance[i] = -1;
             });
+            printf("Initializing distance done\n");
+#ifdef PARALLEL_INIT
         }
     );
+#endif
+
     // todo: fix parallel invoke (3)
     
     double csr_end_time = DrvAPI::seconds();
