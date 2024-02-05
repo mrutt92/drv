@@ -62,6 +62,10 @@ public:
         size_t _;
         thread_->addressToNative(stack_top, &sctx.sp, &_);
         sctx.size = thread_stack_bytes - sizeof(uint64_t);
+
+        // 5. for debugging
+        thread_->stack_top_ = sctx.sp;
+        thread_->stack_bottom_ = (char*)sctx.sp - sctx.size;
         return sctx;
     }
     void deallocate(boost::context::stack_context &sctx) {
