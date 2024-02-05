@@ -8,16 +8,23 @@
 using namespace DrvAPI;
 using namespace cello;
 
+//#define CELLO_CORE_DRVX_DEBUG
 #ifdef CELLO_CORE_DRVX_DEBUG
 #define pr_dbg(fmt, ...)                                                \
     do {                                                                \
-        printf("%s:%d: tid=%4ld: %s(): " fmt, __FILE__, __LINE__, cello::tid(), __PRETTY_FUNCTION__, ##__VA_ARGS__); } \
+        printf("DEBUG: %s:%d: tid=%4ld: %s(): " fmt, __FILE__, __LINE__, cello::tid(), __PRETTY_FUNCTION__, ##__VA_ARGS__); } \
     while (0)
 #else
 #define pr_dbg(fmt, ...)                                                \
     do {                                                                \
     } while (0)
 #endif
+#define pr_warn(fmt, ...)                                               \
+    do {                                                                \
+        static int warned = 0;                                          \
+        if (!warned++)                                                  \
+            printf("WARNING: %s:%d: tid=%4ld: %s(): " fmt, __FILE__, __LINE__, cello::tid(), __PRETTY_FUNCTION__, ##__VA_ARGS__); \
+    } while (0)
 
 namespace cello
 {
@@ -74,16 +81,21 @@ DrvAPIPointer<int64_t> terminate_ptr() {
  */
 void steal() {
     // select a random victim
+    pr_dbg("trying to steal\n");
     thread_id_t victim;
     victim.pxn    = random() % numPXNs();    
     victim.pod    = random() % numPXNPods();
     victim.core   = random() % numPodCores();
     victim.thread = random() % numCoreThreads();
 
+    pr_dbg("trying to steal from tid=%4ld\n", tid(victim));
     task_queue_ref victim_queue = task_queue_of(victim);
 
+    DrvAPI::DrvAPIVAddress vaddr{victim_queue.addressof()};
     // pop from the victim's back
     task *task = victim_queue.pop_back();
+
+    pr_dbg("popped from victim's queue, task = %p\n", task);
     if (task != nullptr) {
         // execute the task
         task->execute();
@@ -98,14 +110,15 @@ void find_work() {
     // first try to pop from your own queue
     task *task = my_task_queue().pop_front();
     if (task != nullptr) {
+        pr_dbg("popped from my own queue\n");
         // execute the task
         task->execute();
         return;
     }
+    pr_dbg("couldn't pop from my own queue\n");
     // if you can't find work, try to steal from others
     steal();
 }
-
 
 /**
  * @brief spawn a task
@@ -123,6 +136,13 @@ void spawn(task *task) {
  * 
  */
 void yield() {
+    auto *thread = DrvAPI::DrvAPIThread::current();
+    // make sure we have more than 4KB of stack left
+    if (thread->getStackRemaining() <= 2048) {
+        pr_warn("not enough stack remaining\n");
+        nop(32);
+        return;
+    }
     pr_dbg("yielding\n");
     find_work();    
 }
@@ -135,13 +155,21 @@ int cello_start(int argc, char *argv[])
     DrvAPIMemoryAllocatorInit();
 
     // initialize your threads queue
+    pr_dbg("initializing my task queue\n");
     my_task_queue().init();
     atomic_add(num_threads_ready_ptr(), 1);
-    
+
+    // poll until all threads are ready
+    int64_t ready = *num_threads_ready_ptr();
+    while (ready != num_threads()) {
+        pr_dbg("%" PRId64 "/%" PRId64 " threads are ready\n"
+               , ready
+               , num_threads());
+        nop(32);
+        ready = *num_threads_ready_ptr();
+    }
+
     if (tid() == 0) {
-        // poll until all threads are ready
-        while (*num_threads_ready_ptr() != num_threads())
-            nop(32);
         auto call_main = [argc, argv](){
             {
                 DrvAPI::DrvAPITagGuard guard(DrvAPI::DEFAULT_TAG);
