@@ -138,7 +138,7 @@ void spawn(task *task) {
 void yield() {
     auto *thread = DrvAPI::DrvAPIThread::current();
     // make sure we have more than 4KB of stack left
-    if (thread->getStackRemaining() <= 2048) {
+    if (thread->getStackRemaining() <= 4096) {
         pr_warn("not enough stack remaining\n");
         nop(32);
         return;
