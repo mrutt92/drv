@@ -33,6 +33,7 @@ CELLO_OBJECTS := $(CELLO_CXXSOURCES_DRVX:.cpp=.o)
 $(APP_NAME).so: mmio.o
 $(APP_NAME).so: read_graph.o
 $(APP_NAME).so: transpose_graph.o
+$(APP_NAME).so: triangle_counting.o
 $(APP_NAME).so: $(CELLO_OBJECTS)
 
 run: $(APP_PATH)/sparse-inputs/$(graph).mtx
