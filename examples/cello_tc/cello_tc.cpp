@@ -4,7 +4,10 @@
 #include <cello.hpp>
 #include "read_graph.hpp"
 #include "transpose_graph.hpp"
+#include "triangle_counting.hpp"
 #include <fstream>
+#include <set>
+#include <tuple>
 
 using vertex = int32_t;
 using edge = vertex;
@@ -53,20 +56,21 @@ struct timer {
     double stop;
 };
 
-vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex b_size, vertex exclude) {
+vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex b_size, [[maybe_unused]] vertex a_src, vertex b_src) {
     vertex count = 0;
     vertex i = 0;
     vertex j = 0;
+
     while (i < a_size && j < b_size) {
-        if (a[i] < b[j]) {
+        vertex a_i = a[i];
+        vertex b_j = b[j];
+        if (a_i < b_j) {
             i++;
-        } else if (a[i] > b[j]) {
-            j++;
-        } else if (a[i] != exclude) {
-            count++;
-            i++;
+        } else if (a_i > b_j) {
             j++;
         } else {
+            if (a_src < a_i && a_i < b_src)
+                count++;
             i++;
             j++;
         }
@@ -82,7 +86,10 @@ int CelloMain(int argc, char *argv[]) {
     vertex V, E;
     read_graph(graph_path, &V, &E, fwd_offsets, fwd_edges);
     transpose_graph (V, E, fwd_offsets, fwd_edges, rev_offsets, rev_edges);
-    printf("%s: V: %d, E: %d\n", graph_path.c_str(), V, E);
+
+    std::set<tc::triangle> triangles_reference;
+    tc::triangle_counting(V, E, fwd_offsets, fwd_edges, triangles_reference);
+    printf("%s: V: %d, E: %d, triangles from reference = %zu\n", graph_path.c_str(), V, E, triangles_reference.size());
 
     graph g;
 
@@ -107,19 +114,19 @@ int CelloMain(int argc, char *argv[]) {
         cello::parallel_for(0, V, 1, [=](vertex src) {
             vertex src_start = g.offsets[src];
             vertex src_end = g.offsets[src+1];
+            vertex t = 0;
             for (vertex src_e = src_start; src_e < src_end; src_e++) {
                 vertex dst = g.edges[src_e];
-                vertex t = 0;
-                if (dst < src) {
+                if (src < dst) {
                     vertex dst_start = g.offsets[dst];
                     vertex dst_end = g.offsets[dst+1];
                     // find the intersection of the two adjacency lists
                     pointer<vertex> src_neighbors = &g.edges[src_start];
                     pointer<vertex> dst_neighbors = &g.edges[dst_start];
-                    t += intersection(src_neighbors, dst_neighbors, src_end - src_start, dst_end - dst_start, dst);
+                    t += intersection(src_neighbors, dst_neighbors, src_end - src_start, dst_end - dst_start, src, dst);
                 }
-                triangles[src] = t;
             }
+            triangles[src] = t;
         });
     }
 
@@ -132,7 +139,8 @@ int CelloMain(int argc, char *argv[]) {
         });
     }
 
-    printf("Total triangles: %d\n", (vertex)total);
+    printf("Found triangles:     %9d\n", (vertex)total);
+    printf("Reference triangles: %9zu\n", triangles_reference.size());
     return 0;
 }
 
