@@ -2,6 +2,7 @@
 // Copyright (c) 2024 University of Washington
 #include <DrvAPI.hpp>
 #include <cello.hpp>
+#include <util/timer.hpp>
 #include "read_graph.hpp"
 #include "transpose_graph.hpp"
 #include <fstream>
@@ -42,20 +43,7 @@ struct graph {
     }    
 };
 
-struct timer {
-    timer(const std::string &name) : name(name) {
-        start = DrvAPI::seconds();
-    }
-
-    ~timer() {
-        stop = DrvAPI::seconds();
-        printf("%20s: Elapsed time: %2.9lf seconds\n", name.c_str(), stop - start);
-    }
-
-    std::string name;
-    double start;
-    double stop;
-};
+using namespace util;
     
 int CelloMain(int argc, char** argv) {
     std::string graph_path = argv[1];
