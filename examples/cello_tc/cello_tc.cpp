@@ -60,21 +60,36 @@ vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex 
     vertex i = 0;
     vertex j = 0;
 
+    vertex a_i = 0, b_j = 0;
+    if (i < a_size && j < b_size) {
+        a_i = a[i];
+        b_j = b[j];
+    }
+
     while (i < a_size && j < b_size) {
-        vertex a_i = a[i];
-        vertex b_j = b[j];
         if (a_i < b_j) {
-            i++;
+            a_i = a[++i];
         } else if (a_i > b_j) {
-            j++;
+            b_j = b[++j];
         } else {
             if (a_src < a_i && a_i < b_src)
                 count++;
-            i++;
-            j++;
+            a_i = a[++i];
+            b_j = b[++j];
         }
     }
     return count;
+}
+
+template <typename Body>
+void threshold_parallel_for(vertex threshold, vertex start, vertex end, Body && body) {
+    if (end-start > threshold) {
+        cello::parallel_for(start, end, 1, std::forward<Body>(body));
+    } else {
+        for (vertex i = start; i < end; i++) {
+            body(i);
+        }
+    }
 }
 
 int CelloMain(int argc, char *argv[]) {
@@ -119,18 +134,25 @@ int CelloMain(int argc, char *argv[]) {
         cello::parallel_for(0, V, 1, [=](vertex src) {
             vertex src_start = g.offsets[src];
             vertex src_end = g.offsets[src+1];
-            vertex t = 0;
-            for (vertex src_e = src_start; src_e < src_end; src_e++) {
-                vertex dst = g.edges[src_e];
-                if (src < dst) {
-                    vertex dst_start = g.offsets[dst];
-                    vertex dst_end = g.offsets[dst+1];
-                    // find the intersection of the two adjacency lists
-                    pointer<vertex> src_neighbors = &g.edges[src_start];
-                    pointer<vertex> dst_neighbors = &g.edges[dst_start];
-                    t += intersection(src_neighbors, dst_neighbors, src_end - src_start, dst_end - dst_start, src, dst);
+            vertex step = (float)E/V + 1;
+            DrvAPI::DrvAPIVar<vertex> t = 0;
+            cello::parallel_for(src_start, src_end, step, [=, &t](vertex e) {
+                vertex start = e;
+                vertex end = std::min(src_end, start + step);
+                vertex c = 0;
+                for (auto src_e = start; src_e < end; src_e++) {
+                    vertex dst = g.edges[src_e];
+                    if (src < dst) {
+                        vertex dst_start = g.offsets[dst];
+                        vertex dst_end = g.offsets[dst+1];
+                        // find the intersection of the two adjacency lists
+                        pointer<vertex> src_neighbors = &g.edges[src_start];
+                        pointer<vertex> dst_neighbors = &g.edges[dst_start];
+                        c += intersection(src_neighbors, dst_neighbors, src_end - src_start, dst_end - dst_start, src, dst);
+                    }
                 }
-            }
+                DrvAPI::atomic_add<vertex>(t.address(), c);
+            });
             triangles[src] = t;
         });
     }
