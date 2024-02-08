@@ -39,8 +39,13 @@ get-from-uflorida :=
 # misc
 $(call uflorida,bcsstk15,https://suitesparse-collection-website.herokuapp.com/MM/HB/bcsstk15.tar.gz)
 $(call uflorida,offshore,https://suitesparse-collection-website.herokuapp.com/MM/Um/offshore.tar.gz)
+$(call uflorida,p2p-Gnutella08,https://suitesparse-collection-website.herokuapp.com/MM/SNAP/p2p-Gnutella08.tar.gz)
+$(call uflorida,mycielskian4,https://suitesparse-collection-website.herokuapp.com/MM/Mycielski/mycielskian4.tar.gz)
+$(call uflorida,mycielskian9,https://suitesparse-collection-website.herokuapp.com/MM/Mycielski/mycielskian9.tar.gz)
+$(call uflorida,ca-GrQc,https://suitesparse-collection-website.herokuapp.com/MM/SNAP/ca-GrQc.tar.gz)
 # networks
 $(call uflorida,wiki-Vote,https://suitesparse-collection-website.herokuapp.com/MM/SNAP/wiki-Vote.tar.gz)
+$(call uflorida,email-Eu-core,https://suitesparse-collection-website.herokuapp.com/MM/SNAP/email-Eu-core.tar.gz)
 $(call uflorida,email-Enron,https://suitesparse-collection-website.herokuapp.com/MM/SNAP/email-Enron.tar.gz)
 $(call uflorida,web-NotreDame,https://suitesparse-collection-website.herokuapp.com/MM/SNAP/web-NotreDame.tar.gz)
 $(call uflorida,web-Stanford,https://suitesparse-collection-website.herokuapp.com/MM/SNAP/web-Stanford.tar.gz)
