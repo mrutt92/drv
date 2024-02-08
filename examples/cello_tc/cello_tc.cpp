@@ -124,8 +124,7 @@ int CelloMain(int argc, char *argv[]) {
             vertex src_start = g.offsets[src];
             vertex src_end = g.offsets[src+1];
             vertex step = (float)E/V + 1;
-            DrvAPI::DrvAPIVar<vertex> t = 0;
-            cello::parallel_for(src_start, src_end, step, [=, &t](vertex e) {
+            cello::parallel_for(src_start, src_end, step, [=](vertex e) {
                 vertex start = e;
                 vertex end = std::min(src_end, start + step);
                 vertex c = 0;
@@ -140,9 +139,8 @@ int CelloMain(int argc, char *argv[]) {
                         c += intersection(src_neighbors, dst_neighbors, src_end - src_start, dst_end - dst_start, src, dst);
                     }
                 }
-                DrvAPI::atomic_add<vertex>(t.address(), c);
+                DrvAPI::atomic_add<vertex>(&triangles[src], c);
             });
-            triangles[src] = t;
         });
     }
 
