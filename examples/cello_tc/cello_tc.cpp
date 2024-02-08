@@ -81,17 +81,6 @@ vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex 
     return count;
 }
 
-template <typename Body>
-void threshold_parallel_for(vertex threshold, vertex start, vertex end, Body && body) {
-    if (end-start > threshold) {
-        cello::parallel_for(start, end, 1, std::forward<Body>(body));
-    } else {
-        for (vertex i = start; i < end; i++) {
-            body(i);
-        }
-    }
-}
-
 int CelloMain(int argc, char *argv[]) {
     // Read the graph
     std::string graph_path = argv[1];
