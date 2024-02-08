@@ -8,7 +8,6 @@
 #include <fstream>
 #include <set>
 #include <tuple>
-
 using vertex = int32_t;
 using edge = vertex;
 
@@ -86,6 +85,12 @@ int CelloMain(int argc, char *argv[]) {
     vertex V, E;
     read_graph(graph_path, &V, &E, fwd_offsets, fwd_edges);
     transpose_graph (V, E, fwd_offsets, fwd_edges, rev_offsets, rev_edges);
+
+    // assert that the graph is undirected
+    if (fwd_offsets != rev_offsets || fwd_edges != rev_edges) {
+        std::string msg = "Graph '" + graph_path + "' is not undirected";
+        throw std::runtime_error(msg.c_str());
+    }
 
     std::set<tc::triangle> triangles_reference;
     tc::triangle_counting(V, E, fwd_offsets, fwd_edges, triangles_reference);
