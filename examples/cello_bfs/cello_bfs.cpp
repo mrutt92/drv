@@ -8,6 +8,13 @@
 #include <inttypes.h>
 #include <util/timer.hpp>
 
+#ifdef DEBUG
+#define pr_dbg(fmt, ...)                        \
+    do { printf(fmt, ##__VA_ARGS__); } while (0)
+#else
+#define pr_dbg(fmt, ...)
+#endif
+
 using namespace DrvAPI;
 
 template <typename T>
@@ -210,7 +217,6 @@ int CelloMain(int argc, char* argv[]) {
         cello::parallel_invoke(
             [=](){
 #endif
-                printf("Initializing offsets\n");
                 cello::parallel_for(0, v+1, 1, [=] (int32_t i) {
                     fwd_offsets[i] = ref_fwd_offsets[i];
                     rev_offsets[i] = ref_rev_offsets[i];
@@ -220,7 +226,6 @@ int CelloMain(int argc, char* argv[]) {
             },
             [=](){
 #endif
-                printf("Initializing edges\n");
                 cello::parallel_for(0, e, 1, [=] (int32_t i) {
                     fwd_edges[i] = ref_fwd_edges[i];
                     rev_edges[i] = ref_rev_edges[i];
@@ -230,7 +235,6 @@ int CelloMain(int argc, char* argv[]) {
             },
             [=](){
 #endif
-                printf("Initializing distance\n");
                 cello::parallel_for(0, v, 1, [=] (int32_t i) {
                     distance[i] = -1;
                 });
@@ -262,6 +266,7 @@ int CelloMain(int argc, char* argv[]) {
     int32_t level = 0;
     distance[root] = level;
     bool rev_not_fwd = false;
+    bool switched = false;
     {
         timer _("bfs");
         while (curr.size() != 0) {
@@ -271,7 +276,7 @@ int CelloMain(int argc, char* argv[]) {
             next.clear();        
             // decide direction
             DrvAPIVar<int32_t> mu = 0, mf = 0;
-            if (!rev_not_fwd) {
+            if (!rev_not_fwd && !switched) {
                 to_sparse(temp, curr);
                 swap(temp, curr);
                 // find sum degree in frontier
@@ -289,16 +294,26 @@ int CelloMain(int argc, char* argv[]) {
                         atomic_add(mu.address(), src_stop - src_start);
                     }
                 });
+                pr_dbg("mf = %d, mu = %d, mu/20 = %d\n"
+                       ,(int32_t)mf
+                       ,(int32_t)mu
+                       ,(int32_t)mu/20
+                       );
                 rev_not_fwd = (int32_t)mf > ((int32_t)mu/20);
             } else {
-                rev_not_fwd = curr.size() < v/20;
+                pr_dbg("curr.size() = %d, v/20 = %d\n"
+                       ,(int32_t)curr.size()
+                       ,v/20
+                       );
+                rev_not_fwd = curr.size() >= v/20;
+                switched = true;
             }
             // traversal
             if (rev_not_fwd) {
                 // set curr to dense
                 to_dense(temp, curr);
                 swap(temp, curr);
-                printf("reverse: curr.size() = %d\n", (int32_t)curr.size());
+                pr_dbg("reverse: curr.size() = %d\n", (int32_t)curr.size());
                 cello::parallel_for(0, v, 1, [=] (int32_t d) mutable {
                     if (distance[d] == -1) {
                         int32_t s_start = rev_offsets[d];
@@ -317,7 +332,7 @@ int CelloMain(int argc, char* argv[]) {
                 // set curr to sparse
                 to_sparse(temp, curr);
                 swap(temp, curr);
-                printf("forward: curr.size() = %d\n", (int32_t)curr.size());        
+                pr_dbg("forward: curr.size() = %d\n", (int32_t)curr.size());        
                 cello::parallel_for(0, (int32_t)curr.size(), 1, [=] (int32_t i) mutable {
                     int32_t s = curr.vertices(i);
                     int32_t s_start = fwd_offsets[s];
