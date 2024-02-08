@@ -6,7 +6,7 @@
 #include <transpose_graph.hpp>
 #include <breadth_first_search_graph.hpp>
 #include <inttypes.h>
-#define DEBUG
+#include <util/timer.hpp>
 
 using namespace DrvAPI;
 
@@ -202,131 +202,139 @@ int CelloMain(int argc, char* argv[]) {
     pointer<int32_t> fwd_edges = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, e*sizeof(int32_t));
     pointer<int32_t> rev_edges = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, e*sizeof(int32_t));
     pointer<int32_t> distance = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, v*sizeof(int32_t));
-    //#define PARALLEL_INIT
+
+    using namespace util;
+    {
+        timer _("csr construction");
 #ifdef PARALLEL_INIT
-    cello::parallel_invoke(
+        cello::parallel_invoke(
             [=](){
 #endif
-            printf("Initializing offsets\n");
-            cello::parallel_for(0, v+1, 1, [=] (int32_t i) {
-                fwd_offsets[i] = ref_fwd_offsets[i];
-                rev_offsets[i] = ref_rev_offsets[i];
-            });
-            printf("Initializing offsets done\n");
+                printf("Initializing offsets\n");
+                cello::parallel_for(0, v+1, 1, [=] (int32_t i) {
+                    fwd_offsets[i] = ref_fwd_offsets[i];
+                    rev_offsets[i] = ref_rev_offsets[i];
+                });
+                printf("Initializing offsets done\n");
 #ifdef PARALLEL_INIT
-        },
-        [=](){
+            },
+            [=](){
 #endif
-            printf("Initializing edges\n");
-            cello::parallel_for(0, e, 1, [=] (int32_t i) {
-                fwd_edges[i] = ref_fwd_edges[i];
-                rev_edges[i] = ref_rev_edges[i];
-            });
-            printf("Initializing edges done\n");
+                printf("Initializing edges\n");
+                cello::parallel_for(0, e, 1, [=] (int32_t i) {
+                    fwd_edges[i] = ref_fwd_edges[i];
+                    rev_edges[i] = ref_rev_edges[i];
+                });
+                printf("Initializing edges done\n");
 #ifdef PARALLEL_INIT
-        },
-        [=](){
+            },
+            [=](){
 #endif
-            printf("Initializing distance\n");
-            cello::parallel_for(0, v, 1, [=] (int32_t i) {
-                distance[i] = -1;
-            });
-            printf("Initializing distance done\n");
+                printf("Initializing distance\n");
+                cello::parallel_for(0, v, 1, [=] (int32_t i) {
+                    distance[i] = -1;
+                });
+                printf("Initializing distance done\n");
 #ifdef PARALLEL_INIT
-        }
-    );
+            }
+        );
 #endif
-
+    }
     // todo: fix parallel invoke (3)
     
     double csr_end_time = DrvAPI::seconds();
 
-    printf("CSR CONSTRUCTION TIME: %2.9lf s\n", csr_end_time - csr_start_time);    
     DrvAPI::outputStatistics("breadth_first_search_start");
 
     double bfs_start_time = DrvAPI::seconds();
     // phase 2. run bfs
+
     frontier_data f_data [3];
     frontier curr(&f_data[0]), next(&f_data[1]), temp(&f_data[2]);
-    curr.init(true, v);
-    next.init(true, v);
-    temp.init(true, v);
+    {
+        timer _("frontier init");        
+        curr.init(true, v);
+        next.init(true, v);
+        temp.init(true, v);
+    }
 
     curr.insert(root);
     int32_t level = 0;
     distance[root] = level;
     bool rev_not_fwd = false;
-    while (curr.size() != 0) {
-        level++;
-        next.dense() = 1;
-        next.clear();        
-        // decide direction
-        DrvAPIVar<int32_t> mu = 0, mf = 0;
-        if (!rev_not_fwd) {
-            to_sparse(temp, curr);
-            swap(temp, curr);
-            // find sum degree in frontier
-            cello::parallel_for(0, (int32_t)curr.size(), 1, [=, &mf] (int32_t i) mutable {
-                int32_t src = curr.vertices(i);
-                int32_t src_start = fwd_offsets[src];
-                int32_t src_stop = fwd_offsets[src+1];
-                atomic_add(mf.address(), src_stop - src_start);
-            });
-            // find sum degree unvisited
-            cello::parallel_for(0, v, 1, [=, &mu] (int32_t i) mutable {
-                if (distance[i] == -1) {
-                    int32_t src_start = fwd_offsets[i];
-                    int32_t src_stop = fwd_offsets[i+1];
-                    atomic_add(mu.address(), src_stop - src_start);
-                }
-            });
-            rev_not_fwd = (int32_t)mf > ((int32_t)mu/20);
-        } else {
-            rev_not_fwd = curr.size() < v/20;
-        }
-        // traversal
-        if (rev_not_fwd) {
-            // set curr to dense
-            to_dense(temp, curr);
-            swap(temp, curr);
-            printf("reverse: curr.size() = %d\n", (int32_t)curr.size());
-            cello::parallel_for(0, v, 1, [=] (int32_t d) mutable {
-                if (distance[d] == -1) {
-                    int32_t s_start = rev_offsets[d];
-                    int32_t s_stop = rev_offsets[d+1];
-                    for (int32_t s_i = s_start; s_i < s_stop; s_i++) {
-                        int32_t s = rev_edges[s_i];
-                        if (curr.dense_contains(s)) {
-                            distance[d] = level;
-                            next.insert(d);
-                            break;
+    {
+        timer _("bfs");
+        while (curr.size() != 0) {
+            timer _("bfs iter " + std::to_string(level));
+            level++;
+            next.dense() = 1;
+            next.clear();        
+            // decide direction
+            DrvAPIVar<int32_t> mu = 0, mf = 0;
+            if (!rev_not_fwd) {
+                to_sparse(temp, curr);
+                swap(temp, curr);
+                // find sum degree in frontier
+                cello::parallel_for(0, (int32_t)curr.size(), 1, [=, &mf] (int32_t i) mutable {
+                    int32_t src = curr.vertices(i);
+                    int32_t src_start = fwd_offsets[src];
+                    int32_t src_stop = fwd_offsets[src+1];
+                    atomic_add(mf.address(), src_stop - src_start);
+                });
+                // find sum degree unvisited
+                cello::parallel_for(0, v, 1, [=, &mu] (int32_t i) mutable {
+                    if (distance[i] == -1) {
+                        int32_t src_start = fwd_offsets[i];
+                        int32_t src_stop = fwd_offsets[i+1];
+                        atomic_add(mu.address(), src_stop - src_start);
+                    }
+                });
+                rev_not_fwd = (int32_t)mf > ((int32_t)mu/20);
+            } else {
+                rev_not_fwd = curr.size() < v/20;
+            }
+            // traversal
+            if (rev_not_fwd) {
+                // set curr to dense
+                to_dense(temp, curr);
+                swap(temp, curr);
+                printf("reverse: curr.size() = %d\n", (int32_t)curr.size());
+                cello::parallel_for(0, v, 1, [=] (int32_t d) mutable {
+                    if (distance[d] == -1) {
+                        int32_t s_start = rev_offsets[d];
+                        int32_t s_stop = rev_offsets[d+1];
+                        for (int32_t s_i = s_start; s_i < s_stop; s_i++) {
+                            int32_t s = rev_edges[s_i];
+                            if (curr.dense_contains(s)) {
+                                distance[d] = level;
+                                next.insert(d);
+                                break;
+                            }
                         }
                     }
-                }
-            });
-        } else {
-            // set curr to sparse
-            to_sparse(temp, curr);
-            swap(temp, curr);
-            printf("forward: curr.size() = %d\n", (int32_t)curr.size());        
-            cello::parallel_for(0, (int32_t)curr.size(), 1, [=] (int32_t i) mutable {
-                int32_t s = curr.vertices(i);
-                int32_t s_start = fwd_offsets[s];
-                int32_t s_stop = fwd_offsets[s+1];
-                for (int32_t d_i = s_start; d_i < s_stop; d_i++) {
-                    int32_t d = fwd_edges[d_i];
-                    if (distance[d] == -1) {
-                        distance[d] = level;
-                        next.insert(d);
+                });
+            } else {
+                // set curr to sparse
+                to_sparse(temp, curr);
+                swap(temp, curr);
+                printf("forward: curr.size() = %d\n", (int32_t)curr.size());        
+                cello::parallel_for(0, (int32_t)curr.size(), 1, [=] (int32_t i) mutable {
+                    int32_t s = curr.vertices(i);
+                    int32_t s_start = fwd_offsets[s];
+                    int32_t s_stop = fwd_offsets[s+1];
+                    for (int32_t d_i = s_start; d_i < s_stop; d_i++) {
+                        int32_t d = fwd_edges[d_i];
+                        if (distance[d] == -1) {
+                            distance[d] = level;
+                            next.insert(d);
+                        }
                     }
-                }
-            });
+                });
+            }
+            swap(curr, next);
         }
-        swap(curr, next);
     }
 
-    double bfs_end_time = DrvAPI::seconds();
-    printf("BFS TIME: %2.9lf s\n", bfs_end_time - bfs_start_time);
     DrvAPI::outputStatistics("breadth_first_search_end");
 
     cello::parallel_for(0, v, 1, [=] (int32_t i) {

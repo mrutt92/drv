@@ -12,6 +12,8 @@ vpath %.c   $(APP_PATH)
 vpath %.cpp $(APP_PATH)
 vpath %.c   $(DRV_DIR)/common/sparse_matrix_helpers
 vpath %.cpp $(DRV_DIR)/common/sparse_matrix_helpers
+vpath %.c   $(DRV_DIR)/common/util
+vpath %.cpp $(DRV_DIR)/common/util
 
 APP_EXE ?= $(APP_PATH)/$(test-name)/$(APP_NAME).so
 
@@ -30,6 +32,7 @@ include $(DRV_DIR)/mk/application_common.mk
 
 CXXFLAGS += $(CELLO_CXXFLAGS)
 CXXFLAGS += -I$(DRV_DIR)/common/sparse_matrix_helpers
+CXXFLAGS += -I$(DRV_DIR)/common/
 CELLO_OBJECTS := $(CELLO_CXXSOURCES_DRVX:.cpp=.o)
 
 $(APP_NAME).so: mmio.o

@@ -2,6 +2,7 @@
 // Copyright (c) 2024 University of Washington
 #include <DrvAPI.hpp>
 #include <cello.hpp>
+#include <util/timer.hpp>
 #include "read_graph.hpp"
 #include "transpose_graph.hpp"
 #include "triangle_counting.hpp"
@@ -40,21 +41,6 @@ struct graph {
     }
 };
 
-struct timer {
-    timer(const std::string &name) : name(name) {
-        start = DrvAPI::seconds();
-    }
-
-    ~timer() {
-        stop = DrvAPI::seconds();
-        printf("%20s: Elapsed time: %2.9lf seconds\n", name.c_str(), stop - start);
-    }
-
-    std::string name;
-    double start;
-    double stop;
-};
-
 vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex b_size, [[maybe_unused]] vertex a_src, vertex b_src) {
     vertex count = 0;
     vertex i = 0;
@@ -80,6 +66,8 @@ vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex 
     }
     return count;
 }
+
+using namespace util;
 
 int CelloMain(int argc, char *argv[]) {
     // Read the graph
