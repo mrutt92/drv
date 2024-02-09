@@ -114,6 +114,12 @@ DRV_API_REF_CLASS_BEGIN(nonzero)
     operator nonzero() {
         return nonzero{idx(), val()};
     }
+    std::string to_string() const {
+        nonzero n;
+        n.idx = idx();
+        n.val = val();
+        return n.to_string();
+    }
 DRV_API_REF_CLASS_END(nonzero)
 
 // pointer type
@@ -152,6 +158,17 @@ DRV_API_REF_CLASS_BEGIN(sparse_matrix)
     handle_t<idx_t> rowptr(idx_t i) {
         pointer_t<idx_t> p = rowptr();
         return p[i];
+    }
+
+    pointer_t<nonzero> nonzerosof(idx_t i) {
+        pointer_t<nonzero> p = nonzeros();
+        idx_t off = rowptr(i);
+        return &p[off];
+    }
+
+    idx_t nnzof(idx_t i) {
+        pointer_t<idx_t> p = rowptr();
+        return p[i+1] - p[i];
     }
 
     DRV_API_REF_CLASS_DATA_MEMBER(sparse_matrix, nonzeros)
@@ -305,11 +322,13 @@ void merge(vector_ref o, vector_ref i0, vector_ref i1, merge_value &&mergef) {
  */
 struct sparse_matrix_product {
     idx_t rows;
+    idx_t cols;
     pointer_t<vector> row_data;
 };
 
 DRV_API_REF_CLASS_BEGIN(sparse_matrix_product)
 DRV_API_REF_CLASS_DATA_MEMBER(sparse_matrix_product, rows)
+DRV_API_REF_CLASS_DATA_MEMBER(sparse_matrix_product, cols)
 DRV_API_REF_CLASS_DATA_MEMBER(sparse_matrix_product, row_data)
 
 vector_ref row_data(idx_t i) {
@@ -324,7 +343,107 @@ idx_t get_rows() const {
 
 void init(sparse_matrix_ref I0, sparse_matrix_ref I1) {
     rows() = I0.get_rows();
-    row_data() = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, rows()*sizeof(vector));
+    cols() = I1.get_cols();
+    row_data() = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, (1+rows())*sizeof(vector));
+    row_data(rows()).size() = 0;    
+}
+
+operator sparse_matrix() {
+    auto ceil_log2 = [](idx_t x) -> idx_t {
+        idx_t y = 0;
+        while (x > 0) {
+            x >>= 1;
+            y++;
+        }
+        return y;
+    };
+    auto floor_log2 = [](idx_t x) -> idx_t {
+        idx_t y = 0;
+        while (x > 1) {
+            x >>= 1;
+            y++;
+        }
+        return y;
+    };
+    auto tree_lchild = [](idx_t root)  -> idx_t { return 2*root + 1; };
+    auto tree_rchild = [](idx_t root)  -> idx_t { return 2*root + 2; };
+    auto tree_levels = [ceil_log2](idx_t leafs) -> idx_t { return ceil_log2(leafs); };
+
+    sparse_matrix O_data;
+    sparse_matrix_ref O(&O_data);
+    // 0. allocate row vector
+    O.rows() = (idx_t)rows();
+    O.cols() = (idx_t)cols();
+    idx_t N = O.rows()+1;
+    O.rowptr() = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, N*sizeof(idx_t));
+    idx_t regions = std::min(8*cello::num_threads(), (long)N);
+    idx_t tree_size = ceil_log2(regions);
+    pointer_t<idx_t> tree = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, tree_size*sizeof(idx_t));
+    cello::parallel_for(0, tree_size, 1, [tree](idx_t i) mutable {
+        tree[i] = 0;
+    });
+    // 1. computer row vector with prefix sum
+    // 1. i. compute local nnz in each region
+    cello::parallel_for(0, regions, 1, [=](idx_t i) mutable {
+        idx_t region_size = (N + regions - 1) / regions;
+        idx_t start = i * region_size;
+        idx_t end = std::min(start + region_size, N);
+        idx_t nnz = 0;
+        for (idx_t j = start; j < end; j++) {
+            O.rowptr(j) = nnz;
+            nnz += row_data(j).size();
+        }
+        idx_t r = 0;
+        idx_t m = regions;
+        idx_t L = tree_levels(m);
+        for (idx_t l = 0; l < L; l++) {
+            DrvAPI::atomic_add(&tree[r], nnz);
+            m >>= 1;
+            if (m & i) {
+                r = tree_rchild(r);
+            } else {
+                r = tree_lchild(r);
+            }
+        }
+    });
+    // 1. ii. update region with nnz from its subtree
+    cello::parallel_for(0, regions, 1, [=](idx_t i) mutable {
+        idx_t region_size = (N + regions - 1) / regions;
+        idx_t start = i * region_size;
+        idx_t end = std::min(start + region_size, N);
+        idx_t nnz = 0;
+        idx_t r = 0;
+        idx_t m = regions;
+        idx_t L = tree_levels(m);
+        for (idx_t l = 0; l < L; l++) {
+            m >>= 1;
+            if (i & m) {
+                nnz += tree[tree_lchild(r)];
+                r = tree_rchild(r);
+            } else {
+                r = tree_lchild(r);
+            }
+        }
+
+        for (idx_t j = start; j < end; j++) {
+            idx_t r = DrvAPI::atomic_add(&O.rowptr(j), nnz);
+        }
+    });
+    // 2. allocate flat nonzero vector
+    pr_dbg("allocating float nonzero vector (size = %d)\n", (idx_t)O.rowptr(O.rows()));
+    O.nonzeros() = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, O.rowptr(O.rows()) * sizeof(nonzero));
+    // 3. copy nonzeros into flat nonzero vector
+    cello::parallel_for(0, (idx_t)O.rows(), 1, [O, this](idx_t i) mutable {
+        idx_t nnz = O.nnzof(i);
+        vector_ref src = row_data(i);
+        pointer_t<nonzero> dst = O.nonzerosof(i);
+        for (idx_t j = 0; j < src.size(); j++) {            
+            nonzero_ref r(&src[j]);
+            dst[j] = (nonzero)r;
+        }
+    });
+    DrvAPIMemoryFree(tree);
+    return O_data;
 }
 
 DRV_API_REF_CLASS_END(sparse_matrix_product)
@@ -418,7 +537,8 @@ int CelloMain(int argc, char** argv) {
     }
     // compare result to reference output
     {
-        timer _("compare to reference");
+        timer _("check product");
+        pr_dbg("reference{rows,nnz} = %4d, %4d\n", (idx_t)reference.rows(), (idx_t)reference.nonZeros());
         sparse_matrix_product_ref O(&O_data);
         pr_dbg("O.rows = %d\n", (idx_t)O.get_rows());
         for (idx_t i = 0; i < O.rows(); i++) {
@@ -441,9 +561,9 @@ int CelloMain(int argc, char** argv) {
                 float v = itr->second;
                 auto ito = o_row.find(j);
                 if (ito == o_row.end()) {
-                    printf("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, 0.0f, i, j, v);
+                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, 0.0f, i, j, v);
                 } else if (v != ito->second) {
-                    printf("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, ito->second, i, j, v);
+                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, ito->second, i, j, v);
                 }
             }
             for (auto ito = o_row.begin(); ito != o_row.end(); ito++) {
@@ -451,16 +571,57 @@ int CelloMain(int argc, char** argv) {
                 float v = ito->second;
                 auto itr = ref_row.find(j);
                 if (itr == ref_row.end()) {
-                    printf("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, v, i, j, 0.0f);
+                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, v, i, j, 0.0f);
                 }
             }
         }        
     }
     
     // convert product to csr
+    sparse_matrix O_data_csr;
     {
         timer _("product to csr");
+        sparse_matrix_product_ref O(&O_data);
+        O_data_csr = (sparse_matrix)O;
     }
+
+    // compare csr product to reference output
+    {
+        timer _("check csr");
+        sparse_matrix_ref O(&O_data_csr);
+        for (idx_t i = 0; i < O.rows(); i++) {
+            Eigen::SparseVector<float> ref = reference.row(i);
+            std::map<idx_t, float> ref_row, o_row;
+            for (Eigen::SparseVector<float>::InnerIterator it(ref); it; ++it) {
+                idx_t j = it.index();
+                float v = it.value();
+                ref_row.insert(std::pair<idx_t, float>(j, v));
+            }
+            for (idx_t j = 0; j < O.nnzof(i); j++) {
+                nonzero nz = O.nonzerosof(i)[j];
+                o_row.insert(std::pair<idx_t, float>(nz.idx, nz.val));
+            }
+            for (auto itr = ref_row.begin(); itr != ref_row.end(); itr++) {
+                idx_t j = itr->first;
+                float v = itr->second;
+                auto ito = o_row.find(j);
+                if (ito == o_row.end()) {
+                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, 0.0f, i, j, v);
+                } else if (v != ito->second) {
+                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, ito->second, i, j, v);
+                }
+            }
+            for (auto ito = o_row.begin(); ito != o_row.end(); ito++) {
+                idx_t j = ito->first;
+                float v = ito->second;
+                auto itr = ref_row.find(j);
+                if (itr == ref_row.end()) {
+                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, v, i, j, 0.0f);
+                }
+            }
+        }
+    }
+    
     return 0;
 }
 
