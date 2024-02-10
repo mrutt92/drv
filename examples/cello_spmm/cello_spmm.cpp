@@ -456,7 +456,8 @@ sparse_matrix_product operator*(sparse_matrix_ref I0, sparse_matrix_ref I1)
     sparse_matrix_product O_data;
     sparse_matrix_product_ref O(&O_data);
     O.init(I0, I1);
-    cello::parallel_for(0, O.get_rows(), 1, [I0, I1, O](idx_t i) mutable {
+    std::atomic<idx_t> rows_done(0);
+    cello::parallel_for(0, O.get_rows(), 1, [I0, I1, O, &rows_done](idx_t i) mutable {
         idx_t nnz = 0;
         // initialize buffers
         vector nonzero_buffers[3];
@@ -494,6 +495,10 @@ sparse_matrix_product operator*(sparse_matrix_ref I0, sparse_matrix_ref I1)
         pr_dbg("O[%4d;].size() = %4d\n", i, (idx_t)result_buffer.size());
         O.row_data(i) = (vector)result_buffer;
         pr_dbg("O[%4d;] = [%s]\n", i, O.row_data(i).to_string().c_str());
+        idx_t done = rows_done++;
+        if (done % 10 == 0) {
+            printf("\trows_done = %d\n", done);
+        }
     });
     return O_data;
 }
