@@ -8,7 +8,7 @@
 #include <fstream>
 
 #ifndef ITERATIONS
-#define ITERATIONS 2
+#define ITERATIONS 10
 #endif
 
 using vertex = int32_t;
