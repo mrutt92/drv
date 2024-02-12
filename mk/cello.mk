@@ -13,4 +13,7 @@ CELLO_CXXSOURCES_DRVX += cello_core_drvx.cpp
 CELLO_LDFLAGS_DRVX +=
 CELLO_LDFLAGS_DRVR +=
 
+# common model options for the simulator
+SIM_OPTIONS += --drvx-stack-in-l1sp
+SIM_OPTIONS += --core-stats --stats-load-level=3
 endif
