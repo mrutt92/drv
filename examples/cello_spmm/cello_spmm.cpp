@@ -376,7 +376,8 @@ operator sparse_matrix() {
     O.cols() = (idx_t)cols();
     idx_t N = O.rows()+1;
     O.rowptr() = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, N*sizeof(idx_t));
-    idx_t regions = std::min(8*cello::num_threads(), (long)N);
+    idx_t regions = std::min(1l<<floor_log2(8*cello::num_threads()),
+                             1l<<floor_log2(N));
     idx_t tree_size = ceil_log2(regions);
     pointer_t<idx_t> tree = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, tree_size*sizeof(idx_t));
     cello::parallel_for(0, tree_size, 1, [tree](idx_t i) mutable {
@@ -597,6 +598,9 @@ int CelloMain(int argc, char** argv) {
         for (idx_t i = 0; i < O.rows(); i++) {
             Eigen::SparseVector<float> ref = reference.row(i);
             std::map<idx_t, float> ref_row, o_row;
+            if (O.nnzof(i) != ref.nonZeros()) {
+                pr_error("O[%4d;].nnz = %4d, Ref[%4d;].nnz = %4ld\n", i, O.nnzof(i), i, ref.nonZeros());
+            }
             for (Eigen::SparseVector<float>::InnerIterator it(ref); it; ++it) {
                 idx_t j = it.index();
                 float v = it.value();
