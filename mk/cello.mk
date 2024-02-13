@@ -19,5 +19,5 @@ SIM_OPTIONS += --core-stats --stats-load-level=3
 SIM_OPTIONS += --core-clock=125MHz
 SIM_OPTIONS += --dram-access-time=70ns
 SIM_OPTIONS += --pxn-dram-banks=1
-SIM_OPTIONS += --pod-l2sp-banks=1
+SIM_OPTIONS += --pod-l2sp-banks=2
 endif
