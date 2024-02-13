@@ -1,8 +1,16 @@
-####################
-# CHANGE ME: TESTS #
-####################
-# TESTS += $(call test-name,[threads],[cores],[pods],[pxns],[graph])
-TESTS += $(call test-name,1,1,1,1,u10k16)
-TESTS += $(call test-name,16,8,1,1,u10k16)
-TESTS += $(call test-name,16,8,1,1,u16k16)
-
+TESTS += $(call test-name,1,1,1,1,u12k16,0)
+TESTS += $(call test-name,2,1,1,1,u12k16,0)
+TESTS += $(call test-name,3,1,1,1,u12k16,0)
+TESTS += $(call test-name,4,1,1,1,u12k16,0)
+TESTS += $(call test-name,1,2,1,1,u12k16,0)
+TESTS += $(call test-name,2,2,1,1,u12k16,0)
+TESTS += $(call test-name,3,2,1,1,u12k16,0)
+TESTS += $(call test-name,4,2,1,1,u12k16,0)
+TESTS += $(call test-name,1,4,1,1,u12k16,0)
+TESTS += $(call test-name,2,4,1,1,u12k16,0)
+TESTS += $(call test-name,3,4,1,1,u12k16,0)
+TESTS += $(call test-name,4,4,1,1,u12k16,0)
+TESTS += $(call test-name,1,8,1,1,u12k16,0)
+TESTS += $(call test-name,2,8,1,1,u12k16,0)
+TESTS += $(call test-name,3,8,1,1,u12k16,0)
+TESTS += $(call test-name,4,8,1,1,u12k16,0)
