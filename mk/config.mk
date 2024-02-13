@@ -11,6 +11,7 @@ include $(DRV_DIR)/mk/application_config.mk
 
 ifndef NO_DRVR
   include $(DRV_DIR)/mk/ramulator_config.mk
+  include $(DRV_DIR)/mk/dramsim3_config.mk
   include $(DRV_DIR)/mk/riscv_config.mk
 endif
 
