@@ -53,6 +53,15 @@ SCRIPT ?= PANDOHammerDrvX.py
 SIM_THREADS ?= 1
 
 .PHONY: run
+run run-valgrind run-time: sim_args.log
+run run-valgrind run-time: sim_options.log
+
+sim_args.log:
+	@echo $(SIM_ARGS) > $@
+
+sim_options.log:
+	@echo $(SIM_OPTIONS) > $@
+
 run: $(APP_NAME).so
 	$(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS) | tee run.log
 
