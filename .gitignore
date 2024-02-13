@@ -6,3 +6,5 @@ install/
 deps/
 tests/__pycache__/
 *.csv
+dramsim3.*
+dramsim3epoch.json
