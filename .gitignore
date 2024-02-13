@@ -8,3 +8,5 @@ tests/__pycache__/
 *.csv
 dramsim3.*
 dramsim3epoch.json
+sim_args.log
+sim_options.log
