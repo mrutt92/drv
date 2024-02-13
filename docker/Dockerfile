@@ -49,6 +49,14 @@ RUN apt update -y \
         && git checkout mrutt \
         && make -j `nproc` libramulator.so
 
+# install dramsim3
+RUN apt update -y \
+        && apt install -y git clang \
+        && git clone https://github.com/mrutt92/DRAMSim3 /root/sst-dramsim3-src \
+        && cd /root/sst-dramsim3-src \
+        && git checkout basejump_fixes \
+        && make -j `nproc` libdramsim3.so
+   
 # install sst-elements
 RUN apt update -y \
         && apt install -y \
@@ -64,6 +72,7 @@ RUN apt update -y \
         --prefix=${DRV_ROOT} \
         --with-sst-core=${DRV_ROOT} \
         --with-ramulator=/root/sst-ramulator-src \
+        --with-dramsim3=/root/sst-dramsim3-src \
         && make -j `nproc` install \
         && rm -rf /sst-elements-build \
         && apt remove -y git libltdl-dev \

@@ -26,6 +26,9 @@ LIBS += -lboost_coroutine -lboost_context -ldrvapi
 CXXFLAGS-$(RAMULATOR) += $(RAMULATOR_CXXFLAGS)
 LDFLAGS-$(RAMULATOR)  += $(RAMULATOR_LDFLAGS)
 LIBS-$(RAMULATOR)     += $(RAMULATOR_LIBS)
+CXXFLAGS-$(DRAMSIM3)  += $(DRAMSIM3_CXXFLAGS)
+LDFLAGS-$(DRAMSIM3)   += $(DRAMSIM3_LDFLAGS)
+LIBS-$(DRAMSIM3)      += $(DRAMSIM3_LIBS)
 
 CXXFLAGS += $(CXXFLAGS-yes)
 LDFLAGS += $(LDFLAGS-yes)
@@ -64,6 +67,8 @@ drvsim-headers += DrvStats.hpp
 
 drvsim-sources-$(RAMULATOR) += DrvCustomRamulatorMem.cpp
 drvsim-headers-$(RAMULATOR) += DrvCustomRamulatorMem.hpp
+drvsim-sources-$(DRAMSIM3) += DrvCustomDRAMSim3Mem.cpp
+drvsim-headers-$(DRAMSIM3) += DrvCustomDRAMSim3Mem.hpp
 
 drvsim-headers += $(drvsim-headers-yes)
 drvsim-sources += $(drvsim-sources-yes)
