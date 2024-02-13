@@ -197,6 +197,14 @@ class MainMemoryBank(SharedMemoryBank):
                 "mem_size" : MainMemoryRange.MAINMEM_BANK_SIZE_STR,
             })
             return backend
+        elif (arguments.dram_backend == "dramsim3"):
+            backend = self.memctrl.setSubComponent("backend", "Drv.DrvDRAMSim3MemBackend")
+            backend.addParams({
+                "verbose_level" : arguments.verbose_memory,
+                "config_ini" : arguments.dram_backend_config,
+                "mem_size" : MainMemoryRange.MAINMEM_BANK_SIZE_STR,
+            })
+            return backend
         else:
             raise Exception("Unknown DRAM backend: {}".format(arguments.dram_backend))
 
