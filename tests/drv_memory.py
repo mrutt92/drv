@@ -22,7 +22,7 @@ class SharedMemoryBank(object):
         self.name = self.make_name(*args, **kwargs)
         self.memctrl = sst.Component("{}_memctrl_{}".format(self.name,self.id), "memHierarchy.MemController")
         self.memctrl.addParams({
-            "clock" : "1GHz",
+            "clock" : self.clock(),
             "addr_range_start" : self.address_range.start,
             "addr_range_end"   : self.address_range.end,
             "interleave_size" :  str(self.address_range.interleave_size) + 'B',
@@ -112,6 +112,12 @@ class SharedMemoryBank(object):
         """
         raise NotImplementedError
 
+    def clock(self):
+        """
+        @brief return the clock frequency of this bank
+        """
+        raise NotImplementedError
+
 
 class L2MemoryBank(SharedMemoryBank):
     def __init__(self, bank, pod=0, pxn=0):
@@ -149,6 +155,12 @@ class L2MemoryBank(SharedMemoryBank):
         })
         return backend
 
+    def clock(self):
+        """
+        @brief return the clock frequency of this bank
+        """
+        return "1GHz"
+
 class MainMemoryBank(SharedMemoryBank):
     def __init__(self, bank, pod=0, pxn=0):
         super().__init__(bank, pod, pxn)
@@ -176,6 +188,12 @@ class MainMemoryBank(SharedMemoryBank):
         """
         return "mainmem_pxn{}_pod{}".format(pxn, pod)
 
+    def clock(self):
+        """
+        @brief return the clock frequency of this bank
+        """
+        return arguments.pxn_dram_clock
+    
     def make_backend(self, memctrl):
         """
         @brief return a sst.SubComponent ("memHierarchy.backend")
