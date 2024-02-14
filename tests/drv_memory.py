@@ -3,7 +3,6 @@
 import sst
 from drv import *
 
-
 class MemoryBank(object):
     """
     Base class for memory banks
@@ -169,6 +168,12 @@ class DRAMBankBase(MemoryBank):
     def is_coherent(self):
         """
         Return true if this bank is coherent
+        """
+        raise NotImplementedError
+
+    def clock(self):
+        """
+        @brief return the clock frequency of this bank
         """
         raise NotImplementedError
 
