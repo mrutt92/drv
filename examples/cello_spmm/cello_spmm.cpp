@@ -347,7 +347,9 @@ void init(sparse_matrix_ref I0, sparse_matrix_ref I1) {
     row_data() = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, (1+rows())*sizeof(vector));
     row_data(rows()).size() = 0;    
 }
-
+///////////////////////////////////////////////
+// Create a CSR from a Sparse Matrix Proudct //
+///////////////////////////////////////////////
 operator sparse_matrix() {
     auto ceil_log2 = [](idx_t x) -> idx_t {
         idx_t y = 0;
@@ -449,15 +451,15 @@ operator sparse_matrix() {
 
 DRV_API_REF_CLASS_END(sparse_matrix_product)
 
-/**
- * sparse matrix product
- */
+/////////////////////////////////////
+// Compute a Sparse Matrix Product //
+/////////////////////////////////////
 sparse_matrix_product operator*(sparse_matrix_ref I0, sparse_matrix_ref I1)
 {
     sparse_matrix_product O_data;
     sparse_matrix_product_ref O(&O_data);
     O.init(I0, I1);
-    std::atomic<idx_t> rows_done(0);
+    std::atomic<idx_t> rows_done(0); // for the heartbeat
     cello::parallel_for(0, O.get_rows(), 1, [I0, I1, O, &rows_done](idx_t i) mutable {
         idx_t nnz = 0;
         // initialize buffers
