@@ -41,6 +41,87 @@ struct graph {
     }
 };
 
+#if defined(INTERSECTION_ALGORITHM_LINEAR_SEARCH)
+vertex linear_search(pointer<vertex> v, vertex size, vertex key) {
+    for (vertex i = 0; i < size; i++) {
+        if (v[i] >= key) {
+            return i;
+        }
+    }
+    return size;
+}
+
+const char intersection_algorithm_name [] = "linear_search";
+vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex b_size, [[maybe_unused]] vertex a_src, vertex b_src) {
+    vertex count = 0;
+    vertex i = linear_search(a, a_size, b_src+1);
+    vertex j = 0;
+
+    vertex a_i = 0, b_j = 0;
+    if (i < a_size && j < b_size) {
+        a_i = a[i];
+        b_j = b[j];
+    }
+
+    while (i < a_size && j < b_size) {
+        if (a_i < b_j) {
+            a_i = a[++i];
+        } else if (a_i > b_j) {
+            b_j = b[++j];
+        } else {
+            if (b_src < a_i) {
+                count++;
+            }
+            a_i = a[++i];
+            b_j = b[++j];
+        }
+    }
+    return count;
+}
+#elif defined(INTERSECTION_ALGORITHM_BINARY_SEARCH)
+vertex binary_search(pointer<vertex> v, vertex size, vertex key) {
+    vertex low = 0;
+    vertex high = size;
+    while (low < high) {
+        vertex mid = low + (high - low) / 2;
+        if (v[mid] < key) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
+}
+
+const char intersection_algorithm_name [] = "binary_search";
+vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex b_size, [[maybe_unused]] vertex a_src, vertex b_src) {
+    vertex count = 0;
+    vertex i = binary_search(a, a_size, b_src+1);
+    vertex j = 0;
+
+    vertex a_i = 0, b_j = 0;
+    if (i < a_size && j < b_size) {
+        a_i = a[i];
+        b_j = b[j];
+    }
+
+    while (i < a_size && j < b_size) {
+        if (a_i < b_j) {
+            a_i = a[++i];
+        } else if (a_i > b_j) {
+            b_j = b[++j];
+        } else {
+            if (b_src < a_i) {
+                count++;
+            }
+            a_i = a[++i];
+            b_j = b[++j];
+        }
+    }
+    return count;
+}
+#else
+const char intersection_algorithm_name [] = "baseline";
 vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex b_size, [[maybe_unused]] vertex a_src, vertex b_src) {
     vertex count = 0;
     vertex i = 0;
@@ -58,14 +139,16 @@ vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex 
         } else if (a_i > b_j) {
             b_j = b[++j];
         } else {
-            if (a_src < a_i && a_i < b_src)
+            if (b_src < a_i) {
                 count++;
+            }
             a_i = a[++i];
             b_j = b[++j];
         }
     }
     return count;
 }
+#endif
 
 using namespace util;
 
@@ -85,15 +168,30 @@ int CelloMain(int argc, char *argv[]) {
     }
 
     std::set<tc::triangle> triangles_reference;
-    tc::triangle_counting(V, E, fwd_offsets, fwd_edges, triangles_reference);
+    tc::triangle_counting(V, E, fwd_offsets, fwd_edges, triangles_reference);    
     printf("%s: V: %d, E: %d, triangles from reference = %zu\n", graph_path.c_str(), V, E, triangles_reference.size());
+    printf("using intersection algorithm = '%s'\n", intersection_algorithm_name);
 
+    std::vector<vertex> relabeled_offsets;
+    std::vector<edge> relabeled_edges;
+    tc::relabel_by_ascending_degree(V, E, fwd_offsets, fwd_edges, relabeled_offsets, relabeled_edges);
+
+#ifdef USE_RELABELING
+    printf("reference using relabeling\n");
+    std::set<tc::triangle> relabeled_triangles_reference;
+    tc::triangle_counting(V, E, relabeled_offsets, relabeled_edges, relabeled_triangles_reference);
+    printf("triangles from reference using relabeling = %zu\n", relabeled_triangles_reference.size());
+#endif
+    
     graph g;
-
     // csr construction
     {
         timer _("graph init");
+#ifdef USE_RELABELING
+        g.init(V, E, relabeled_offsets, relabeled_edges);
+#else
         g.init(V, E, fwd_offsets, fwd_edges);
+#endif
     }
 
     // triangles init
