@@ -1,5 +1,6 @@
 #include "triangle_counting.hpp"
-
+#include <algorithm>
+#include <numeric>
 namespace tc
 {
 
@@ -42,4 +43,65 @@ triangle_counting(
         }
     }
 }
+
+int binary_search(std::vector<int> v, int key) {
+    int low = 0;
+    int high = v.size() - 1;
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        if (v[mid] == key) {
+            return mid;
+        }
+        if (v[mid] < key) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+    return v.size();
 }
+
+void
+relabel_by_ascending_degree(
+ int V,
+ int E,
+ const std::vector<int> &offsets_i,
+ const std::vector<int> &nonzeros_i,
+ std::vector<int> &offsets_o,
+ std::vector<int> &nonzeros_o) {
+    std::vector<int> degrees(V, 0);
+    for (int i = 0; i < V; i++) {
+        degrees[i] = offsets_i[i + 1] - offsets_i[i];
+    }
+
+    std::vector<int> order(V);
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&degrees](int u, int v) {
+        return degrees[u] < degrees[v];
+    });
+
+    std::vector<int> newlabel(V);
+    for (int i = 0; i < V; i++) {
+        newlabel[order[i]] = i;
+    }
+    std::vector<int> offsets(V + 1);
+    std::vector<int> nonzeros(E);
+
+    int k = 0;
+    for (int i = 0; i < V; i++) {
+        int u = order[i];
+        offsets[i] = k;
+        int start = k;
+        for (int j = offsets_i[u]; j < offsets_i[u + 1]; j++) {
+            nonzeros[k++] = newlabel[nonzeros_i[j]];
+        }
+        int end = k;
+        std::sort(&nonzeros[start], &nonzeros[end]);
+    }
+    offsets[V] = k;
+    offsets_o = std::move(offsets);
+    nonzeros_o = std::move(nonzeros);
+}
+
+}
+
