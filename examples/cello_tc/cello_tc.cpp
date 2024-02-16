@@ -97,7 +97,7 @@ const char intersection_algorithm_name [] = "binary_search";
 vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex b_size, [[maybe_unused]] vertex a_src, vertex b_src) {
     vertex count = 0;
     vertex i = binary_search(a, a_size, b_src+1);
-    vertex j = 0;
+    vertex j = binary_search(b, b_size, a_src+1);
 
     vertex a_i = 0, b_j = 0;
     if (i < a_size && j < b_size) {
