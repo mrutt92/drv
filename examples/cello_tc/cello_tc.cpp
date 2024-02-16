@@ -9,6 +9,14 @@
 #include <fstream>
 #include <set>
 #include <tuple>
+#include <atomic>
+#define pr_info(fmt, ...)                                               \
+    do {                                                                \
+        printf("INFO:  " fmt ""                                         \
+               ,##__VA_ARGS__);                                         \
+        fflush(stdout);                                                 \
+    } while (0)
+
 using vertex = int32_t;
 using edge = vertex;
 
@@ -158,6 +166,7 @@ int CelloMain(int argc, char *argv[]) {
     std::vector<vertex> fwd_offsets, rev_offsets;
     std::vector<edge> fwd_edges, rev_edges;
     vertex V, E;
+    pr_info("reading graph '%s'\n", graph_path.c_str());
     read_graph(graph_path, &V, &E, fwd_offsets, fwd_edges);
     transpose_graph (V, E, fwd_offsets, fwd_edges, rev_offsets, rev_edges);
 
@@ -167,20 +176,21 @@ int CelloMain(int argc, char *argv[]) {
         throw std::runtime_error(msg.c_str());
     }
 
+    pr_info("running triangle counting on graph '%s'\n", graph_path.c_str());
     std::set<tc::triangle> triangles_reference;
     tc::triangle_counting(V, E, fwd_offsets, fwd_edges, triangles_reference);    
-    printf("%s: V: %d, E: %d, triangles from reference = %zu\n", graph_path.c_str(), V, E, triangles_reference.size());
-    printf("using intersection algorithm = '%s'\n", intersection_algorithm_name);
+    pr_info("%s: V: %d, E: %d, triangles from reference = %zu\n", graph_path.c_str(), V, E, triangles_reference.size());
+    pr_info("using intersection algorithm = '%s'\n", intersection_algorithm_name);
 
     std::vector<vertex> relabeled_offsets;
     std::vector<edge> relabeled_edges;
     tc::relabel_by_ascending_degree(V, E, fwd_offsets, fwd_edges, relabeled_offsets, relabeled_edges);
 
 #ifdef USE_RELABELING
-    printf("reference using relabeling\n");
+    pr_info("reference using relabeling\n");
     std::set<tc::triangle> relabeled_triangles_reference;
     tc::triangle_counting(V, E, relabeled_offsets, relabeled_edges, relabeled_triangles_reference);
-    printf("triangles from reference using relabeling = %zu\n", relabeled_triangles_reference.size());
+    pr_info("triangles from reference using relabeling = %zu\n", relabeled_triangles_reference.size());
 #endif
     
     graph g;
@@ -206,10 +216,11 @@ int CelloMain(int argc, char *argv[]) {
     // triangle counting
     {
         timer _("triangle counting");
-        cello::parallel_for(0, V, 1, [=](vertex src) {
+        std::atomic<vertex> count(0);
+        cello::parallel_for(0, V, 1, [=, &count](vertex src) {
             vertex src_start = g.offsets[src];
             vertex src_end = g.offsets[src+1];
-            vertex step = (float)E/V + 1;
+            vertex step = 1;            
             cello::parallel_for(src_start, src_end, step, [=](vertex e) {
                 vertex start = e;
                 vertex end = std::min(src_end, start + step);
@@ -227,6 +238,9 @@ int CelloMain(int argc, char *argv[]) {
                 }
                 DrvAPI::atomic_add<vertex>(&triangles[src], c);
             });
+            if (++count % 1000 == 0) {
+                pr_info("processed %d vertices\n", count.load());
+            }
         });
     }
 
@@ -239,8 +253,8 @@ int CelloMain(int argc, char *argv[]) {
         });
     }
 
-    printf("Found triangles:     %9d\n", (vertex)total);
-    printf("Reference triangles: %9zu\n", triangles_reference.size());
+    pr_info("Found triangles:     %9d\n", (vertex)total);
+    pr_info("Reference triangles: %9zu\n", triangles_reference.size());
     return 0;
 }
 
