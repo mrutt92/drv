@@ -5,11 +5,11 @@ import itertools
 import numpy as np
 from datetime import datetime, timezone
 
-CORES      = [1, 2, 4, 8]
-THREADS    = [1, 2, 3, 4]
+CORES      = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+THREADS    = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 MEMSYS     = ['HBM2-1Gb-x64','HBM2-1Gb-x128','LPDDR4-1Gb-x16-2400']
 TABLE_SIZE = (2**30)//8
-UPDATES    = 10**3
+UPDATES    = 10**6
 
 def test(threads, cores, table_size, updates, memsys, ports):
     return "TESTS += $(call test-name,{},{},{},{},{},{},{},{})\n".format(
