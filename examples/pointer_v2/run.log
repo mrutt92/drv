@@ -1,0 +1,12 @@
+
+PANDOHammerDrvX: program = /mnt/users/ssd3/homes/mrutt/work/AGILE/drv/examples/pointer_v2/pointer_v2.so
+
+i = 71, j = 71
+*kp = 71
+foo.b().x() = 32, foo.b().y() = 3.141593
+foo.x() = 1, foo.y() = 2.000000
+bar.x() = 32, bar.y() = 3.141593
+foo.b().x() = 32, foo.b().y() = 3.141593
+foo.x() = 1, foo.y() = 2.000000
+bar.x() = 32, bar.y() = 3.141593
+Simulation is complete, simulated time: 176 ns
