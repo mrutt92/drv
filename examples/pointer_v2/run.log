@@ -5,8 +5,40 @@ i = 71, j = 71
 *kp = 71
 foo.b().x() = 32, foo.b().y() = 3.141593
 foo.x() = 1, foo.y() = 2.000000
-bar.x() = 32, bar.y() = 3.141593
+bar.to_string() = x: 32, y: 3.14159
 foo.b().x() = 32, foo.b().y() = 3.141593
 foo.x() = 1, foo.y() = 2.000000
-bar.x() = 32, bar.y() = 3.141593
-Simulation is complete, simulated time: 176 ns
+bar.to_string() = x: 32, y: 3.14159
+a = 1, b = 2, c = 5
+native test
+v[0] = 0
+v[1] = 1
+v[2] = 2
+v[3] = 3
+v[4] = 4
+v[5] = 5
+v[6] = 6
+v[7] = 7
+v[8] = 8
+v[9] = 9
+handle test
+v_impl.vector.data() = 0
+v_impl.vector.size() = 0
+v_impl.vector.capacity() = 0
+v_impl.vector.data() = 800000000098
+v_impl.vector.size() = 10
+v_impl.vector.capacity() = 10
+v_impl.vector.data() = 800000000098
+v_impl.vector.size() = 10
+v_impl.vector.capacity() = 10
+v[0] = 0
+v[1] = 1
+v[2] = 2
+v[3] = 3
+v[4] = 4
+v[5] = 5
+v[6] = 6
+v[7] = 7
+v[8] = 8
+v[9] = 9
+Simulation is complete, simulated time: 2.617 us

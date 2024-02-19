@@ -231,13 +231,13 @@ class value_handle<pointer<T>> {
     }
 
     value_handle<T> operator[](size_t index) {
-        return value_handle<T>(_ptr + index * sizeof(T));
+        return pointer<T>(_ptr)[index];
     }
 
     const value_handle<T> operator[](size_t index) const {
-        return value_handle<T>(_ptr + index * sizeof(T));
+        return pointer<T>(_ptr)[index];
     }
-    
+
     SPECIALIZE_VALUE_HANDLE_ADDRESSOF_OPERATORS(pointer<T>)
     SPECIALIZE_VALUE_HANDLE_FIELDS(pointer<T>)
 };
@@ -309,8 +309,8 @@ SPECIALIZE_VALUE_HANDLE_END()
 
 template <typename T>
 struct vector {
-    typedef T& reference_type;
-    typedef const T& const_reference_type;
+    typedef v2::value_handle<T> reference_type;
+    typedef const v2::value_handle<T> const_reference_type;
     typedef T value_type;
 
     v2::pointer<T> data_;
@@ -348,9 +348,11 @@ public:
         return *this;
     }
     ~value_handle() = default;
+
     operator vector<T>() const {
         vector<T> v;
         vector<T>::copy(v, *this);
+        return v;
     }
     value_handle<vector<T>> operator=(const vector<T> &other) {
         vector<T>::copy(*this, other);
@@ -389,10 +391,12 @@ public:
     }
 
     typename VectorDataT::reference_type operator[](size_t index) {
-        return vector.data()[index];
+        v2::pointer<typename VectorDataT::value_type> ptr = vector.data();
+        return ptr[index];
     }
     typename VectorDataT::const_reference_type operator[](size_t index) const {
-        return vector.data()[index];
+        v2::pointer<typename VectorDataT::value_type> ptr = vector.data();
+        return ptr[index];
     }
 
     size_t size() const {
@@ -420,6 +424,7 @@ void print_bar(const BarT& bar) {
 
 int PointerMain(int argc, char* argv[])
 {
+    DrvAPI::DrvAPIMemoryAllocatorInit();
     using namespace DrvAPI;
     {
         DrvAPIAddress a = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, sizeof(int64_t));
@@ -465,6 +470,7 @@ int PointerMain(int argc, char* argv[])
         
     }
     {
+        printf("native test\n");
         vector<int> v;
         vector_impl<decltype(v)> v_impl(v);
         v_impl.resize(10);
@@ -476,12 +482,22 @@ int PointerMain(int argc, char* argv[])
         }
     }    
     {
+        printf("handle test\n");
         v2::value_handle<vector<int>> v(DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, sizeof(vector<int>)));
         vector_impl<decltype(v)> v_impl(v);
+        printf("v_impl.vector.data() = %lx\n", (DrvAPIAddress)v_impl.vector.data());
+        printf("v_impl.vector.size() = %ld\n", (size_t)v_impl.vector.size());
+        printf("v_impl.vector.capacity() = %ld\n", (size_t)v_impl.vector.capacity());
         v_impl.resize(10);
+        printf("v_impl.vector.data() = %lx\n", (DrvAPIAddress)v_impl.vector.data());
+        printf("v_impl.vector.size() = %ld\n", (size_t)v_impl.vector.size());
+        printf("v_impl.vector.capacity() = %ld\n", (size_t)v_impl.vector.capacity());        
         for (size_t i = 0; i < v_impl.size(); ++i) {
             v_impl[i] = i;
         }
+        printf("v_impl.vector.data() = %lx\n", (DrvAPIAddress)v_impl.vector.data());
+        printf("v_impl.vector.size() = %ld\n", (size_t)v_impl.vector.size());
+        printf("v_impl.vector.capacity() = %ld\n", (size_t)v_impl.vector.capacity());        
         for (size_t i = 0; i < v_impl.size(); ++i) {
             printf("v[%ld] = %d\n", i, (int)v_impl[i]);
         }
