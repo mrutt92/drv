@@ -11,6 +11,7 @@
 #include <DrvAPIThreadState.hpp>
 #include <DrvAPIAllocator.hpp>
 #include <DrvAPIGlobal.hpp>
+#include <DrvAPISection.hpp>
 #include <DrvAPIOp.hpp>
 #include <DrvAPISysConfig.hpp>
 #include <DrvAPIInfo.hpp>
