@@ -8,9 +8,15 @@
 namespace v2
 {
 
+/**
+ * forward declaration of pointer
+ */
 template <typename T>
 class pointer;
 
+/**
+ * @brief default value_handle suitable for most builtin types
+ */
 template <typename T>
 class value_handle {
 public:
@@ -21,8 +27,13 @@ public:
         _ptr(0) {
     }    
 
-    value_handle(const value_handle&) = default;
-    value_handle(value_handle &&) = default;
+    value_handle(const value_handle&o) {
+        _ptr = o.address();
+    }
+    
+    value_handle(value_handle && o) {
+        _ptr = o.address();
+    }
 
     value_handle & operator=(const value_handle &other) {
         *this = (T)other;
@@ -34,25 +45,29 @@ public:
         return *this;
     }
 
-    ~value_handle() = default;
+    virtual ~value_handle() = default;
 
     operator T() const {
-        return DrvAPI::read<T>(_ptr);
+        return DrvAPI::read<T>(address());        
     }
 
     value_handle & operator=(const T&v) {
-        DrvAPI::write<T>(_ptr, v);
+        DrvAPI::write<T>(address(), v);
         return *this;
     }    
 
     pointer<T> operator&() {
-        return pointer<T>(_ptr);
+        return pointer<T>(address());
+    }
+
+    virtual DrvAPI::DrvAPIAddress address() const {
+        return _ptr;
     }
     
     DrvAPI::DrvAPIAddress _ptr;
 };
 
-#define SPECIALIZE_VALUE_HANDLE_CONSTRURCTORS(type)             \
+#define SPECIALIZE_VALUE_HANDLE_CONSTRUCTORS(type)             \
     public:                                             \
         value_handle(DrvAPI::DrvAPIAddress ptr):        \
             _ptr(ptr) {                                 \
@@ -62,7 +77,7 @@ public:
         }                                               \
         value_handle(const value_handle&) = default;    \
         value_handle(value_handle &&) = default;        \
-        ~value_handle() = default;                      \
+        virtual ~value_handle() = default;               \
 
 #define SPECIALIZE_VALUE_HANDLE_ASSIGNMENT_OPERATORS(type)      \
     public:                                             \
@@ -79,6 +94,21 @@ public:
             return *this;                       \
         }                                       \
 
+#define SPECIALIZE_VALUE_HANDLE_ASSIGNMENT_OPERATORS_TRIVIAL(type)      \
+    public:                                             \
+        value_handle & operator=(const value_handle &other) { \
+            *this = (type)other;                                  \
+            return *this;                       \
+        }                                       \
+        value_handle & operator=(value_handle &&other) { \
+             *this = (type)other;                \
+             return *this;                       \
+        }                                       \
+        value_handle & operator=(const type&v) { \
+            DrvAPI::write<type>(address(), v);      \
+            return *this;                       \
+        }
+    
 #define SPECIALIZE_VALUE_HANDLE_CAST_OPERATORS(type)             \
     public:                                             \
         operator type() const {                 \
@@ -86,15 +116,25 @@ public:
             type::copy(r, *this);               \
             return r;                           \
         }
+
+#define SPECIALIZE_VALUE_HANDLE_CAST_OPERATORS_TRIVIAL(type)            \
+    public                                                              \
+    operator type() const {                                             \
+        return DrvAPI::read<T>(address());                              \
+    }
+
 #define SPECIALIZE_VALUE_HANDLE_ADDRESSOF_OPERATORS(type)         \
     public:                                             \
         pointer<type> operator&() {             \
-            return pointer<type>(_ptr);         \
+            return pointer<type>(address());        \
         }
 
-#define SPECIALIZE_VALUE_HANDLE_FIELDS(type)            \
+#define SPECIALIZE_VALUE_HANDLE_INTERNAL(type)          \
     public:                                             \
-        DrvAPI::DrvAPIAddress _ptr;
+    virtual DrvAPI::DrvAPIAddress address() const {     \
+        return _ptr;                                    \
+    }                                                   \
+    DrvAPI::DrvAPIAddress _ptr;
 
 /**
  * begins specialization of value_handle for a type
@@ -109,38 +149,11 @@ public:
 #define SPECIALIZE_VALUE_HANDLE_BEGIN(type)     \
     template <>                                 \
     class v2::value_handle<type> {              \
-    public:                                     \
-        value_handle(DrvAPI::DrvAPIAddress ptr):\
-            _ptr(ptr) {                         \
-        }                                       \
-        value_handle():                          \
-            _ptr(0) {                           \
-        }                                       \
-        value_handle(const value_handle&) = default; \
-        value_handle(value_handle &&) = default; \
-        value_handle & operator=(const value_handle &other) { \
-            *this = (type)other;                \
-            return *this;                       \
-        }                                       \
-        value_handle & operator=(value_handle &&other) { \
-            *this = (type)other;                \
-            return *this;                       \
-        }                                       \
-        ~value_handle() = default;              \
-        operator type() const {                 \
-            type r;                             \
-            type::copy(r, *this);               \
-            return r;                           \
-        }                                       \
-        value_handle & operator=(const type&v) {\
-            type::copy(*this, v);               \
-            return *this;                       \
-        }                                       \
-        pointer<type> operator&() {             \
-            return pointer<type>(_ptr);         \
-        }                                       \
-        DrvAPI::DrvAPIAddress _ptr;
-
+    SPECIALIZE_VALUE_HANDLE_CONSTRUCTORS(type)             \
+    SPECIALIZE_VALUE_HANDLE_ASSIGNMENT_OPERATORS(type) \
+    SPECIALIZE_VALUE_HANDLE_CAST_OPERATORS(type) \
+    SPECIALIZE_VALUE_HANDLE_ADDRESSOF_OPERATORS(type) \
+    SPECIALIZE_VALUE_HANDLE_INTERNAL(type)
 
 /**
  * generates accessors for data members
@@ -151,10 +164,10 @@ public:
  */
 #define SPECIALIZE_VALUE_HANDLE_FIELD(type, field, field_type, field_data) \
     value_handle<field_type> field() {                                  \
-        return value_handle<field_type>(_ptr + offsetof(type, field_data)); \
+        return value_handle<field_type>(address() + offsetof(type, field_data)); \
     }                                                                   \
     const value_handle<field_type> field() const {                      \
-        return value_handle<field_type>(_ptr + offsetof(type, field_data)); \
+        return value_handle<field_type>(address() + offsetof(type, field_data)); \
     }
 
 
@@ -164,6 +177,17 @@ public:
 #define SPECIALIZE_VALUE_HANDLE_END()           \
     };
 
+/**
+ * The pointer class
+ *
+ * This class is used to represent a pointer to a value in the target process
+ * supports dereferencing and array indexing
+ *
+ * Does not support the -> operator (sorry)
+ *
+ * To get support something like the -> operator, use the value_handle class
+ * and the helper macros to specialize it for your type
+ */
 template <typename T>
 class pointer {
 public:
@@ -206,9 +230,12 @@ public:
     DrvAPI::DrvAPIAddress _ptr;
 };
 
+/**
+ * Specialization of value_handle for pointer type
+ */
 template <typename T>
 class value_handle<pointer<T>> {
-    SPECIALIZE_VALUE_HANDLE_CONSTRURCTORS(pointer<T>)
+    SPECIALIZE_VALUE_HANDLE_CONSTRUCTORS(pointer<T>)
 
     operator pointer<T>() const {
         return DrvAPI::read<pointer<T>>(_ptr);
@@ -231,16 +258,172 @@ class value_handle<pointer<T>> {
     }
 
     value_handle<T> operator[](size_t index) {
-        return pointer<T>(_ptr)[index];
+        pointer<T> p = *this;
+        return p[index];
     }
 
     const value_handle<T> operator[](size_t index) const {
-        return pointer<T>(_ptr)[index];
+        pointer<T> p = *this;
+        return p[index];
     }
 
     SPECIALIZE_VALUE_HANDLE_ADDRESSOF_OPERATORS(pointer<T>)
-    SPECIALIZE_VALUE_HANDLE_FIELDS(pointer<T>)
+    SPECIALIZE_VALUE_HANDLE_INTERNAL(pointer<T>)
 };
+
+/**
+ * statically allocatable data; can be allocated in special memory regions
+ */
+template <typename T, DrvAPI::DrvAPIMemoryType MEMTYPE>
+class static_data : public value_handle<T> {
+public:
+    /**
+     * @brief constructor
+     */
+    static_data() {
+        init_offset();
+    }
+    static_data(const static_data &other) = delete;
+    static_data(static_data &&other) = delete;
+    ~static_data() = default;
+
+    /**
+     * castable to a value_handle
+     */
+    operator value_handle<T>() {
+        return value_handle<T>(address());
+    }
+
+    /**
+     * handle assignment is a deep copy
+     */
+    static_data & operator=(const static_data &other) {
+        value_handle<T> me(address());
+        value_handle<T> you(other.address());
+        me = you;
+        return *this;
+    }
+
+    /**
+     * handle assignment is a deep copy
+     */    
+    static_data & operator=(static_data &&other) {
+        value_handle<T> me(address());
+        value_handle<T> you(other.address());
+        me = you;
+        return *this;
+    }
+
+    /**
+     * @brief initializes the offset
+     */
+    void init_offset() {
+        _offset = DrvAPI::DrvAPISection::GetSection(MEMTYPE).increaseSizeBy(sizeof(T));        
+    }
+
+    /**
+     * assignment operators
+     */
+    static_data & operator=(const T &v) {
+        value_handle<T> handle(address());
+        handle = v;
+        return *this;
+    }
+
+    /**
+     * materialize the address of the static data
+     */
+    DrvAPI::DrvAPIAddress address() const override {
+        DrvAPI::DrvAPIAddress r = DrvAPI::DrvAPISection::GetSection(MEMTYPE)
+            .getBase(DrvAPI::myPXNId(), DrvAPI::myPodId(), DrvAPI::myCoreId())
+            + _offset;
+        return r;   
+    }
+    
+
+    DrvAPI::DrvAPIAddress _offset;
+};
+
+/**
+ * static data in L1SP
+ */
+template <typename T>
+using l1sp_static = static_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryL1SP>;
+
+/**
+ * static data in L2SP
+ */
+template <typename T>
+using l2sp_static = static_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryL2SP>;
+
+/**
+ * static data in L3SP
+ */
+template <typename T>
+using dram_static = static_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryDRAM>;
+
+/**
+ * dynamic data; can be allocated in special memory regions
+ */
+template <typename T, DrvAPI::DrvAPIMemoryType MEMTYPE>
+class dynamic_data : public value_handle<T> {
+public:
+    /**
+     * @brief constructor
+     */
+    dynamic_data():
+        value_handle<T>(DrvAPI::DrvAPIMemoryAlloc(MEMTYPE, sizeof(T))) {        
+    }
+
+    dynamic_data(const T&v) :
+        dynamic_data() {
+        value_handle<T> handle(this->_ptr);
+        handle = v;
+    }
+
+    dynamic_data(const dynamic_data &other) = delete;
+    dynamic_data(dynamic_data &&other) {
+        this->_ptr = other._ptr;
+        other._ptr = 0;
+    }
+
+    dynamic_data & operator=(const dynamic_data &other) {
+        value_handle<T> me(this->_ptr);
+        value_handle<T> you(other._ptr);
+        me = you;
+        return *this;
+    }
+
+    dynamic_data & operator=(dynamic_data &&other) = delete;
+
+    dynamic_data & operator=(const T &v) {
+        value_handle<T> handle(this->_ptr);
+        handle = v;
+        return *this;
+    }
+    
+    ~dynamic_data() {
+        DrvAPI::DrvAPIMemoryFree(this->_ptr);
+    }
+};
+
+/**
+ * dynamic data in L1SP
+ */
+template <typename T>
+using l1sp_dynamic = dynamic_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryL1SP>;
+
+/**
+ * dynamic data in L2SP
+ */
+template <typename T>
+using l2sp_dynamic = dynamic_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryL2SP>;
+
+/**
+ * dynamic data in L3SP
+ */
+template <typename T>
+using dram_dynamic = dynamic_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryDRAM>;
 
 }
 
@@ -331,42 +514,14 @@ public:
     typedef value_handle<T> reference_type;
     typedef const value_handle<T> const_reference_type;
     typedef T value_type;
-    value_handle(DrvAPI::DrvAPIAddress ptr):
-        _ptr(ptr) {
-    }
-    value_handle():
-        _ptr(0) {
-    }
-    value_handle(const value_handle &other) = default;
-    value_handle(value_handle &&other) = default;
-    value_handle & operator=(const value_handle &other) {
-        _ptr = (vector<T>)other;
-        return *this;
-    }
-    value_handle & operator=(value_handle &&other) {
-        _ptr = (vector<T>)other;
-        return *this;
-    }
-    ~value_handle() = default;
-
-    operator vector<T>() const {
-        vector<T> v;
-        vector<T>::copy(v, *this);
-        return v;
-    }
-    value_handle<vector<T>> operator=(const vector<T> &other) {
-        vector<T>::copy(*this, other);
-        return *this;
-    }
-    pointer<T> operator&() {
-        return pointer<T>(_ptr + offsetof(vector<T>, data_));
-    }
+    SPECIALIZE_VALUE_HANDLE_CONSTRUCTORS(vector<T>)
+    SPECIALIZE_VALUE_HANDLE_ASSIGNMENT_OPERATORS(vector<T>)
+    SPECIALIZE_VALUE_HANDLE_CAST_OPERATORS(vector<T>)
 
     SPECIALIZE_VALUE_HANDLE_FIELD(vector<T>, size, size_t, size_)
     SPECIALIZE_VALUE_HANDLE_FIELD(vector<T>, capacity, size_t, capacity_)
     SPECIALIZE_VALUE_HANDLE_FIELD(vector<T>, data, pointer<T>, data_)
-    
-    DrvAPI::DrvAPIAddress _ptr;
+    SPECIALIZE_VALUE_HANDLE_INTERNAL()
 };
 
 template <typename VectorDataT>
@@ -391,12 +546,10 @@ public:
     }
 
     typename VectorDataT::reference_type operator[](size_t index) {
-        v2::pointer<typename VectorDataT::value_type> ptr = vector.data();
-        return ptr[index];
+        return vector.data()[index];
     }
     typename VectorDataT::const_reference_type operator[](size_t index) const {
-        v2::pointer<typename VectorDataT::value_type> ptr = vector.data();
-        return ptr[index];
+        return vector.data()[index];
     }
 
     size_t size() const {
@@ -404,6 +557,7 @@ public:
     }
     
     VectorDataT vector;
+
 };
 
 template <typename BarT, typename FooT>
@@ -418,9 +572,25 @@ void test(BarT bar, FooT foo) {
 }
 
 template <typename BarT>
-void print_bar(const BarT& bar) {
-    printf("bar.x() = %d, bar.y() = %f\n", (int)bar.x(), (float)bar.y());
+void print_bar_(BarT bar) {
+    printf("bar.x() = %d, bar.y() = %f\n"
+           , (int)bar.x()
+           , (float)bar.y());
 }
+
+void print_bar(const bar& bar) {
+    print_bar_(bar);
+}
+void print_bar(const v2::value_handle<bar>& bar) {
+    print_bar_(bar);
+}
+
+v2::l1sp_static<int> l1sp_int;
+v2::l2sp_static<int> l2sp_int;
+v2::dram_static<int> dram_int;
+v2::dram_static<bar> l1sp_bar;
+v2::dram_static<vector<int>> dram_vector;
+
 
 int PointerMain(int argc, char* argv[])
 {
@@ -485,22 +655,58 @@ int PointerMain(int argc, char* argv[])
         printf("handle test\n");
         v2::value_handle<vector<int>> v(DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, sizeof(vector<int>)));
         vector_impl<decltype(v)> v_impl(v);
-        printf("v_impl.vector.data() = %lx\n", (DrvAPIAddress)v_impl.vector.data());
-        printf("v_impl.vector.size() = %ld\n", (size_t)v_impl.vector.size());
-        printf("v_impl.vector.capacity() = %ld\n", (size_t)v_impl.vector.capacity());
         v_impl.resize(10);
-        printf("v_impl.vector.data() = %lx\n", (DrvAPIAddress)v_impl.vector.data());
-        printf("v_impl.vector.size() = %ld\n", (size_t)v_impl.vector.size());
-        printf("v_impl.vector.capacity() = %ld\n", (size_t)v_impl.vector.capacity());        
         for (size_t i = 0; i < v_impl.size(); ++i) {
             v_impl[i] = i;
         }
-        printf("v_impl.vector.data() = %lx\n", (DrvAPIAddress)v_impl.vector.data());
-        printf("v_impl.vector.size() = %ld\n", (size_t)v_impl.vector.size());
-        printf("v_impl.vector.capacity() = %ld\n", (size_t)v_impl.vector.capacity());        
         for (size_t i = 0; i < v_impl.size(); ++i) {
             printf("v[%ld] = %d\n", i, (int)v_impl[i]);
         }
+    }
+    {
+        printf("static test\n");
+        //v2::value_handle<vector<int>> v(dram_vector);
+        vector_impl<v2::value_handle<vector<int>>> v_impl(dram_vector);
+        v_impl.resize(10);
+        for (size_t i = 0; i < v_impl.size(); ++i) {
+            v_impl[i] = i;
+        }
+        for (size_t i = 0; i < v_impl.size(); ++i) {
+            printf("v[%ld] = %d\n", i, (int)v_impl[i]);
+        }
+    }    
+    {
+        l1sp_int = 1;
+        l2sp_int = 2;
+        dram_int = 3;
+        printf("l1sp_int = %lx, l2sp_int = %lx, dram_int = %lx\n"
+               , (int64_t)l1sp_int, (int64_t)l2sp_int, (int64_t)dram_int);
+        printf("l1sp_int = %d\n", (int)l1sp_int);
+        printf("l2sp_int = %d\n", (int)l2sp_int);
+        printf("dram_int = %d\n", (int)dram_int);
+        printf("l1sp_int + l2sp_int + dram_int = %d\n", l1sp_int + 4*l2sp_int + dram_int);
+    }
+    {
+        v2::value_handle<bar> bar_alias (&l1sp_bar);
+        l1sp_bar.x() = 32;
+        l1sp_bar.y() = M_PI;
+        printf("&bar_alias = %lx, &l1sp_bar = %lx\n", (int64_t)&bar_alias, (int64_t)&l1sp_bar);
+        print_bar(l1sp_bar);
+        print_bar(bar_alias);
+    }
+    {
+        v2::l1sp_dynamic<bar> b;
+        b.x() = 71;
+        b.y() = 2*M_PI;
+        print_bar(b);
+        printf("&b = %lx\n", (DrvAPIAddress)&b);
+        
+    }
+    {
+        v2::l1sp_dynamic<int> x = 1;
+        v2::l1sp_dynamic<int> y = 2;
+        printf("x = %d, y = %d\n", (int)x, (int)y);
+        printf("&x = %lx, &y = %lx\n", (DrvAPIAddress)&x, (DrvAPIAddress)&y);
     }
     return 0;
 }
