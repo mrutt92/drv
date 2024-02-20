@@ -67,6 +67,9 @@ public:
     DrvAPI::DrvAPIAddress _ptr;
 };
 
+/**
+ * generate default constructors for value_handle specializations
+ */
 #define SPECIALIZE_VALUE_HANDLE_CONSTRUCTORS(type)             \
     public:                                             \
         value_handle(DrvAPI::DrvAPIAddress ptr):        \
@@ -75,10 +78,17 @@ public:
         value_handle():                                 \
             _ptr(0) {                                   \
         }                                               \
-        value_handle(const value_handle&) = default;    \
-        value_handle(value_handle &&) = default;        \
+        value_handle(const value_handle& o) {           \
+            _ptr = o.address();                         \
+        }                                               \
+        value_handle(value_handle && o) {               \
+            _ptr = o.address();                         \
+        }                                               \
         virtual ~value_handle() = default;               \
 
+/**
+ * generate default assignment operators for value_handle specializations
+ */
 #define SPECIALIZE_VALUE_HANDLE_ASSIGNMENT_OPERATORS(type)      \
     public:                                             \
         value_handle & operator=(const value_handle &other) { \
@@ -94,6 +104,10 @@ public:
             return *this;                       \
         }                                       \
 
+/**
+ * generate default assignment operators for value_handle specializations
+ * for scalar types
+ */
 #define SPECIALIZE_VALUE_HANDLE_ASSIGNMENT_OPERATORS_TRIVIAL(type)      \
     public:                                             \
         value_handle & operator=(const value_handle &other) { \
@@ -108,7 +122,10 @@ public:
             DrvAPI::write<type>(address(), v);      \
             return *this;                       \
         }
-    
+
+/**
+ * generate default cast operators for value_handle specializations
+ */
 #define SPECIALIZE_VALUE_HANDLE_CAST_OPERATORS(type)             \
     public:                                             \
         operator type() const {                 \
@@ -117,18 +134,28 @@ public:
             return r;                           \
         }
 
+/**
+ * generate default cast operators for value_handle specializations
+ * for scalar types
+ */
 #define SPECIALIZE_VALUE_HANDLE_CAST_OPERATORS_TRIVIAL(type)            \
-    public                                                              \
+    public:                                                             \
     operator type() const {                                             \
         return DrvAPI::read<T>(address());                              \
     }
 
+/**
+ * generate default addressof operators for value_handle specializations
+ */
 #define SPECIALIZE_VALUE_HANDLE_ADDRESSOF_OPERATORS(type)         \
     public:                                             \
         pointer<type> operator&() {             \
             return pointer<type>(address());        \
         }
 
+/**
+ * generate the internal members for value_handle specializations
+ */
 #define SPECIALIZE_VALUE_HANDLE_INTERNAL(type)          \
     public:                                             \
     virtual DrvAPI::DrvAPIAddress address() const {     \
@@ -236,17 +263,9 @@ public:
 template <typename T>
 class value_handle<pointer<T>> {
     SPECIALIZE_VALUE_HANDLE_CONSTRUCTORS(pointer<T>)
-
-    operator pointer<T>() const {
-        return DrvAPI::read<pointer<T>>(_ptr);
-    }
-
-    value_handle & operator=(const pointer<T>&v) {
-        DrvAPI::write<pointer<T>>(_ptr, v);
-        return *this;
-    }
-
-
+    SPECIALIZE_VALUE_HANDLE_CAST_OPERATORS_TRIVIAL(pointer<T>)
+    SPECIALIZE_VALUE_HANDLE_ASSIGNMENT_OPERATORS_TRIVIAL(pointer<T>)
+    
     value_handle & operator=(DrvAPI::DrvAPIAddress v) {
         *this = pointer<T>(v);
         return *this;
@@ -281,18 +300,11 @@ public:
      * @brief constructor
      */
     static_data() {
-        init_offset();
+        _offset = DrvAPI::DrvAPISection::GetSection(MEMTYPE).increaseSizeBy(sizeof(T));
     }
     static_data(const static_data &other) = delete;
     static_data(static_data &&other) = delete;
     ~static_data() = default;
-
-    /**
-     * castable to a value_handle
-     */
-    operator value_handle<T>() {
-        return value_handle<T>(address());
-    }
 
     /**
      * handle assignment is a deep copy
@@ -312,13 +324,6 @@ public:
         value_handle<T> you(other.address());
         me = you;
         return *this;
-    }
-
-    /**
-     * @brief initializes the offset
-     */
-    void init_offset() {
-        _offset = DrvAPI::DrvAPISection::GetSection(MEMTYPE).increaseSizeBy(sizeof(T));        
     }
 
     /**
@@ -573,7 +578,8 @@ void test(BarT bar, FooT foo) {
 
 template <typename BarT>
 void print_bar_(BarT bar) {
-    printf("bar.x() = %d, bar.y() = %f\n"
+    printf("%s: bar.x() = %d, bar.y() = %f\n"
+           , __PRETTY_FUNCTION__
            , (int)bar.x()
            , (float)bar.y());
 }
@@ -581,7 +587,7 @@ void print_bar_(BarT bar) {
 void print_bar(const bar& bar) {
     print_bar_(bar);
 }
-void print_bar(const v2::value_handle<bar>& bar) {
+void print_bar(const v2::value_handle<bar> &bar) {
     print_bar_(bar);
 }
 
@@ -690,7 +696,7 @@ int PointerMain(int argc, char* argv[])
         v2::value_handle<bar> bar_alias (&l1sp_bar);
         l1sp_bar.x() = 32;
         l1sp_bar.y() = M_PI;
-        printf("&bar_alias = %lx, &l1sp_bar = %lx\n", (int64_t)&bar_alias, (int64_t)&l1sp_bar);
+        printf("l1sp_bar.x() = %d, l1sp_bar.y() = %f\n", (int)l1sp_bar.x(), (double)l1sp_bar.y());
         print_bar(l1sp_bar);
         print_bar(bar_alias);
     }
@@ -707,6 +713,12 @@ int PointerMain(int argc, char* argv[])
         v2::l1sp_dynamic<int> y = 2;
         printf("x = %d, y = %d\n", (int)x, (int)y);
         printf("&x = %lx, &y = %lx\n", (DrvAPIAddress)&x, (DrvAPIAddress)&y);
+        y = x;
+        printf("x = %d, y = %d\n", (int)x, (int)y);
+        x = l2sp_int;
+        printf("x = %d, y = %d\n", (int)x, (int)y);
+        dram_int = x;
+        printf("x = %d, dram_int = %d\n", (int)x, (int)dram_int);
     }
     return 0;
 }
