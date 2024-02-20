@@ -22,15 +22,6 @@ v[7] = 7
 v[8] = 8
 v[9] = 9
 handle test
-v_impl.vector.data() = 0
-v_impl.vector.size() = 0
-v_impl.vector.capacity() = 0
-v_impl.vector.data() = 800000000098
-v_impl.vector.size() = 10
-v_impl.vector.capacity() = 10
-v_impl.vector.data() = 800000000098
-v_impl.vector.size() = 10
-v_impl.vector.capacity() = 10
 v[0] = 0
 v[1] = 1
 v[2] = 2
@@ -41,4 +32,27 @@ v[6] = 6
 v[7] = 7
 v[8] = 8
 v[9] = 9
-Simulation is complete, simulated time: 2.617 us
+static test
+v[0] = 0
+v[1] = 1
+v[2] = 2
+v[3] = 3
+v[4] = 4
+v[5] = 5
+v[6] = 6
+v[7] = 7
+v[8] = 8
+v[9] = 9
+l1sp_int = 1, l2sp_int = 2, dram_int = 3
+l1sp_int = 1
+l2sp_int = 2
+dram_int = 3
+l1sp_int + l2sp_int + dram_int = 12
+&bar_alias = 800000000018, &l1sp_bar = 800000000018
+bar.x() = 240, bar.y() = 0.000000
+bar.x() = 32, bar.y() = 3.141593
+bar.x() = 71, bar.y() = 6.283185
+&b = 8000000000f0
+x = 1, y = 2
+&x = 8000000000f8, &y = 800000000100
+Simulation is complete, simulated time: 3.29 us
