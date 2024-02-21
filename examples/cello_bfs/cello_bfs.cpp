@@ -7,7 +7,9 @@
 #include <breadth_first_search_graph.hpp>
 #include <inttypes.h>
 #include <util/timer.hpp>
+#include <sstream>
 
+//#define DEBUG
 #ifdef DEBUG
 #define pr_dbg(fmt, ...)                        \
     do { printf(fmt, ##__VA_ARGS__); } while (0)
@@ -18,128 +20,157 @@
 using namespace DrvAPI;
 
 template <typename T>
-using pointer = DrvAPI::DrvAPIPointer<T>;
-
-template <typename T>
-using handle = typename pointer<T>::value_handle;
+using handle = typename DrvAPI::value_handle<T>;
 
 struct frontier_data {
-    int32_t size;
-    int32_t dense;
-    int32_t capacity;
+    int32_t              size;
+    int32_t             dense;
+    int32_t          capacity;
     pointer<int32_t> vertices;
+
+    template <typename Src>
+    static void copy(frontier_data &dst, const Src &src) {
+        dst.size = src.size();
+	dst.dense = src.dense();
+	dst.capacity = src.capacity();
+	dst.vertices = src.vertices();
+    }
+
+    template <typename Dst>
+    static void copy(Dst &dst, const frontier_data &src) {
+        dst.size() = src.size;
+	dst.dense() = src.dense;
+	dst.capacity() = src.capacity;
+	dst.vertices() = src.vertices;
+    }
 };
 
-DRV_API_REF_CLASS_BEGIN(frontier_data)
+template <>
+class DrvAPI::value_handle<frontier_data> {  
+    DRV_API_VALUE_HANDLE_CONSTRUCTORS(frontier_data)
+    DRV_API_VALUE_HANDLE_ASSIGNMENT_OPERATORS(frontier_data)
+    DRV_API_VALUE_HANDLE_CAST_OPERATORS(frontier_data)
+    DRV_API_VALUE_HANDLE_ADDRESSOF_OPERATORS(frontier_data)
+    DRV_API_VALUE_HANDLE_INTERNAL(frontier_data)
 
-void init(int32_t dense_, int32_t capacity_) {
-    size() = 0;
-    dense() = dense_;
-    capacity() = capacity_;
-    vertices() = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, capacity_ * sizeof(int32_t));
-    clear();
-}
+    void init(int32_t dense_, int32_t capacity_) {
+      size() = 0;
+      dense() = dense_;
+      capacity() = capacity_;
+      pointer<int32_t> p = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, capacity_ * sizeof(int32_t));
+      // printf("p          = %s (%16lx)\n"
+      // 	     , DrvAPIVAddress{p}.to_string().c_str()
+      // 	     , (uint64_t)p);
+      vertices() = p;
+      // printf("vertices() = %s (%16lx)\n"
+      // 	     , DrvAPIVAddress{vertices()}.to_string().c_str()
+      // 	     , (uint64_t)vertices());
+      clear();
+    }
+    
+    void destroy() {
+      DrvAPIMemoryFree(static_cast<pointer<void>>(vertices()));
+    }
 
-void destroy() {
-    DrvAPIMemoryFree(static_cast<pointer<int32_t>>(vertices()));
-}
-
-void clear() {
-    size() = 0;
-    if (dense()) {
+    void clear() {
+      size() = 0;
+      if (dense()) {
         size() = 0;
         cello::parallel_for(0, capacity()/32, 1, [=](int32_t i) {
-            vertices(i) = 0;
+	  vertices(i) = 0;
         });
+      }
     }
-}
 
-int32_t sparse() { return !dense(); }
+    int32_t sparse() { return !dense(); }
 
-handle<int32_t> vertices(int32_t i) {
-    pointer<int32_t> vp = vertices();
-    return vp[i];
-}
+    handle<int32_t> vertices(int32_t i) {
+      pointer<int32_t> vp = vertices();
+      return vp[i];
+    }
 
-void insert(int32_t v) {
-    if (sparse()) {
+    void insert(int32_t v) {
+      if (sparse()) {
         insert_sparse_fast(v);
-    } else {
+      } else {
         if (insert_dense_fast(v))
-            atomic_add(&size(), 1);
+	  atomic_add(size().address(), 1);
+      }
     }
-}
 
-/* should only be called on a sparse frontier */
-void insert_sparse_fast(int32_t v) {
+    /* should only be called on a sparse frontier */
+    void insert_sparse_fast(int32_t v) {
 #ifdef DEBUG
-    if (!sparse()) {
-         throw std::runtime_error("insert_sparse_fast called on dense frontier");
-    }
+      if (!sparse()) {
+	throw std::runtime_error("insert_sparse_fast called on dense frontier");
+      }
 #endif
-    int32_t i = atomic_add(&size(), 1);
-    vertices(i) = v;
-}
+      int32_t i = atomic_add(size().address(), 1);
+      vertices(i) = v;
+    }
 
-/* should only be called on a dense frontier */
-/* does not update the size */
-/* returns true if the vertex was not already in the frontier */
-bool insert_dense_fast(int32_t v) {
+    /* should only be called on a dense frontier */
+    /* does not update the size */
+    /* returns true if the vertex was not already in the frontier */
+    bool insert_dense_fast(int32_t v) {
 #ifdef DEBUG
-    if (!dense()) {
-         throw std::runtime_error("insert_dense_fast called on sparse frontier");
-    }
+      if (!dense()) {
+	throw std::runtime_error("insert_dense_fast called on sparse frontier");
+      }
 #endif
-    int32_t i = v / 32;
-    int32_t j = v % 32;
-    int32_t o = atomic_or(&vertices(i), 1 << j);
-    return (o & (1 << j)) == 0;
-}
+      int32_t i = v / 32;
+      int32_t j = v % 32;
+      int32_t o = atomic_or(vertices(i).address(), 1 << j);
+      return (o & (1 << j)) == 0;
+    }
 
-/* should only be called on a dense frontier */
-bool dense_contains(int32_t v) {
+    /* should only be called on a dense frontier */
+    bool dense_contains(int32_t v) {
 #ifdef DEBUG
-    if (!dense()) {
-         throw std::runtime_error("dense_contains called on sparse frontier");
-    }
+      if (!dense()) {
+	throw std::runtime_error("dense_contains called on sparse frontier");
+      }
 #endif
-    int32_t i = v / 32;
-    int32_t j = v % 32;
-    int32_t o = vertices(i);
-    return (o & (1 << j)) != 0;
-}
+      int32_t i = v / 32;
+      int32_t j = v % 32;
+      int32_t o = vertices(i);
+      return (o & (1 << j)) != 0;
+    }
 
-DRV_API_REF_CLASS_DATA_MEMBER(frontier_data, size)
-DRV_API_REF_CLASS_DATA_MEMBER(frontier_data, dense)
-DRV_API_REF_CLASS_DATA_MEMBER(frontier_data, capacity)
-DRV_API_REF_CLASS_DATA_MEMBER(frontier_data, vertices)
+    DRV_API_VALUE_HANDLE_FIELD(frontier_data, size, int32_t, size)
+    DRV_API_VALUE_HANDLE_FIELD(frontier_data, dense, int32_t, dense)
+    DRV_API_VALUE_HANDLE_FIELD(frontier_data, capacity, int32_t, capacity)
+    DRV_API_VALUE_HANDLE_FIELD(frontier_data, vertices, pointer<int32_t>, vertices)
 
-DRV_API_REF_CLASS_END(frontier_data)
+    operator std::string() {
+      std::stringstream ss;
+      ss << "{ ";
+      if (dense()) {
+	for (int32_t i = 0; i < capacity(); i++) {
+	  if (dense_contains(i)) {
+	    ss << std::setw(3) << i << ", ";
+	  }
+	}
+      } else {
+	for (int32_t i = 0; i < size(); i++) {
+	  ss << std::setw(3) << vertices(i) << ", ";
+	}
+      }
+      ss << " }";
+      return ss.str();
+    }
+};
 
-using frontier = frontier_data_ref;
+using frontier = DrvAPI::value_handle<frontier_data>;
 
 /**
  * @brief swap two frontiers
  * 
  */
-void swap(frontier& a, frontier& b) {
-    frontier_data tmp_data;
-    frontier tmp (&tmp_data);
-
-    tmp.size() = (int32_t)a.size();
-    tmp.dense() = (int32_t)a.dense();
-    tmp.capacity() = (int32_t)a.capacity();
-    tmp.vertices() = (pointer<int32_t>)a.vertices();
-
-    a.size() = (int32_t)b.size();
-    a.dense() = (int32_t)b.dense();
-    a.capacity() = (int32_t)b.capacity();
-    a.vertices() = (pointer<int32_t>)b.vertices();
-
-    b.size() = (int32_t)tmp.size();
-    b.dense() = (int32_t)tmp.dense();
-    b.capacity() = (int32_t)tmp.capacity();
-    b.vertices() = (pointer<int32_t>)tmp.vertices();
+void swap(frontier a, frontier b) {
+    frontier_data tmp = a;
+    a = b;
+    b = tmp;
 }
 
 /**
@@ -215,27 +246,27 @@ int CelloMain(int argc, char* argv[]) {
         timer _("csr construction");
 #ifdef PARALLEL_INIT
         cello::parallel_invoke(
-            [=](){
+            [=]() mutable {
 #endif
-                cello::parallel_for(0, v+1, 1, [=] (int32_t i) {
+                cello::parallel_for(0, v+1, 1, [=] (int32_t i) mutable {
                     fwd_offsets[i] = ref_fwd_offsets[i];
                     rev_offsets[i] = ref_rev_offsets[i];
                 });
                 printf("Initializing offsets done\n");
 #ifdef PARALLEL_INIT
             },
-            [=](){
+            [=]() mutable {
 #endif
-                cello::parallel_for(0, e, 1, [=] (int32_t i) {
+                cello::parallel_for(0, e, 1, [=] (int32_t i) mutable {
                     fwd_edges[i] = ref_fwd_edges[i];
                     rev_edges[i] = ref_rev_edges[i];
                 });
                 printf("Initializing edges done\n");
 #ifdef PARALLEL_INIT
             },
-            [=](){
+            [=]() mutable {
 #endif
-                cello::parallel_for(0, v, 1, [=] (int32_t i) {
+                cello::parallel_for(0, v, 1, [=] (int32_t i) mutable {
                     distance[i] = -1;
                 });
                 printf("Initializing distance done\n");
@@ -244,17 +275,18 @@ int CelloMain(int argc, char* argv[]) {
         );
 #endif
     }
-    // todo: fix parallel invoke (3)
     
     double csr_end_time = DrvAPI::seconds();
 
     DrvAPI::outputStatistics("breadth_first_search_start");
 
     double bfs_start_time = DrvAPI::seconds();
-    // phase 2. run bfs
 
-    frontier_data f_data [3];
-    frontier curr(&f_data[0]), next(&f_data[1]), temp(&f_data[2]);
+    // phase 2. run bfs
+    DrvAPI::DrvAPIVar<frontier_data> f_data[3];
+    frontier curr = f_data[0];
+    frontier next = f_data[1];
+    frontier temp = f_data[2];
     {
         timer _("frontier init");        
         curr.init(true, v);
@@ -308,6 +340,7 @@ int CelloMain(int argc, char* argv[]) {
                 rev_not_fwd = curr.size() >= v/20;
                 switched = true;
             }
+
             // traversal
             if (rev_not_fwd) {
                 // set curr to dense
@@ -335,7 +368,7 @@ int CelloMain(int argc, char* argv[]) {
                 pr_dbg("forward: curr.size() = %d\n", (int32_t)curr.size());        
                 cello::parallel_for(0, (int32_t)curr.size(), 1, [=] (int32_t i) mutable {
                     int32_t s = curr.vertices(i);
-                    int32_t s_start = fwd_offsets[s];
+	            int32_t s_start = fwd_offsets[s];
                     int32_t s_stop = fwd_offsets[s+1];
                     for (int32_t d_i = s_start; d_i < s_stop; d_i++) {
                         int32_t d = fwd_edges[d_i];
@@ -346,7 +379,7 @@ int CelloMain(int argc, char* argv[]) {
                     }
                 });
             }
-            swap(curr, next);
+	    swap(curr, next);
         }
     }
 
