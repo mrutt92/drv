@@ -7,8 +7,7 @@
 using namespace DrvAPI;
 using namespace util;
 
-template <typename T>
-using pointer = DrvAPIPointer<T>;
+using DrvAPI::pointer;
 
 int CelloMain(int argc, char *argv[])
 {
@@ -21,9 +20,12 @@ int CelloMain(int argc, char *argv[])
         timer _("init");
         table = DrvAPI::DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, gups_table_size * sizeof(int64_t));
     }
+    printf("GUPS: table = %s (%" PRIx64 ")\n",
+	   DrvAPI::DrvAPIVAddress{table}.to_string().c_str(),
+	   (uint64_t)table);
     {
         timer _("gups");
-        cello::parallel_for(0l, updates, 1l, [table, gups_table_size](int64_t i) {
+        cello::parallel_for(0l, updates, 1l, [table, gups_table_size](int64_t i) mutable {
             int64_t index = rand() % gups_table_size;
             int64_t value = table[index];
             table[index] = value ^ i;
