@@ -6,6 +6,9 @@
 namespace cello
 {
 
+using DrvAPI::value_handle;
+
+
 static constexpr int CELLO_TAG = 1;
 
 /**
@@ -41,12 +44,33 @@ void spawn(task *task);
  */
 void yield();
 
+
+/**
+ * a thread id
+ */
+struct thread_id_t {
+    thread_id_t (){}
+    thread_id_t (long pxn, long pod, long core, long thread)
+      : pxn(pxn), pod(pod), core(core), thread(thread) {
+    }
+    long pxn = 0;
+    long pod = 0;
+    long core = 0;
+    long thread = 0;
+};
+
+inline long tid(thread_id_t &thread_id) {
+using namespace DrvAPI;
+    return thread_id.pxn*numPXNPods()*numPodCores()*numCoreThreads()
+        +  thread_id.pod*numPodCores()*numCoreThreads()
+        +  thread_id.core*numCoreThreads()
+        +  thread_id.thread;
+}
+  
 inline long tid() {
     using namespace DrvAPI;
-    return myPXNId()*numPXNPods()*numPodCores()*numCoreThreads()
-        +  myPodId()*numPodCores()*numCoreThreads()
-        +  myCoreId()*numCoreThreads()
-        +  myThreadId();
+    thread_id_t thread_id = {myPXNId(), myPodId(), myCoreId(), myThreadId() };
+    return tid(thread_id);
 }
 
 inline long num_threads() {
@@ -60,49 +84,71 @@ inline long num_threads() {
 struct joiner {
 public:
     joiner() {}
+    int64_t &count() { return count_; }
+    int64_t &joined() { return joined_; }
+    const int64_t &count() const { return count_; }
+    const int64_t &joined() const { return joined_; }
 
-    int64_t count = 0;
-    int64_t joined = 0;
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst,  const Src &src) {
+        dst.count() = src.count();
+	dst.joined() = src.joined();
+    }
+    int64_t count_ = 0;
+    int64_t joined_ = 0;
 };
 
-DRV_API_REF_CLASS_BEGIN(joiner)
-/**
- * initialize the joiner
- */
-void init() {
+} namespace DrvAPI {
+
+using cello::joiner;
+
+template <>
+class value_handle<joiner> {
+  DRV_API_VALUE_HANDLE_CONSTRUCTORS(joiner)
+  DRV_API_VALUE_HANDLE_ASSIGNMENT_OPERATORS(joiner)
+  DRV_API_VALUE_HANDLE_CAST_OPERATORS(joiner)
+  DRV_API_VALUE_HANDLE_ADDRESSOF_OPERATORS(joiner)
+  DRV_API_VALUE_HANDLE_INTERNAL(joiner)
+  /**
+   * initialize the joiner
+   */
+  void init() {
     count() = 0;
     joined() = 0;
-}
-/**
- * add to the joiner
- */
-void add(int64_t num) {
+  }
+  /**
+   * add to the joiner
+   */
+  void add(int64_t num) {
     atomic_add(&count(), num);
-}
-/**
- * join the joiner
- */
-void join() {
+  }
+  /**
+   * join the joiner
+   */
+  void join() {
     atomic_add(&joined(), 1);
-}
-/**
- * join the joiner
- */
-void sync() {
+  }
+  /**
+   * join the joiner
+   */
+  void sync() {
     while (joined() < count()) {
-        // void *sp;
-        // asm volatile("mov %%rsp, %0" : "=r"(sp));
-        // printf("T %3ld: yielding: sp = %p\n", tid(), sp);
-        yield();
+      // void *sp;
+      // asm volatile("mov %%rsp, %0" : "=r"(sp));
+      // printf("T %3ld: yielding: sp = %p\n", tid(), sp);
+      cello::yield();
     }
     // void *sp;
     // asm volatile("mov %%rsp, %0" : "=r"(sp));
     // printf("T %3ld: sync'd: sp = %p\n", tid(), sp);       
-}
-DRV_API_REF_CLASS_DATA_MEMBER(joiner, count)
-DRV_API_REF_CLASS_DATA_MEMBER(joiner, joined)
-DRV_API_REF_CLASS_END(joiner)
+  }
+  DRV_API_VALUE_HANDLE_FIELD(joiner, count, int64_t, count_)
+  DRV_API_VALUE_HANDLE_FIELD(joiner, joined, int64_t, joined_)
+};
 
+} namespace cello {
+
+using joiner_ref = DrvAPI::value_handle<joiner>;
 /////////////////////
 // Parallel invoke //
 /////////////////////
@@ -126,17 +172,17 @@ struct invoke_child : task {
 template <typename F1, typename F2>
 void parallel_invoke_impl(F1 && f1, F2 && f2) {
     // create a joiner
-    cello::joiner joiner;
-    cello::joiner_ref jref(&joiner);
-    jref.add(1);
+    using namespace DrvAPI;
+    dram_dynamic<cello::joiner> joiner;
+    joiner.add(1);
 
     // spawn the child task
-    invoke_child<F1> child(jref, std::forward<F1>(f1));
+    invoke_child<F1> child(joiner, std::forward<F1>(f1));
     spawn(&child);
 
     // execute f2 directly
     f2();
-    jref.sync();
+    joiner.sync();
 }
 
 /**
