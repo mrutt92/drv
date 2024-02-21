@@ -59,7 +59,7 @@ int CelloMain(int argc, char** argv) {
     // csr construction
     {
         timer t("graph init");
-        g.init(V, E, fwd_offsets, fwd_edges);
+        g.init(V, E, rev_offsets, rev_edges);
     }
 
     pointer<float> old_rank = DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, sizeof(float)*V);
@@ -70,27 +70,27 @@ int CelloMain(int argc, char** argv) {
     // rank init
     {
         timer t("rank init");
-        cello::parallel_for(0, V, 1, [=](vertex v) {
+        cello::parallel_for(0, V, 1, [=](vertex v) mutable {
             old_rank[v] = 1.0f/V;
             new_rank[v] = 0.0f;
-            out_degree[v] = fwd_offsets[v+1] - fwd_offsets[v];
+	    vertex odegree = fwd_offsets[v+1] - fwd_offsets[v];
+            out_degree[v] = odegree;
         });
     }
 
     float damp = 0.85;
     float beta_score = (1.0 - damp)/V;
-
     // pagerank
     {
         timer t("pagerank");
         for (int i = 0; i < ITERATIONS; i++) {
-            {
+            {	      
                 timer t("pagerank iter " + std::to_string(i));
-                cello::parallel_for(0, V, 1, [=](vertex v) {
+                cello::parallel_for(0, V, 1, [=](vertex v) mutable {
                     contrib[v] = old_rank[v]/out_degree[v];
                 });
         
-                cello::parallel_for(0, V, 1, [=](vertex dst) {
+                cello::parallel_for(0, V, 1, [=](vertex dst) mutable {
                     float rank = 0.0f;
                     vertex start = g.offsets[dst];
                     vertex end = g.offsets[dst+1];
@@ -101,7 +101,7 @@ int CelloMain(int argc, char** argv) {
                     new_rank[dst] = rank;
                 });
 
-                cello::parallel_for(0, V, 1, [=](vertex v) {
+                cello::parallel_for(0, V, 1, [=](vertex v) mutable {
                     float rank = damp*new_rank[v] + beta_score;
                     old_rank[v] = rank;
                 });
