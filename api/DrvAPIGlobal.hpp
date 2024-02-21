@@ -10,126 +10,86 @@
 #include <cassert>
 namespace DrvAPI
 {
-/**
- * @brief Statically allocate data in the specified memory type
- */
-template <typename T, DrvAPIMemoryType MEMTYPE>
-class DrvAPIGlobal
-{
-public:
-    typedef T value_type; //!< value type
-    typedef DrvAPIPointer<T> pointer_type; //!< pointer type
-    
-    /**
-     * @brief constructor
-     */
-    DrvAPIGlobal() {
-        initOffset();
-    }
-
-    // not copyable or movable
-    DrvAPIGlobal(const DrvAPIGlobal &other) = delete;
-    DrvAPIGlobal(DrvAPIGlobal &&other) = delete;
-    DrvAPIGlobal &operator=(const DrvAPIGlobal &other) = delete;
-    DrvAPIGlobal &operator=(DrvAPIGlobal &&other) = delete;
-
-    void initOffset() {
-        DrvAPISection &section = DrvAPISection::GetSection(MEMTYPE);
-        offset_ = section.increaseSizeBy(sizeof(T));
-    }
-
-    DrvAPIPointer<T> pointer() const {
-        DrvAPIAddress base
-            = DrvAPISection::GetSection(MEMTYPE)
-            .getBase(myPXNId(), myPodId(), myCoreId());
-
-        return DrvAPIPointer<T>(base + offset_);
-    }
-    
-    /**
-     * cast operator
-     */
-    operator T() const { return static_cast<T>(*pointer()); }
-
-    /**
-     * assignment operator
-     */
-    DrvAPIGlobal& operator=(const T &other) {
-        *pointer() = other;
-        return *this;
-    }
-
-    /**
-     * address operator
-     */
-    DrvAPIPointer<T> operator&() const { return pointer(); }
-
-    uint64_t offset_; //!< offset from the section base
-    T      init_val_; //!< initial value
-};
 
 /**
- * @brief specialization for DrvAPIPointer globals
+ * statically allocatable data; can be allocated in special memory regions
  */
-template <typename T, DrvAPIMemoryType MEMTYPE>
-class DrvAPIGlobal<DrvAPIPointer<T>, MEMTYPE>
-{
+template <typename T, DrvAPI::DrvAPIMemoryType MEMTYPE>
+class static_data : public value_handle<T> {
 public:
     /**
      * @brief constructor
      */
-    DrvAPIGlobal() {
-        initOffset();
+    static_data() {
+        _offset = DrvAPI::DrvAPISection::GetSection(MEMTYPE).increaseSizeBy(sizeof(T));
     }
-
-    // not copyable or movable
-    DrvAPIGlobal(const DrvAPIGlobal &other) = delete;
-    DrvAPIGlobal(DrvAPIGlobal &&other) = delete;
-    DrvAPIGlobal &operator=(const DrvAPIGlobal &other) = delete;
-    DrvAPIGlobal &operator=(DrvAPIGlobal &&other) = delete;
-
-
-    void initOffset() {
-        DrvAPISection &section = DrvAPISection::GetSection(MEMTYPE);
-        offset_ = section.increaseSizeBy(sizeof(T));
-    }
-
-    DrvAPIPointer<DrvAPIPointer<T>> pointer() const {
-        DrvAPIAddress base
-            = DrvAPISection::GetSection(MEMTYPE)
-            .getBase(myPXNId(), myPodId(), myCoreId());
-        return DrvAPIPointer<DrvAPIPointer<T>>(base + offset_);
-    }
+    static_data(const static_data &other) = delete;
+    static_data(static_data &&other) = delete;
+    ~static_data() = default;
 
     /**
-     * cast operator
+     * handle assignment is a deep copy
      */
-    operator DrvAPIPointer<T>() const { return static_cast<DrvAPIPointer<T>>(*pointer()); }
-
-    /**
-     * assignment operator
-     */
-    DrvAPIGlobal& operator=(const DrvAPIPointer<T> &other) {
-        *pointer() = other;
+    static_data & operator=(const static_data &other) {
+        value_handle<T> me(address());
+        value_handle<T> you(other.address());
+        me = you;
         return *this;
     }
 
     /**
-     * address operator
-     */
-    DrvAPIPointer<DrvAPIPointer<T>> operator&() const { return pointer(); }
-
-    /**
-     * subscript operator
-     */
-    typename DrvAPIPointer<T>::value_handle
-    operator[](size_t idx) const {
-        DrvAPIPointer<T> p = *pointer();
-        return p[idx];
+     * handle assignment is a deep copy
+     */    
+    static_data & operator=(static_data &&other) {
+        value_handle<T> me(address());
+        value_handle<T> you(other.address());
+        me = you;
+        return *this;
     }
 
-    uint64_t offset_; //!< offset from the section base
+    /**
+     * assignment operators
+     */
+    static_data & operator=(const T &v) {
+        value_handle<T> handle(address());
+        handle = v;
+        return *this;
+    }
+
+    /**
+     * materialize the address of the static data
+     */
+    DrvAPI::DrvAPIAddress address() const override {
+        DrvAPI::DrvAPIAddress r = DrvAPI::DrvAPISection::GetSection(MEMTYPE)
+            .getBase(DrvAPI::myPXNId(), DrvAPI::myPodId(), DrvAPI::myCoreId())
+            + _offset;
+        return r;   
+    }
+    
+
+    DrvAPI::DrvAPIAddress _offset;
 };
+
+/**
+ * static data in L1SP
+ */
+template <typename T>
+using l1sp_static = static_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryL1SP>;
+
+/**
+ * static data in L2SP
+ */
+template <typename T>
+using l2sp_static = static_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryL2SP>;
+
+/**
+ * static data in DRAM
+ */
+template <typename T>
+using dram_static = static_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryDRAM>;
+  
+template <typename T, DrvAPIMemoryType MEMTYPE>
+using DrvAPIGlobal = static_data<T, MEMTYPE>;
 
 template <typename T>
 using DrvAPIGlobalL1SP = DrvAPIGlobal<T, DrvAPIMemoryType::DrvAPIMemoryL1SP>;
