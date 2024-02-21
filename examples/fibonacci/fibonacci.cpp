@@ -24,7 +24,8 @@ long fibonacci(long n) {
 int CelloMain(int argc, char** argv) {
     long n = strtol(argv[1], NULL, 10);    
     printf("Thread %ld: Running fibonacci(%ld)\n", cello::tid(), n);
-    long r = fibonacci(n);
+    long r = 0;
+    r = fibonacci(n);
     printf("Thread %ld: fibonacci(%ld) = %ld\n", cello::tid(), n, r);
     return 0;
 }
