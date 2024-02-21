@@ -10,57 +10,76 @@
 #include <cassert>
 #include <cstdlib>
 namespace DrvAPI
-{
+{  
+
 /**
- * @brief A wrapper around a type
+ * dynamic data; can be allocated in special memory regions
  */
-template <typename T>
-class DrvAPIVar {
+template <typename T, DrvAPI::DrvAPIMemoryType MEMTYPE>
+class dynamic_data : public value_handle<T> {
 public:
-    DrvAPIVar() : value_() {
-        std::size_t _;
-        DrvAPINativeToAddress(&value_, &address_, &_);
+    /**
+     * @brief constructor
+     */
+    dynamic_data():
+        value_handle<T>(DrvAPI::DrvAPIMemoryAlloc(MEMTYPE, sizeof(T))) {        
     }
-    DrvAPIVar(T value) : DrvAPIVar() {
-        *pointer() = value; 
+
+    dynamic_data(const T&v) :
+        dynamic_data() {
+        value_handle<T> handle(this->_ptr);
+        handle = v;
     }
-    DrvAPIVar(const DrvAPIVar<T>& other) : DrvAPIVar() {
-        *pointer() = *other.pointer();
+
+    dynamic_data(const dynamic_data &other) = delete;
+    dynamic_data(dynamic_data &&other) {
+        this->_ptr = other._ptr;
+        other._ptr = 0;
     }
-    DrvAPIVar(DrvAPIVar<T>&& other) : DrvAPIVar() {
-        *pointer() = *other.pointer();
-    }
-    DrvAPIVar<T>& operator=(const DrvAPIVar<T>& other) {
-        *pointer() = *other.pointer();
-        return *this;
-    }
-    DrvAPIVar<T>& operator=(DrvAPIVar<T>&& other) {
-        *pointer() = *other.pointer();
+
+    dynamic_data & operator=(const dynamic_data &other) {
+        value_handle<T> me(this->_ptr);
+        value_handle<T> you(other._ptr);
+        me = you;
         return *this;
     }
 
-    // assignment operator
-    DrvAPIVar<T>& operator=(T value) {
-        *pointer() = value;
-        return *this;
-    }
+    dynamic_data & operator=(dynamic_data &&other) = delete;
 
-    // read operator
-    operator T() const {
-        return *pointer();
+    dynamic_data & operator=(const T &v) {
+        value_handle<T> handle(this->_ptr);
+        handle = v;
+        return *this;
     }
     
-    DrvAPIPointer<T> pointer() const {
-        return DrvAPIPointer<T>(address());
+    ~dynamic_data() {
+        DrvAPI::DrvAPIMemoryFree(this->_ptr);
     }
-
-    DrvAPIAddress address() const {
-        return address_;
-    }
-
-    T value_;
-    DrvAPIAddress address_;
 };
+
+/**
+ * dynamic data in L1SP
+ */
+template <typename T>
+using l1sp_dynamic = dynamic_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryL1SP>;
+
+/**
+ * dynamic data in L2SP
+ */
+template <typename T>
+using l2sp_dynamic = dynamic_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryL2SP>;
+
+/**
+ * dynamic data in L3SP
+ */
+template <typename T>
+using dram_dynamic = dynamic_data<T, DrvAPI::DrvAPIMemoryType::DrvAPIMemoryDRAM>;
+
+/**
+ * alias DrvAPIVar<T>
+ */
+template <typename T>
+using DrvAPIVar = l1sp_dynamic<T>;
 
 }
 #endif
