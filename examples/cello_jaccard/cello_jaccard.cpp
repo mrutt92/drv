@@ -20,6 +20,9 @@ using namespace DrvAPI;
     } while (0)
 #endif
 
+#define pr_info(fmt, ...)			\
+  do { printf("INFO: " fmt "", ##__VA_ARGS__); } while (0)
+
 using namespace util;
 
 typedef int32_t idx;
@@ -27,28 +30,49 @@ typedef idx  vertex;
 typedef idx  edge;
 typedef float val;
 
-template <typename T>
-using pointer = DrvAPI::DrvAPIPointer<T>;
+using DrvAPI::pointer;
+using DrvAPI::value_handle;
 
 struct graph {
-    vertex V = 0;
-    vertex E = 0;
-    pointer<vertex> offsets = 0;    
-    pointer<edge> edges = 0;
+    vertex V_ = 0;
+    vertex E_ = 0;
+    pointer<vertex> offsets_ = 0;
+    pointer<edge> edges_ = 0;
+
+    vertex& V() { return V_; }
+    vertex& E() { return E_; }
+    pointer<vertex>& offsets() { return offsets_; }
+    pointer<edge>& edges() { return edges_; }
+    const vertex &V() const { return V_; }
+    const vertex &E() const { return E_; }
+    const pointer<vertex>& offsets() const { return offsets_; }
+    const pointer<edge>&edges() const { return edges_; }
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+      dst.V() = src.V();
+      dst.E() = src.E();
+      dst.offsets() = src.offsets();
+      dst.edges() = src.edges();
+    }
 };
 
-DRV_API_REF_CLASS_BEGIN(graph)
-    DRV_API_REF_CLASS_DATA_MEMBER(graph, V)
-    DRV_API_REF_CLASS_DATA_MEMBER(graph, E)
-    DRV_API_REF_CLASS_DATA_MEMBER(graph, offsets)
-    DRV_API_REF_CLASS_DATA_MEMBER(graph, edges)
+template <>
+class DrvAPI::value_handle<graph> {
+    DRV_API_VALUE_HANDLE_DEFAULTS(graph)
+    DRV_API_VALUE_HANDLE_FIELD(graph, V, vertex, V_)
+    DRV_API_VALUE_HANDLE_FIELD(graph, E, vertex, E_)
+    DRV_API_VALUE_HANDLE_FIELD(graph, offsets, pointer<vertex>, offsets_)
+    DRV_API_VALUE_HANDLE_FIELD(graph, edges, pointer<vertex>, edges_)
 
-    pointer<edge>::value_handle edges(idx i) {
-        pointer<edge> e = this->edges();
-        return e[i];
+    value_handle<edge> edges(idx i) {
+      pointer<edge> e = this->edges();
+      return e[i];
     }
 
-    pointer<vertex>::value_handle offsets(idx i) {
+  
+
+    value_handle<vertex> offsets(idx i) {
         pointer<vertex> o = this->offsets();
         return o[i];
     }
@@ -56,8 +80,9 @@ DRV_API_REF_CLASS_BEGIN(graph)
     void init(vertex V, vertex E, const std::vector<vertex> &offsets, const std::vector<edge> &edges) {
         this->V() = V;
         this->E() = E;
-        this->offsets() = DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, sizeof(vertex)*(V + 1));
-        this->edges() = DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, sizeof(edge)*E);
+        this->offsets() = (pointer<vertex>)DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM,
+								   sizeof(vertex)*(V + 1));
+        this->edges() = (pointer<edge>)DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, sizeof(edge)*E);
         cello::parallel_invoke(
              [this, &offsets](){
                  cello::parallel_for(0, this->V()+1, 1, [=](vertex v) {
@@ -80,45 +105,43 @@ DRV_API_REF_CLASS_BEGIN(graph)
         return std::make_tuple(size, neih);
     }
 
-DRV_API_REF_CLASS_END(graph)
+};
 
 struct matrix {
     idx rows;
     idx cols;
     pointer<val> data;
+
+    template <typename Dst>
+    static void copy(Dst &dst, const matrix& src) {
+      dst.rows() = src.rows;
+      dst.cols() = src.cols;
+      dst.data() = src.data;
+    }
+    template <typename Src>
+    static void copy(matrix &dst, const Src &src) {
+      dst.rows = src.rows();
+      dst.cols = src.cols();
+      dst.data = src.data();
+    }
 };
 
-struct matrix_val {
-    matrix_val(matrix &m) : m(m) {}
-    matrix &m;
-    idx & rows() { return m.rows; }
-    idx & cols() { return m.cols; }
-    pointer<val> & data() { return m.data; }
+template <>
+class DrvAPI::value_handle<matrix> {
+    DRV_API_VALUE_HANDLE_DEFAULTS(matrix)
+    DRV_API_VALUE_HANDLE_FIELD(matrix, rows, idx, rows)
+    DRV_API_VALUE_HANDLE_FIELD(matrix, cols, idx, cols)
+    DRV_API_VALUE_HANDLE_FIELD(matrix, data, pointer<val>, data)
     void init(idx rows, idx cols) {
         this->rows() = rows;
         this->cols() = cols;
-        this->data() = DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, sizeof(val)*rows*cols);
+        this->data() = (pointer<val>)DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, sizeof(val)*rows*cols);
     }
-    pointer<val>::value_handle operator()(idx i, idx j) {
+    value_handle<val> operator()(idx i, idx j) {
         pointer<val> d = this->data();
         return d[i*this->cols() + j];
     }
 };
-
-DRV_API_REF_CLASS_BEGIN(matrix)
-    DRV_API_REF_CLASS_DATA_MEMBER(matrix, rows)
-    DRV_API_REF_CLASS_DATA_MEMBER(matrix, cols)
-    DRV_API_REF_CLASS_DATA_MEMBER(matrix, data)
-    void init(idx rows, idx cols) {
-        this->rows() = rows;
-        this->cols() = cols;
-        this->data() = DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, sizeof(val)*rows*cols);
-    }
-    pointer<val>::value_handle operator()(idx i, idx j) {
-        pointer<val> d = this->data();
-        return d[i*this->cols() + j];
-    }
-DRV_API_REF_CLASS_END(matrix)
 
 vertex intersection(pointer<vertex> a, pointer<vertex> b, vertex a_size, vertex b_size) {
     vertex count = 0;
@@ -154,17 +177,14 @@ int CelloMain(int argc, char** argv) {
     transpose_graph (V, E, fwd_offsets, fwd_edges, rev_offsets, rev_edges);
     printf("%s: V: %d, E: %d\n", graph_path.c_str(), V, E);
 
-    graph _g;
-    graph_ref g(&_g);
-
+    DrvAPI::DrvAPIVar<graph> g;
     // csr construction
     {
         timer t("graph init");
         g.init(V, E, fwd_offsets, fwd_edges);
     }
 
-    matrix _m;
-    matrix_val m(_m);
+    DrvAPI::DrvAPIVar<matrix> m;
     {
         timer t("matrix init");
         m.init(V, V);
@@ -173,9 +193,9 @@ int CelloMain(int argc, char** argv) {
     // jaccard similarity
     {
         timer t("jaccard");
-        cello::parallel_for<vertex>(0, g.V(), 1, [&m, g](vertex v) mutable {
+        cello::parallel_for<vertex>(0, g.V(), 1, [&m, &g](vertex v) mutable {
             m(v, v) = 1;
-            cello::parallel_for<vertex>(v+1, g.V(), 1, [&m, g, v](vertex u) mutable {
+            cello::parallel_for<vertex>(v+1, g.V(), 1, [&m, &g, v](vertex u) mutable {
                 pointer<vertex> v_neih, u_neih;
                 vertex v_size, u_size;
                 std::tie(v_size, v_neih) = g.neighbors(v);
