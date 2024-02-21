@@ -33,7 +33,7 @@ namespace cello
 ///////////////////////////////////
 StaticL1SP<task_queue> thread_task_queue[CORE_THREADS]; // an array of task queue by thread
 task_queue_ref my_task_queue() {
-    return task_queue_ref::FromPointer(&thread_task_queue[myThreadId()]);
+  return thread_task_queue[myThreadId()];
 }
 
 
@@ -49,7 +49,7 @@ task_queue_ref task_queue_of(const thread_id_t &tid) {
     vaddr.core_x() = coreXFromId(tid.core);
     vaddr.core_y() = coreYFromId(tid.core);
     Pointer<task_queue> ptr = vaddr.encode();
-    return task_queue_ref::FromPointer(ptr);
+    return *ptr;
 }
 
 //////////////////////////////////
@@ -91,7 +91,7 @@ void steal() {
     pr_dbg("trying to steal from tid=%4ld\n", tid(victim));
     task_queue_ref victim_queue = task_queue_of(victim);
 
-    DrvAPI::DrvAPIVAddress vaddr{victim_queue.addressof()};
+    DrvAPI::DrvAPIVAddress vaddr{&victim_queue};
     // pop from the victim's back
     task *task = victim_queue.pop_back();
 
@@ -169,6 +169,10 @@ int cello_start(int argc, char *argv[])
         ready = *num_threads_ready_ptr();
     }
 
+    pr_dbg("%" PRId64 "/%" PRId64 " threads are ready\n"
+	   , ready
+	   , num_threads());
+    
     if (tid() == 0) {
         auto call_main = [argc, argv](){
             {
