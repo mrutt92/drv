@@ -65,78 +65,96 @@ private:
  */
 struct task_queue {
 public:
-    std::deque<task*>*queue = nullptr;
-    int32_t lock = 0;    
+    std::deque<task*>*queue_ = nullptr;
+    int32_t lock_ = 0;
+
+    std::deque<task*>*& queue() { return queue_; }
+    int32_t &lock() { return lock_; }
+    std::deque<task*>* const & queue() const { return queue_; }
+    const int32_t &lock() const { return lock_; }
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.queue() = src.queue();
+	dst.lock() = src.lock();
+    }
 };
 
-DRV_API_REF_CLASS_BEGIN(task_queue)
-/**
- * initialize the task queue
- */
-void init() {
+} namespace DrvAPI {
+  
+using cello::task_queue;
+using cello::task;
+using cello::lock_guard;
+
+template <>
+class value_handle<task_queue> {
+  DRV_API_VALUE_HANDLE_CONSTRUCTORS(task_queue)
+  DRV_API_VALUE_HANDLE_ASSIGNMENT_OPERATORS(task_queue)
+  DRV_API_VALUE_HANDLE_CAST_OPERATORS(task_queue)
+  DRV_API_VALUE_HANDLE_ADDRESSOF_OPERATORS(task_queue)
+  DRV_API_VALUE_HANDLE_INTERNAL(task_queue)
+  
+  /**
+   * initialize the task queue
+   */
+  void init() {
     queue() = new std::deque<task*>();
     lock() = 0;
-}
+  }
 
-void destroy() {
+  void destroy() {
     delete queue();
-}
+  }
 
-void push_front(task* task) {
+  void push_front(task* task) {
     lock_guard guard(&lock());
     queue().get()->push_front(task);
-}
+  }
 
-void push_back(task* task) {
+  void push_back(task* task) {
     lock_guard guard(&lock());
     queue().get()->push_back(task);
-}
+  }
 
-task* pop_front() {
+  task* pop_front() {
     lock_guard guard(&lock());
     if (queue().get()->empty()) {
-        return nullptr;
+      return nullptr;
     }
     auto task = queue().get()->front();
     queue().get()->pop_front();
     return task;
-}
+  }
 
-task* pop_back() {
+  task* pop_back() {
     lock_guard guard(&lock());
     if (queue().get()->empty()) {
-        return nullptr;
+      return nullptr;
     }
     auto task = queue().get()->back();
     queue().get()->pop_back();
     return task;
-}
+  }
 
-std::deque<task*>* get_queue() {
+  std::deque<task*>* get_queue() {
     auto *p =  queue().get();
     if (p == nullptr) {
-        throw std::runtime_error("queue is null");
+      throw std::runtime_error("queue is null");
     }
     return p;
-}
-DRV_API_REF_CLASS_DATA_MEMBER(task_queue, queue)
-DRV_API_REF_CLASS_DATA_MEMBER(task_queue, lock)
-DRV_API_REF_CLASS_END(task_queue)
+  }
+  DRV_API_VALUE_HANDLE_FIELD(task_queue, queue, std::deque<task*>*, queue_)
+  DRV_API_VALUE_HANDLE_FIELD(task_queue, lock, int32_t, lock_)
+};
+
+} namespace cello {
+
+using task_queue_ref = DrvAPI::value_handle<task_queue>;
 
 /**
  * get the task queue for the current thread
  */
 task_queue_ref my_task_queue();
-
-/**
- * a thread id
- */
-struct thread_id_t {
-    long thread = 0;
-    long core = 0;
-    long pod = 0;
-    long pxn = 0;
-};
     
 /**
  * get the task queue of a specific thread
