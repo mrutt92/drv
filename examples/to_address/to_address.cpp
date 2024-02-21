@@ -16,19 +16,37 @@
 
 
 struct id_type {
-    int64_t pxn;
-    int64_t pod;
-    int64_t core;
-    int64_t thread;
+    int64_t pxn_;
+    int64_t pod_;
+    int64_t core_;
+    int64_t thread_;
+
+    int64_t &pxn() { return pxn_; }
+    int64_t &pod() { return pod_; }
+    int64_t &core() { return core_; }
+    int64_t &thread() { return thread_; }
+
+    const int64_t &pxn() const { return pxn_; }
+    const int64_t &pod() const { return pod_; }
+    const int64_t &core() const { return core_; }
+    const int64_t &thread() const { return thread_; }
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.pxn() = src.pxn();
+	dst.pod() = src.pod();
+	dst.core() = src.core();
+	dst.thread() = src.thread();
+    }
 };
 
-DRV_API_REF_CLASS_BEGIN(id_type)
-DRV_API_REF_CLASS_DATA_MEMBER(id_type, pxn)
-DRV_API_REF_CLASS_DATA_MEMBER(id_type, pod)
-DRV_API_REF_CLASS_DATA_MEMBER(id_type, core)
-DRV_API_REF_CLASS_DATA_MEMBER(id_type, thread)
-DRV_API_REF_CLASS_END(id_type)
-
+DRV_API_VALUE_HANDLE_BEGIN(id_type)
+DRV_API_VALUE_HANDLE_FIELD(id_type, pxn, int64_t, pxn_)
+DRV_API_VALUE_HANDLE_FIELD(id_type, pod, int64_t, pod_)
+DRV_API_VALUE_HANDLE_FIELD(id_type, core, int64_t, core_)
+DRV_API_VALUE_HANDLE_FIELD(id_type, thread, int64_t, thread_)
+DRV_API_VALUE_HANDLE_END(id_type)
+using id_type_ref = DrvAPI::value_handle<id_type>;
 
 int ToAddressMain(int argc, char *argv[])
 {
@@ -38,7 +56,7 @@ int ToAddressMain(int argc, char *argv[])
     std::size_t size = 0;
     DrvAPINativeToAddress(&id, &addr, &size);
 
-    id_type_ref id_ref = DrvAPIPointer<id_type>(addr);
+    id_type_ref id_ref = *DrvAPIPointer<id_type>(addr);
 
     id_ref.pxn() = myPXNId();
     id_ref.pod() = myPodId();
@@ -50,10 +68,10 @@ int ToAddressMain(int argc, char *argv[])
     DrvAPIAddressToNative(&id_ref, (void**)&native, &_);
     if (native != &id) {
         pr_info("FAIL: AddressToNative(NativeToAddress(&id)) != &id\n");
-    } else if (id.pxn != myPXNId() ||
-        id.pod != myPodId() ||
-        id.core != myCoreId() ||
-        id.thread != myThreadId()) {
+    } else if (id.pxn() != myPXNId() ||
+	       id.pod() != myPodId() ||
+	       id.core() != myCoreId() ||
+	       id.thread() != myThreadId()) {
         pr_info("FAIL: id fields don't match mine\n");
     } else {
         pr_info("PASS: all checks succeeded \n");
