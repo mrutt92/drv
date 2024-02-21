@@ -166,6 +166,20 @@ public:
     }                                                   \
     DrvAPI::DrvAPIAddress _ptr;
 
+#define DRV_API_VALUE_HANDLE_DEFAULTS(type)	\
+  DRV_API_VALUE_HANDLE_CONSTRUCTORS(type)	\
+  DRV_API_VALUE_HANDLE_ASSIGNMENT_OPERATORS(type) \
+  DRV_API_VALUE_HANDLE_CAST_OPERATORS(type)	  \
+  DRV_API_VALUE_HANDLE_ADDRESSOF_OPERATORS(type)  \
+  DRV_API_VALUE_HANDLE_INTERNAL(type)
+
+#define DRV_API_VALUE_HANDLE_DEFAULTS_TRIVIAL(type)	  \
+  DRV_API_VALUE_HANDLE_CONSTRUCTORS(type)		  \
+  DRV_API_VALUE_HANDLE_ASSIGNMENT_OPERATORS_TRIVIAL(type) \
+  DRV_API_VALUE_HANDLE_CAST_OPERATORS_TRIVIAL(type)	  \
+  DRV_API_VALUE_HANDLE_ADDRESSOF_OPERATORS(type)	  \
+  DRV_API_VALUE_HANDLE_INTERNAL(type)
+
 /**
  * begins specialization of value_handle for a type
  * type - the type to specialize for
@@ -176,14 +190,10 @@ public:
  * static void copy(DstType& &dst, const SrcType &src);
  * for DstType = [type, value_handle<type>] and SrcType = [type, value_handle<type>]
  */
-#define DRV_API_VALUE_HANDLE_BEGIN(type)     \
-    template <>                                 \
-    class DrvAPI::value_handle<type> {              \
-    DRV_API_VALUE_HANDLE_CONSTRUCTORS(type)             \
-    DRV_API_VALUE_HANDLE_ASSIGNMENT_OPERATORS(type) \
-    DRV_API_VALUE_HANDLE_CAST_OPERATORS(type) \
-    DRV_API_VALUE_HANDLE_ADDRESSOF_OPERATORS(type) \
-    DRV_API_VALUE_HANDLE_INTERNAL(type)
+#define DRV_API_VALUE_HANDLE_BEGIN(type)	\
+  template <>					\
+    class DrvAPI::value_handle<type> {		\
+    DRV_API_VALUE_HANDLE_DEFAULTS(type)
 
 /**
  * generates accessors for data members
