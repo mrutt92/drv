@@ -208,7 +208,7 @@ int CelloMain(int argc, char *argv[]) {
     pointer<vertex> triangles = DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, sizeof(vertex)*V);
     {
         timer _("triangles init");
-        cello::parallel_for(0, V, 1, [=](vertex v) {
+        cello::parallel_for(0, V, 1, [=](vertex v) mutable {
             triangles[v] = 0;
         });
     }
@@ -221,7 +221,7 @@ int CelloMain(int argc, char *argv[]) {
             vertex src_start = g.offsets[src];
             vertex src_end = g.offsets[src+1];
             vertex step = 1;            
-            cello::parallel_for(src_start, src_end, step, [=](vertex e) {
+            cello::parallel_for(src_start, src_end, step, [=](vertex e) mutable {
                 vertex start = e;
                 vertex end = std::min(src_end, start + step);
                 vertex c = 0;
@@ -231,12 +231,12 @@ int CelloMain(int argc, char *argv[]) {
                         vertex dst_start = g.offsets[dst];
                         vertex dst_end = g.offsets[dst+1];
                         // find the intersection of the two adjacency lists
-                        pointer<vertex> src_neighbors = &g.edges[src_start];
-                        pointer<vertex> dst_neighbors = &g.edges[dst_start];
+                        pointer<vertex> src_neighbors = g.edges[src_start].address();
+                        pointer<vertex> dst_neighbors = g.edges[dst_start].address();
                         c += intersection(src_neighbors, dst_neighbors, src_end - src_start, dst_end - dst_start, src, dst);
                     }
                 }
-                DrvAPI::atomic_add<vertex>(&triangles[src], c);
+                DrvAPI::atomic_add<vertex>(triangles[src].address(), c);
             });
             if (++count % 1000 == 0) {
                 pr_info("processed %d vertices\n", count.load());
