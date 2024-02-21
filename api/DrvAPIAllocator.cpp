@@ -18,12 +18,18 @@ static constexpr int64_t STATUS_INIT_IN_PROCESS = 2;
 struct global_memory_data {
     DrvAPIAddress  base;
     int64_t status;
+
+  static void copy(global_memory_data &dst,
+		   const value_handle<global_memory_data> &src);
+
+  static void copy(value_handle<global_memory_data> &dst,
+		   const global_memory_data & src);
 };
 
 // reference wrapper class for global memory
-DRV_API_REF_CLASS_BEGIN(global_memory_data)
-    DRV_API_REF_CLASS_DATA_MEMBER(global_memory_data, base)
-    DRV_API_REF_CLASS_DATA_MEMBER(global_memory_data, status)
+DRV_API_VALUE_HANDLE_BEGIN(global_memory_data)
+    DRV_API_VALUE_HANDLE_FIELD(global_memory_data, base, DrvAPIAddress, base)
+    DRV_API_VALUE_HANDLE_FIELD(global_memory_data, status, int64_t, status)
     void init(DrvAPIMemoryType type) {
         // 1. check if initialized
        int64_t s = status();
@@ -57,8 +63,21 @@ DRV_API_REF_CLASS_BEGIN(global_memory_data)
         uint64_t addr = DrvAPI::atomic_add<uint64_t>(&base(), size);
         return DrvAPIPointer<void>(addr);
     }
-DRV_API_REF_CLASS_END(global_memory_data)
-using global_memory_ref = global_memory_data_ref;
+DRV_API_VALUE_HANDLE_END(global_memory_data)
+
+void global_memory_data::copy(global_memory_data &dst,
+			      const value_handle<global_memory_data> &src) {
+  dst.base = src.base();
+  dst.status = src.status();
+}
+
+void global_memory_data::copy(value_handle<global_memory_data> &dst,
+			      const global_memory_data & src) {
+  dst.base() = src.base;
+  dst.status() = src.status;
+}
+
+using global_memory_ref = value_handle<global_memory_data>;
 
 namespace allocator
 {
@@ -69,17 +88,14 @@ DrvAPIGlobalDRAM<global_memory_data> dram_memory; //!< DRAM memory allocator
 
 void DrvAPIMemoryAllocatorInit() {
     using namespace allocator;
-    // 1. init l1sp
     if (!isCommandProcessor()) {
-        global_memory_ref l1 = &l1sp_memory;
-        l1.init(DrvAPIMemoryType::DrvAPIMemoryL1SP);
+        // 1. init l1sp
+        l1sp_memory.init(DrvAPIMemoryType::DrvAPIMemoryL1SP);
         // 2. init l2sp
-        global_memory_ref l2 = &l2sp_memory;
-        l2.init(DrvAPIMemoryType::DrvAPIMemoryL2SP);
+        l2sp_memory.init(DrvAPIMemoryType::DrvAPIMemoryL2SP);
     }
     // 3. init dram
-    global_memory_ref dram = &dram_memory;
-    dram.init(DrvAPIMemoryType::DrvAPIMemoryDRAM);
+    dram_memory.init(DrvAPIMemoryType::DrvAPIMemoryDRAM);
 }
 
 DrvAPIPointer<void> DrvAPIMemoryAlloc(DrvAPIMemoryType type, size_t size) {
@@ -91,22 +107,19 @@ DrvAPIPointer<void> DrvAPIMemoryAlloc(DrvAPIMemoryType type, size_t size) {
     }
 
     // size should be 8-byte aligned
-    global_memory_ref mem = DrvAPIPointer<global_memory_data>(0);
+    global_memory_ref mem(0);
     switch (type) {
     case DrvAPIMemoryType::DrvAPIMemoryL1SP:
-        mem = &allocator::l1sp_memory;
-        break;
+        return allocator::l1sp_memory.allocate(size);
     case DrvAPIMemoryType::DrvAPIMemoryL2SP:
-        mem = &allocator::l2sp_memory;
-        break;
+        return allocator::l2sp_memory.allocate(size);
     case DrvAPIMemoryType::DrvAPIMemoryDRAM:
-        mem = &allocator::dram_memory;
-        break;
+        return allocator::dram_memory.allocate(size);
     default:
         std::cerr << "ERROR: invalid memory type: " << static_cast<int>(type) << std::endl;
         exit(1);
     }
-    return mem.allocate(size);
+    return {0};
 }
 
 void DrvAPIMemoryFree(const DrvAPIPointer<void> &ptr) {
