@@ -22,7 +22,6 @@ INPUT_DIR := $(DRV_DIR)/inputs/sparse-inputs
 
 SIM_OPTIONS += --core-threads=$(threads) --pod-cores=$(cores)
 SIM_OPTIONS += --pxn-pods=$(pods) --num-pxn=$(pxns)
-SIM_OPTIONS += --drvx-stack-in-l1sp
 SIM_OPTIONS += --core-stats --stats-load-level=3
 TAG_BREAKDOWN_OPTIONS += --start-tag=breadth_first_search_start
 TAG_BREAKDOWN_OPTIONS += --end-tag=breadth_first_search_end
