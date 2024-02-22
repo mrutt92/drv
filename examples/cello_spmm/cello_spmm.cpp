@@ -550,7 +550,6 @@ class DrvAPI::value_handle<sparse_matrix_product> {
         O.nonzeros() = (pointer_t<nonzero>)DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, O.rowptr(O.rows()) * sizeof(nonzero));
         // 3. copy nonzeros into flat nonzero vector
         cello::parallel_for(0, (idx_t)O.rows(), 1, [&O, this](idx_t i) mutable {
-            idx_t nnz = O.nnzof(i);
             vector src = row_data(i);
             pointer_t<nonzero> dst = O.nonzerosof(i);
             for (idx_t j = 0; j < src.size; j++) {
