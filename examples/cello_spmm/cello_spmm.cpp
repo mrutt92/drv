@@ -101,6 +101,11 @@ using value_t = float;
 struct nonzero {
     idx_t   idx;
     value_t val;
+
+    operator std::tuple<idx_t, value_t>() const {
+        return std::make_tuple(idx, val);
+    }
+
     std::string to_string() const {
         return "(" + std::to_string(idx) + ":" + std::to_string(val) + ")";
     }
@@ -206,6 +211,49 @@ class DrvAPI::value_handle<sparse_matrix> {
         return p[i+1] - p[i];
     }
 
+    /**
+     * @brief iterator over nonzero pointer
+     */
+    class nonzero_iterator {
+        pointer_t<nonzero> p;
+        idx_t i;
+    public:
+        nonzero_iterator(pointer_t<nonzero> p, idx_t i) : p(p), i(i) {}
+        bool operator!=(const nonzero_iterator &other) const {
+            return i != other.i;
+        }
+        nonzero_iterator &operator++() {
+            i++;
+            return *this;
+        }
+        nonzero operator*() const {
+            return p[i];
+        }
+    };
+
+    /**
+     * @brief range over nonzero pointer
+     */
+    class nonzero_range {
+        pointer_t<nonzero> p;
+        idx_t n;
+    public:
+        nonzero_range(pointer_t<nonzero> p, idx_t n) : p(p), n(n) {}
+        nonzero_iterator begin() const {
+            return nonzero_iterator(p, 0);
+        }
+        nonzero_iterator end() const {
+            return nonzero_iterator(p, n);
+        }
+    };
+
+    /**
+     * return nonzeros of outer index i
+     */
+    nonzero_range nonzeros(idx_t i) {
+        return nonzero_range(nonzerosof(i), nnzof(i));
+    }
+
     handle_t<nonzero> nonzero_at(idx_t i) {
         pointer_t<nonzero> p = nonzeros();
         return p[i];
@@ -247,6 +295,10 @@ struct vector {
             s += std::to_string(data[i].idx()) + ":" + std::to_string(data[i].val()) + " ";
         }
         return s;
+    }
+
+    handle_t<nonzero> operator[](idx_t i) {
+        return data[i];
     }
 
     template <typename Dst>
@@ -322,7 +374,6 @@ template <typename merge_value>
 void merge(handle_t<vector> o, handle_t<vector> i0, handle_t<vector> i1, merge_value &&mergef) {
     idx_t i = 0, j = 0, k = 0;
     o.clear();
-    //pr_dbg("merge [i0: %s], [i1: %s]\n", i0.to_string().c_str(), i1.to_string().c_str());
     if (i0.size() == 0 && i1.size() == 0) {
         pr_dbg("merge [o: %s]\n", o.to_string().c_str());
         return;
@@ -500,9 +551,9 @@ class DrvAPI::value_handle<sparse_matrix_product> {
         // 3. copy nonzeros into flat nonzero vector
         cello::parallel_for(0, (idx_t)O.rows(), 1, [&O, this](idx_t i) mutable {
             idx_t nnz = O.nnzof(i);
-            handle_t<vector> src = row_data(i);
+            vector src = row_data(i);
             pointer_t<nonzero> dst = O.nonzerosof(i);
-            for (idx_t j = 0; j < src.size(); j++) {            
+            for (idx_t j = 0; j < src.size; j++) {
                 dst[j] = src[j];
             }
         });
@@ -522,7 +573,6 @@ sparse_matrix_product operator*(handle_t<sparse_matrix> I0, handle_t<sparse_matr
     idx_t rows = O.get_rows();
     float report_step = std::max(1.0f, (float)rows / 100);
     cello::parallel_for(0, O.get_rows(), 1, [I0, I1, &O, &rows_done, report_step](idx_t i) mutable {
-        idx_t nnz = 0;
         // initialize buffers
         DrvAPI::DrvAPIVar<vector> nonzero_buffers[3];
         handle_t<vector>
@@ -532,36 +582,28 @@ sparse_matrix_product operator*(handle_t<sparse_matrix> I0, handle_t<sparse_matr
 
         merge_buffer.init(I1.cols());
         fadd_buffer.init(I1.cols());
-        result_buffer.init(I1.cols());        
+        result_buffer.init(I1.cols());
+
         // for each nonzero in I0[i]
-        idx_t start_i = I0.rowptr(i);
-        idx_t end_i = I0.rowptr(i+1);
-        for (idx_t iter_i = start_i; iter_i < end_i; iter_i++) {
-            nonzero nz = I0.nonzero_at(iter_i);
+        for (nonzero nz : I0.nonzeros(i)) {
             idx_t j = nz.idx;
             float v = nz.val;
             // for each nonzero in I1[j]
-            idx_t start_j = I1.rowptr(j);
-            idx_t end_j = I1.rowptr(j+1);
-            //pr_dbg("I0[%d,%d] * I1[%d;]\n", i, j, j);
-            for (idx_t iter_j = start_j; iter_j < end_j; iter_j++) {
-                nonzero nz = I1.nonzero_at(iter_j);
+            for (nonzero nz : I1.nonzeros(j)) {
                 idx_t k = nz.idx;
                 float w = nz.val;
-                // merge the nonzeros
-                pr_dbg("I0[%4d,%4d] * I1[%4d,%4d] = %4.4f * %4.4f\n", i, j, j, k, v, w);
                 fadd_buffer.push_back(nonzero{k, v*w});
             }
-            // merge the fadd buffer with the result buffer into the merge buffer
-            merge(merge_buffer, fadd_buffer, result_buffer, [] (value_t a, value_t b) -> value_t  { return a+b; });
+            merge(merge_buffer, fadd_buffer, result_buffer, [](value_t a, value_t b) -> value_t { return a+b; });
             swap(merge_buffer, result_buffer);
-            fadd_buffer.clear();            
+            fadd_buffer.clear();
         }
+
         pr_dbg("O[%4d;].size() = %4d\n", i, (idx_t)result_buffer.size());
-        O.row_data(i) = (vector)result_buffer;
+        O.row_data(i) = result_buffer;
         pr_dbg("O[%4d;] = [%s]\n", i, O.row_data(i).to_string().c_str());
         idx_t done = rows_done++;
-        if (std::remainder(done,report_step) < 0.01) {
+        if (std::remainder(done,report_step) == 0) {
             pr_info("%4d/%4d rows_done\n", done, (idx_t)O.get_rows());
         }
     });
@@ -607,7 +649,7 @@ int CelloMain(int argc, char** argv) {
 
         pr_dbg("O.rows = %d\n", (idx_t)O.get_rows());
         for (idx_t i = 0; i < O.rows(); i++) {
-            handle_t<vector> o = O.row_data(i);
+            vector o = O.row_data(i);
             Eigen::SparseVector<float> ref = reference.row(i);
             std::map<idx_t, float> ref_row, o_row;
             for (Eigen::SparseVector<float>::InnerIterator it(ref); it; ++it) {
@@ -615,7 +657,7 @@ int CelloMain(int argc, char** argv) {
                 float v = it.value();
                 ref_row.insert(std::pair<idx_t, float>(j, v));
             }
-            for (idx_t j = 0; j < o.size(); j++) {
+            for (idx_t j = 0; j < o.size; j++) {
                 nonzero nz = o[j];
                 o_row.insert(std::pair<idx_t, float>(nz.idx, nz.val));
             }
@@ -665,8 +707,7 @@ int CelloMain(int argc, char** argv) {
                 float v = it.value();
                 ref_row.insert(std::pair<idx_t, float>(j, v));
             }
-            for (idx_t j = 0; j < O.nnzof(i); j++) {
-                nonzero nz = O.nonzerosof(i)[j];
+            for (nonzero nz : O.nonzeros(i)) {
                 o_row.insert(std::pair<idx_t, float>(nz.idx, nz.val));
             }
             for (auto itr = ref_row.begin(); itr != ref_row.end(); itr++) {
