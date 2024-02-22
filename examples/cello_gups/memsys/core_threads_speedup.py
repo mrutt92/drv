@@ -44,7 +44,7 @@ with open("tests.mk", "w") as f:
 
 subprocess.run(['make', '-j', '8', 'run'])
 
-result_local = "gups-memsys-results.csv"
+result_local = "cello_gups-memsys-results.csv"
 with open(result_local, "w") as results:
     results.write(result_header())
     for memsys, cores, threads in itertools.product(MEMSYS, CORES, THREADS):
@@ -62,10 +62,18 @@ with open(result_local, "w") as results:
         core_clock_hz = re.search(r'--core-clock=([0-9]+[KMG]?Hz)', sim_options).group(1)
         results.write(result(threads, cores, TABLE_SIZE, UPDATES, memsys, 1, seconds, sim_options, core_clock_hz))
 
-result_remote = "{host:}:/cse/web/homes/mrutt/results/cello-drv/gups-memsys-results-{time:}.csv".format(
+result_remote = "{host:}:/cse/web/homes/mrutt/results/cello-drv/cello_gups-memsys-results-{time:}.csv".format(
     host="bicycle.cs.washington.edu",
     time=datetime.now(timezone.utc).strftime("%Y.%m.%d.%H.%M.%S")
 )
+result_remote_latest = "{host:}:/cse/web/homes/mrutt/results/cello-drv/cello_gups-memsys-results-latest.csv".format(
+    host="bicycle.cs.washington.edu"
+)
+
 subprocess.run(
     ['scp', result_local, result_remote]
+)
+
+subprocess.run(
+    ['scp', result_local, result_remote_latest]
 )
