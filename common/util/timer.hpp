@@ -12,6 +12,7 @@ struct timer {
     ~timer() {
         stop = DrvAPI::seconds();
         printf("%20s: Elapsed time: %2.9lf seconds\n", name.c_str(), stop - start);
+        fflush(stdout);
         DrvAPI::outputStatistics(name+"_stop");
     }
 
