@@ -337,11 +337,11 @@ void merge(handle_t<vector> o, handle_t<vector> i0, handle_t<vector> i1, merge_v
     }
     while (i < i0.size() && j < i1.size()) {
         if (i0[i].idx() < i1[j].idx()) {
-            o[k++] = (nonzero)i0[i++];
+            o[k++] = i0[i++];
         } else if (i0[i].idx() > i1[j].idx()) {
-            o[k++] = (nonzero)i1[j++];
+            o[k++] = i1[j++];
         } else {
-            o[k].idx() = (idx_t)i0[i].idx();
+            o[k].idx() = i0[i].idx();
             o[k].val() = mergef(i0[i].val(), i1[j].val());
             k++;
             i++;
@@ -349,10 +349,10 @@ void merge(handle_t<vector> o, handle_t<vector> i0, handle_t<vector> i1, merge_v
         }
     }
     while (i < i0.size()) {
-        o[k++] = (nonzero)i0[i++];
+        o[k++] = i0[i++];
     }
     while (j < i1.size()) {
-        o[k++] = (nonzero)i1[j++];
+        o[k++] = i1[j++];
     }
     i0.clear();
     i1.clear();
