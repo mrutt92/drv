@@ -174,6 +174,7 @@ void parallel_invoke_impl(F1 && f1, F2 && f2) {
     // create a joiner
     using namespace DrvAPI;
     dram_dynamic<cello::joiner> joiner;
+    joiner.init();
     joiner.add(1);
 
     // spawn the child task
@@ -204,19 +205,20 @@ void parallel_invoke(F1 && f1, F2 && f2) {
 template <typename F1, typename F2, typename F3>
 void parallel_invoke_impl(F1 && f1, F2 && f2, F3 && f3) {
     // create a joiner
-    cello::joiner joiner;
-    cello::joiner_ref jref(&joiner);
-    jref.add(2);
+    using namespace DrvAPI;
+    dram_dynamic<cello::joiner> joiner;
+    joiner.init();
+    joiner.add(2);
     
     // spawn the child task
-    invoke_child<F1> child1(jref, std::forward<F1>(f1));
-    invoke_child<F2> child2(jref, std::forward<F2>(f2));
+    invoke_child<F1> child1(joiner, std::forward<F1>(f1));
+    invoke_child<F2> child2(joiner, std::forward<F2>(f2));
     spawn(&child1);
     spawn(&child2);
 
     // execute f2 directly
     f3();
-    jref.sync();
+    joiner.sync();
 }
 
 /**
