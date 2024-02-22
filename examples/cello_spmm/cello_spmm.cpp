@@ -174,6 +174,42 @@ struct sparse_matrix {
     }
 };
 
+/**
+ * @brief iterator over nonzero pointer
+ */
+class nonzero_iterator {
+    pointer_t<nonzero> p;
+    idx_t i;
+public:
+    nonzero_iterator(pointer_t<nonzero> p, idx_t i) : p(p), i(i) {}
+    bool operator!=(const nonzero_iterator &other) const {
+        return i != other.i;
+    }
+    nonzero_iterator &operator++() {
+        i++;
+        return *this;
+    }
+    nonzero operator*() const {
+        return p[i];
+    }
+};
+
+/**
+ * @brief range over nonzero pointer
+ */
+class nonzero_range {
+    pointer_t<nonzero> p;
+    idx_t n;
+public:
+    nonzero_range(pointer_t<nonzero> p, idx_t n) : p(p), n(n) {}
+    nonzero_iterator begin() const {
+        return nonzero_iterator(p, 0);
+    }
+    nonzero_iterator end() const {
+        return nonzero_iterator(p, n);
+    }
+};
+
 template<>
 class DrvAPI::value_handle<sparse_matrix> {
     DRV_API_VALUE_HANDLE_DEFAULTS(sparse_matrix)
@@ -210,42 +246,6 @@ class DrvAPI::value_handle<sparse_matrix> {
         pointer_t<idx_t> p = rowptr();
         return p[i+1] - p[i];
     }
-
-    /**
-     * @brief iterator over nonzero pointer
-     */
-    class nonzero_iterator {
-        pointer_t<nonzero> p;
-        idx_t i;
-    public:
-        nonzero_iterator(pointer_t<nonzero> p, idx_t i) : p(p), i(i) {}
-        bool operator!=(const nonzero_iterator &other) const {
-            return i != other.i;
-        }
-        nonzero_iterator &operator++() {
-            i++;
-            return *this;
-        }
-        nonzero operator*() const {
-            return p[i];
-        }
-    };
-
-    /**
-     * @brief range over nonzero pointer
-     */
-    class nonzero_range {
-        pointer_t<nonzero> p;
-        idx_t n;
-    public:
-        nonzero_range(pointer_t<nonzero> p, idx_t n) : p(p), n(n) {}
-        nonzero_iterator begin() const {
-            return nonzero_iterator(p, 0);
-        }
-        nonzero_iterator end() const {
-            return nonzero_iterator(p, n);
-        }
-    };
 
     /**
      * return nonzeros of outer index i
@@ -301,6 +301,14 @@ struct vector {
         return data[i];
     }
 
+    nonzero_iterator begin() {
+        return nonzero_iterator(data, 0);
+    }
+
+    nonzero_iterator end() {
+        return nonzero_iterator(data, size);
+    }
+    
     template <typename Dst>
     static void copy(Dst &dst, const vector &src) {
         dst.size() = src.size;
@@ -371,22 +379,26 @@ void swap(handle_t<vector> a, handle_t<vector> b) {
  * merge two sorted vectors of nonzeros
  */
 template <typename merge_value>
-void merge(handle_t<vector> o, handle_t<vector> i0, handle_t<vector> i1, merge_value &&mergef) {
+void merge(handle_t<vector> o_, handle_t<vector> i0_, handle_t<vector> i1_, merge_value &&mergef) {
     idx_t i = 0, j = 0, k = 0;
-    o.clear();
-    if (i0.size() == 0 && i1.size() == 0) {
+    o_.clear();
+
+    vector o = o_;
+    vector i0 = i0_;
+    vector i1 = i1_;    
+    if (i0.size == 0 && i1.size == 0) {
         pr_dbg("merge [o: %s]\n", o.to_string().c_str());
         return;
-    } else if (i0.size() == 0) {
-        swap(o, i1);
+    } else if (i0.size == 0) {
+        swap(o_, i1_);
         pr_dbg("merge [o: %s]\n", o.to_string().c_str());
         return;
-    } else if (i1.size() == 0) {
-        swap(o, i0);
+    } else if (i1.size == 0) {
+        swap(o_, i0_);
         pr_dbg("merge [o: %s]\n", o.to_string().c_str());
         return;
     }
-    while (i < i0.size() && j < i1.size()) {
+    while (i < i0.size && j < i1.size) {
         if (i0[i].idx() < i1[j].idx()) {
             o[k++] = i0[i++];
         } else if (i0[i].idx() > i1[j].idx()) {
@@ -399,15 +411,15 @@ void merge(handle_t<vector> o, handle_t<vector> i0, handle_t<vector> i1, merge_v
             j++;
         }
     }
-    while (i < i0.size()) {
+    while (i < i0.size) {
         o[k++] = i0[i++];
     }
-    while (j < i1.size()) {
+    while (j < i1.size) {
         o[k++] = i1[j++];
     }
-    i0.clear();
-    i1.clear();
-    o.size() = k;
+    i0_.clear();
+    i1_.clear();
+    o_.size() = k;
     pr_dbg("merge [o: %s]\n", o.to_string().c_str());
 }
 
@@ -542,7 +554,7 @@ class DrvAPI::value_handle<sparse_matrix_product> {
             }
 
             for (idx_t j = start; j < end; j++) {
-                idx_t r = DrvAPI::atomic_add(&O.rowptr(j), nnz);
+                idx_t r = DrvAPI::atomic_add(O.rowptr(j).address(), nnz);
             }
         });
         // 2. allocate flat nonzero vector
@@ -550,9 +562,10 @@ class DrvAPI::value_handle<sparse_matrix_product> {
         O.nonzeros() = (pointer_t<nonzero>)DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, O.rowptr(O.rows()) * sizeof(nonzero));
         // 3. copy nonzeros into flat nonzero vector
         cello::parallel_for(0, (idx_t)O.rows(), 1, [&O, this](idx_t i) mutable {
-            vector src = row_data(i);
+            vector src_v = row_data(i);
+            pointer_t<nonzero> src = src_v.data;
             pointer_t<nonzero> dst = O.nonzerosof(i);
-            for (idx_t j = 0; j < src.size; j++) {
+            for (idx_t j = 0; j < src_v.size; j++) {
                 dst[j] = src[j];
             }
         });
@@ -602,7 +615,7 @@ sparse_matrix_product operator*(handle_t<sparse_matrix> I0, handle_t<sparse_matr
         O.row_data(i) = result_buffer;
         pr_dbg("O[%4d;] = [%s]\n", i, O.row_data(i).to_string().c_str());
         idx_t done = rows_done++;
-        if (std::remainder(done,report_step) == 0) {
+        if (std::fmod(done,report_step) < 1) {
             pr_info("%4d/%4d rows_done\n", done, (idx_t)O.get_rows());
         }
     });
@@ -624,6 +637,8 @@ int CelloMain(int argc, char** argv) {
         = I0_.to_eigen()
         * I1_.to_eigen();
 
+    pr_info("CelloMain: reference{rows,nnz} = %4d, %4d\n", (idx_t)reference.rows(), (idx_t)reference.nonZeros());
+
     using namespace util;
     
     DrvAPI::DrvAPIVar<sparse_matrix> I0, I1;
@@ -644,7 +659,6 @@ int CelloMain(int argc, char** argv) {
     // compare result to reference output
     {
         timer _("check product");
-        pr_dbg("reference{rows,nnz} = %4d, %4d\n", (idx_t)reference.rows(), (idx_t)reference.nonZeros());
 
         pr_dbg("O.rows = %d\n", (idx_t)O.get_rows());
         for (idx_t i = 0; i < O.rows(); i++) {
