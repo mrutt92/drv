@@ -519,7 +519,9 @@ sparse_matrix_product operator*(handle_t<sparse_matrix> I0, handle_t<sparse_matr
     DrvAPI::DrvAPIVar<sparse_matrix_product> O;
     O.init(I0, I1);
     std::atomic<idx_t> rows_done(0); // for the heartbeat
-    cello::parallel_for(0, O.get_rows(), 1, [I0, I1, &O, &rows_done](idx_t i) mutable {
+    idx_t rows = O.get_rows();
+    float report_step = std::max(1.0f, (float)rows / 100);
+    cello::parallel_for(0, O.get_rows(), 1, [I0, I1, &O, &rows_done, report_step](idx_t i) mutable {
         idx_t nnz = 0;
         // initialize buffers
         DrvAPI::DrvAPIVar<vector> nonzero_buffers[3];
@@ -559,9 +561,8 @@ sparse_matrix_product operator*(handle_t<sparse_matrix> I0, handle_t<sparse_matr
         O.row_data(i) = (vector)result_buffer;
         pr_dbg("O[%4d;] = [%s]\n", i, O.row_data(i).to_string().c_str());
         idx_t done = rows_done++;
-        if (done % 32 == 0) {
-            printf("rows_done = %d\n", done);
-            fflush(stdout);
+        if (std::remainder(done,report_step) < 0.01) {
+            pr_info("%4d/%4d rows_done\n", done, (idx_t)O.get_rows());
         }
     });
     return O;
@@ -574,8 +575,8 @@ int CelloMain(int argc, char** argv) {
     native_sparse_matrix I0_ = native_sparse_matrix::FromFile(i0);
     native_sparse_matrix I1_ = native_sparse_matrix::FromFile(i1);
 
-    printf("CelloMain: I0.rows = %d, nnz = %d\n", I0_.rows, I0_.nnz);
-    printf("CelloMain: I1.rows = %d, nnz = %d\n", I1_.rows, I1_.nnz);
+    pr_info("CelloMain: I0.rows = %d, nnz = %d\n", I0_.rows, I0_.nnz);
+    pr_info("CelloMain: I1.rows = %d, nnz = %d\n", I1_.rows, I1_.nnz);
 
     // compute a reference product
     EigenSparseMatrix<float> reference
