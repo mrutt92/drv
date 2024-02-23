@@ -1,11 +1,11 @@
-import re
-import itertools
 import testbench as tb
+import itertools
+import re
 
-class BFSTestbench(tb.Testbench):
-    CORES   = [1,2]
-    THREADS = [1,2]
-    INPUTS  = [('u7k1','0')]
+class JSTestbench(tb.Testbench):
+    CORES   = [1, 2]
+    THREADS = [1, 2]
+    INPUTS  = ['u7k1']
     def __init__(self, tbname):
         super().__init__(tbname)
 
@@ -14,9 +14,9 @@ class BFSTestbench(tb.Testbench):
 
     def test_to_mk(self, test):
         inputs, cores, threads = test
-        graph, root = inputs
-        return "TESTS += $(call test-name,{threads:},{cores:},{pods:},{pxns:},{graph:},{root:})\n".format(
-            threads=threads, cores=cores, pods=1, pxns=1, graph=graph, root=root
+        graph = inputs
+        return "TESTS += $(call test-name,{pxns:},{pods:},{cores:},{threads:},{graph:})\n".format(
+            threads=threads, cores=cores, pods=1, pxns=1, graph=graph
         )
 
     def result_header(self):
@@ -24,23 +24,23 @@ class BFSTestbench(tb.Testbench):
 
     def test_to_dir(self, test):
         inputs, cores, threads = test
-        graph, root = inputs
-        return "threads_{}__cores_{}__pods_{}__pxns_{}__graph_{}__start_{}".format(
-            threads, cores, 1, 1, graph, root
+        graph = inputs
+        return "pxns_{}__pods_{}__cores_{}__threads_{}__graph_{}".format(
+            threads, cores, 1, 1, graph
         )
 
     def parse_seconds(self, line):
-        match = re.search(r'bfs: Elapsed time: ([0-9.]+) seconds', line)
+        match = re.search(r'jaccard: Elapsed time: ([0-9.]+) seconds', line)
         if match:
             return float(match.group(1))
         return 0.0
 
     def result(self, test, sim_options, seconds):
         inputs, cores, threads = test
-        graph, root = inputs
+        graph = inputs
         return "{Application:},{Input:},{SimOptions:},{PXN:},{Pods:},{Cores:},{Threads:},{Seconds:1.12f}\n".format(
-            Application="cello_bfs",
-            Input="graph_{}__root_{}".format(graph, root),
+            Application="cello_jaccard",
+            Input="graph_{}".format(graph),
             SimOptions=sim_options,
             PXN=1,
             Pods=1,
@@ -48,5 +48,5 @@ class BFSTestbench(tb.Testbench):
             Threads=threads,
             Seconds=seconds,
         )
-        
-BFSTestbench("cello_bfs").run()        
+
+JSTestbench("cello_jaccard").run()
