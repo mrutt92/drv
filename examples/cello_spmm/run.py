@@ -3,9 +3,9 @@ import itertools
 import testbench as tb
 
 class SPMMTestbench(tb.Testbench):
-    CORES = [1, 2]
-    THREADS = [1, 2]
-    INPUTS = [('u7k1','g7k1')]
+    CORES = [1, 2, 3, 4, 5, 6, 7, 8]
+    THREADS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    INPUTS = [('u10k4','g10k4')]
 
     def __init__(self, tbname):
         super().__init__(tbname)
