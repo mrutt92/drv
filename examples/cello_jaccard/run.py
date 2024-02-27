@@ -3,7 +3,7 @@ import itertools
 import re
 
 class JSTestbench(tb.Testbench):
-    CORES = [1, 2, 3, 4, 5, 6, 7, 8]
+    CORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     THREADS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]    
     INPUTS  = ['u10k16']
     def __init__(self, tbname):
@@ -25,8 +25,8 @@ class JSTestbench(tb.Testbench):
     def test_to_dir(self, test):
         inputs, cores, threads = test
         graph = inputs
-        return "pxns_{}__pods_{}__cores_{}__threads_{}__graph_{}".format(
-            threads, cores, 1, 1, graph
+        return "pxns_{pxns:}__pods_{pods:}__cores_{cores:}__threads_{threads:}__graph_{graph:}".format(
+            threads=threads, cores=cores, pods=1, pxns=1, graph=graph
         )
 
     def parse_seconds(self, line):

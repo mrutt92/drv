@@ -3,7 +3,7 @@ import itertools
 import testbench as tb
 
 class BFSTestbench(tb.Testbench):
-    CORES = [1, 2, 3, 4, 5, 6, 7, 8]
+    CORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     THREADS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     INPUTS  = [('u16k16','0')]
     def __init__(self, tbname):
