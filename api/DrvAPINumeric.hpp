@@ -72,30 +72,68 @@ public:
             );
 
     }
+
+    value_handle &operator=(typename numeric_type<T>::underlying_type value) {
+        static_cast<numeric_type<T>>(*this) = value;
+        return *this;
+    }
 };
 
-#define DRV_API_NUMERIC_TYPE_ADD(type)                  \
+#define DRV_API_NUMERIC_TYPE_ADD(type)                                  \
+    inline numeric_type<type> operator+(const numeric_type<type> &a, type b) { \
+        numeric_type<type>::Stats().num_add++;                          \
+        return ((type)a) + ((type)b);                                   \
+    }                                                                   \
+    inline numeric_type<type> operator+(type a, const numeric_type<type> &b) { \
+        numeric_type<type>::Stats().num_add++;                          \
+        return ((type)a) + ((type)b);                                   \
+    }                                                                   \
     inline numeric_type<type> operator+(const numeric_type<type> &a, const numeric_type<type> &b) { \
         numeric_type<type>::Stats().num_add++;                          \
-        return a.value + b.value;                                       \
+        return ((type)a) + ((type)b);                                   \
     }                                                                   \
 
-#define DRV_API_NUMERIC_TYPE_SUB(type)                                          \
+#define DRV_API_NUMERIC_TYPE_SUB(type)                                  \
+    template <typename T>                                               \
+    inline numeric_type<type> operator-(const numeric_type<type> &a, T b) { \
+        numeric_type<type>::Stats().num_sub++;                          \
+        return ((type)a) - ((type)b);                                   \
+    }                                                                   \
+    inline numeric_type<type> operator-(type a, const numeric_type<type> &b) { \
+        numeric_type<type>::Stats().num_sub++;                          \
+        return ((type)a) - ((type)b);                                   \
+    }                                                                   \
     inline numeric_type<type> operator-(const numeric_type<type> &a, const numeric_type<type> &b) { \
         numeric_type<type>::Stats().num_sub++;                          \
-        return a.value - b.value;                                       \
+        return ((type)a) - ((type)b);                                   \
     }                                                                   \
 
-#define DRV_API_NUMERIC_TYPE_MUL(type)                                          \
+#define DRV_API_NUMERIC_TYPE_MUL(type)                                  \
+    inline numeric_type<type> operator*(const numeric_type<type> &a,  type b) { \
+        numeric_type<type>::Stats().num_mul++;                          \
+        return ((type)a) * ((type)b);                                   \
+    }                                                                   \
+    inline numeric_type<type> operator*(type a, const numeric_type<type> &b) { \
+        numeric_type<type>::Stats().num_mul++;                          \
+        return ((type)a) * ((type)b);                                   \
+    }                                                                   \
     inline numeric_type<type> operator*(const numeric_type<type> &a, const numeric_type<type> &b) { \
-        numeric_type<type>::Stats().num_mul++;                         \
-        return a.value * b.value;                                       \
+        numeric_type<type>::Stats().num_mul++;                          \
+        return ((type)a) * ((type)b);                                   \
     }                                                                   \
 
 #define DRV_API_NUMERIC_TYPE_DIV(type)                  \
+    inline numeric_type<type> operator/(const numeric_type<type> &a, type b) { \
+        numeric_type<type>::Stats().num_div++;                          \
+        return ((type)a) / ((type)b);                                   \
+    }                                                                   \
+    inline numeric_type<type> operator/(type a, const numeric_type<type> &b) { \
+        numeric_type<type>::Stats().num_div++;                          \
+        return ((type)a) / ((type)b);                                   \
+    }                                                                   \
     inline numeric_type<type> operator/(const numeric_type<type> &a, const numeric_type<type> &b) { \
         numeric_type<type>::Stats().num_div++;                          \
-        return a.value / b.value;                                       \
+        return ((type)a) / ((type)b);                                   \
     }                                                                   \
 
 #define DRV_API_NUMERIC_TYPE_MULADD(type)                               \
