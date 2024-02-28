@@ -21,4 +21,5 @@
 #include <DrvAPINativeToAddress.hpp>
 #include <DrvAPISystem.hpp>
 #include <DrvAPIVar.hpp>
+#include <DrvAPINumeric.hpp>
 #endif
