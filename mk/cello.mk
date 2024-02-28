@@ -17,6 +17,8 @@ CELLO_LDFLAGS_DRVR +=
 #SIM_OPTIONS += --drvx-stack-in-l1sp
 SIM_OPTIONS += --core-stats --stats-load-level=3
 SIM_OPTIONS += --core-clock=125MHz
-SIM_OPTIONS += --dram-access-time=70ns
+
+memsys ?= HBM2-1Gb-x64
+include $(DRV_DIR)/mk/$(memsys).mk
 
 endif
