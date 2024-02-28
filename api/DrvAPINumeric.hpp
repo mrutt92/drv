@@ -1,0 +1,126 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 University of Washington
+#ifndef DRV_API_NUMERIC_H
+#define DRV_API_NUMERIC_H
+#include <atomic>
+#include <string>
+namespace DrvAPI
+{
+
+/**
+ * @brief stats structure for a numeric type
+ */
+struct numeric_stats {
+    std::atomic<int> num_mul;
+    std::atomic<int> num_div;
+    std::atomic<int> num_add;
+    std::atomic<int> num_sub;
+    std::atomic<int> num_muladd;
+
+    std::string to_string() const {
+        return "num_mul: " + std::to_string(num_mul)
+            + " num_div: " + std::to_string(num_div)
+            + " num_add: " + std::to_string(num_add)
+            + " num_sub: " + std::to_string(num_sub)
+            + " num_muladd: " + std::to_string(num_muladd);
+    }
+};
+
+
+/**
+ * @brief the numeric type wrapper class
+ */
+template <typename data_type>
+class numeric_type {
+public:
+    typedef data_type underlying_type;
+    numeric_type(underlying_type value) : value(value) {}
+    numeric_type() : value(0) {}
+    numeric_type(const numeric_type &o) = default;
+    numeric_type(numeric_type &&o) = default;
+    numeric_type &operator=(const numeric_type &o) = default;
+    numeric_type &operator=(numeric_type &&o) = default;
+    ~numeric_type() = default;
+
+    operator underlying_type() const {
+        return value;
+    }
+
+    static inline numeric_stats & Stats() {
+        static numeric_stats stats;
+        return stats;
+    }
+
+    underlying_type value;
+};
+
+/**
+ * @brief specialization of value_handles for numeric types
+ *
+ * this lets us have pointer<numeric_type>, static_data<numeric_type>, and dynamic_data<numeric_type>
+ * and also be able to cast directly from a handle to the underlying type of the numeric
+ */
+template <typename T>
+class value_handle<numeric_type<T>> {
+public:
+    DRV_API_VALUE_HANDLE_DEFAULTS_TRIVIAL(numeric_type<T>)
+
+    explicit operator typename numeric_type<T>::underlying_type () const {
+        return static_cast<typename numeric_type<T>::underlying_type>
+            (  static_cast<numeric_type<T>>
+               ( *this )
+            );
+
+    }
+};
+
+#define DRV_API_NUMERIC_TYPE_ADD(type)                  \
+    inline numeric_type<type> operator+(const numeric_type<type> &a, const numeric_type<type> &b) { \
+        numeric_type<type>::Stats().num_add++;                          \
+        return a.value + b.value;                                       \
+    }                                                                   \
+
+#define DRV_API_NUMERIC_TYPE_SUB(type)                                          \
+    inline numeric_type<type> operator-(const numeric_type<type> &a, const numeric_type<type> &b) { \
+        numeric_type<type>::Stats().num_sub++;                          \
+        return a.value - b.value;                                       \
+    }                                                                   \
+
+#define DRV_API_NUMERIC_TYPE_MUL(type)                                          \
+    inline numeric_type<type> operator*(const numeric_type<type> &a, const numeric_type<type> &b) { \
+        numeric_type<type>::Stats().num_mul++;                         \
+        return a.value * b.value;                                       \
+    }                                                                   \
+
+#define DRV_API_NUMERIC_TYPE_DIV(type)                  \
+    inline numeric_type<type> operator/(const numeric_type<type> &a, const numeric_type<type> &b) { \
+        numeric_type<type>::Stats().num_div++;                          \
+        return a.value / b.value;                                       \
+    }                                                                   \
+
+#define DRV_API_NUMERIC_TYPE_MULADD(type)                               \
+    inline numeric_type<type> muladd(const numeric_type<type> &a, const numeric_type<type> &b, const numeric_type<type> &c) { \
+        using underlying_type = numeric_type<type>::underlying_type;    \
+        underlying_type a_u = a, b_u = b, c_u = c;                      \
+        numeric_type<type>::Stats().num_muladd++;                       \
+        return a_u*b_u + c_u;                                           \
+    }
+
+#define DRV_API_NUMERIC_TYPE_OPS(type)                  \
+    DRV_API_NUMERIC_TYPE_ADD(type)                      \
+    DRV_API_NUMERIC_TYPE_SUB(type)                      \
+    DRV_API_NUMERIC_TYPE_MUL(type)                      \
+    DRV_API_NUMERIC_TYPE_DIV(type)
+
+typedef numeric_type<float>  float_type;
+typedef numeric_type<double> double_type;
+
+DRV_API_NUMERIC_TYPE_OPS(float)
+DRV_API_NUMERIC_TYPE_MULADD(float)
+
+DRV_API_NUMERIC_TYPE_OPS(double)
+DRV_API_NUMERIC_TYPE_MULADD(double)
+
+}
+
+#endif
