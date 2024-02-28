@@ -42,8 +42,14 @@ public:
     numeric_type &operator=(numeric_type &&o) = default;
     ~numeric_type() = default;
 
-    operator underlying_type() const {
+    explicit operator underlying_type() const {
         return value;
+    }
+
+    numeric_type& operator+=(numeric_type &&o) {
+        value += o.value;
+        Stats().num_add++;
+        return *this;
     }
 
     static inline numeric_stats & Stats() {
@@ -139,7 +145,7 @@ public:
 #define DRV_API_NUMERIC_TYPE_MULADD(type)                               \
     inline numeric_type<type> muladd(const numeric_type<type> &a, const numeric_type<type> &b, const numeric_type<type> &c) { \
         using underlying_type = numeric_type<type>::underlying_type;    \
-        underlying_type a_u = a, b_u = b, c_u = c;                      \
+        underlying_type a_u = (type)a, b_u = (type)b, c_u = (type)c;    \
         numeric_type<type>::Stats().num_muladd++;                       \
         return a_u*b_u + c_u;                                           \
     }
