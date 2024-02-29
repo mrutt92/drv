@@ -41,10 +41,44 @@ class SPMMTestbench(tb.Testbench):
 
         return 0.0
 
-    def result(self, test, sim_options, seconds):
+    def parse_stats(self, line, stats):
+        if 'fadds' not in stats:
+            stats['fadds'] = 0
+        if 'fsubs' not in stats:
+            stats['fsubs'] = 0
+        if 'fmuls' not in stats:
+            stats['fmuls'] = 0
+        if 'fdivs' not in stats:
+            stats['fdivs'] = 0
+        if 'fmadds' not in stats:
+            stats['fmadds'] = 0
+
+        match = re.search(r'(row-wise product|product to csr): fadd: ([0-9]+)', line)
+        if match:
+            stats['fadds'] += int(match.group(2))
+
+        match = re.search(r'(row-wise product|product to csr): fsub: ([0-9]+)', line)
+        if match:
+            stats['fsubs'] += int(match.group(2))
+
+        match = re.search(r'(row-wise product|product to csr): fmul: ([0-9]+)', line)
+        if match:
+            stats['fmuls'] += int(match.group(2))
+
+        match = re.search(r'(row-wise product|product to csr): fdiv: ([0-9]+)', line)
+        if match:
+            stats['fdivs'] += int(match.group(2))
+
+        match = re.search(r'(row-wise product|product to csr): fmadd: ([0-9]+)', line)
+        if match:
+            stats['fmadds'] += int(match.group(2))
+
+        return stats
+    
+    def result(self, test, sim_options, seconds, stats):
         inputs, cores, threads = test
         m0, m1 = inputs
-        return "{Application:},{Input:},{SimOptions:},{PXN:},{Pods:},{Cores:},{Threads:},{Seconds:1.12f}\n".format(
+        return "{Application:},{Input:},{SimOptions:},{PXN:},{Pods:},{Cores:},{Threads:},{Seconds:1.12f},{FADDS:},{FSUBS:},{FMULS:},{FDIVS:},{FMADDS:}\n".format(        
             Application="cello_spmm",
             Input="m0_{}__m1_{}".format(m0, m1),
             SimOptions=sim_options,
@@ -53,6 +87,11 @@ class SPMMTestbench(tb.Testbench):
             Cores=cores,
             Threads=threads,
             Seconds=seconds,
+            FADDS=stats['fadds'],
+            FSUBS=stats['fsubs'],
+            FMULS=stats['fmuls'],
+            FDIVS=stats['fdivs'],
+            FMADDS=stats['fmadds'],
         )
     
 SPMMTestbench("cello_spmm").run()

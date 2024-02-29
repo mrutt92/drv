@@ -36,10 +36,28 @@ class PRTestbench(tb.Testbench):
             return float(match.group(1))
         return 0.0
 
-    def result(self, test, sim_options, seconds):
+    def parse_stats(self, line, stats):
+        match = re.search(r'pagerank: fadd: ([0-9]+)', line)
+        if match:
+            stats['fadds'] = int(match.group(1))
+        match = re.search(r'pagerank: fsub: ([0-9]+)', line)
+        if match:
+            stats['fsubs'] = int(match.group(1))
+        match = re.search(r'pagerank: fmul: ([0-9]+)', line)
+        if match:
+            stats['fmuls'] = int(match.group(1))
+        match = re.search(r'pagerank: fdiv: ([0-9]+)', line)
+        if match:
+            stats['fdivs'] = int(match.group(1))
+        match = re.search(r'pagerank: fmadd: ([0-9]+)', line)
+        if match:
+            stats['fmadds'] = int(match.group(1))
+        return stats
+
+    def result(self, test, sim_options, seconds, stats):
         inputs, cores, threads = test
         graph = inputs
-        return "{Application:},{Input:},{SimOptions:},{PXN:},{Pods:},{Cores:},{Threads:},{Seconds:1.12f}\n".format(
+        return "{Application:},{Input:},{SimOptions:},{PXN:},{Pods:},{Cores:},{Threads:},{Seconds:1.12f},{FADDS:},{FSUBS:},{FMULS:},{FDIVS:},{FMADDS:}\n".format(
             Application="cello_pagerank",
             Input="graph_{}".format(graph),
             SimOptions=sim_options,
@@ -48,6 +66,11 @@ class PRTestbench(tb.Testbench):
             Cores=cores,
             Threads=threads,
             Seconds=seconds,
+            FADDS=stats['fadds'],
+            FSUBS=stats['fsubs'],
+            FMULS=stats['fmuls'],
+            FDIVS=stats['fdivs'],
+            FMADDS=stats['fmadds']
         )
 
 PRTestbench("cello_pagerank").run()
