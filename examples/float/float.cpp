@@ -10,23 +10,38 @@ DrvAPIGlobalDRAM<float_type> g_a;
 DrvAPIGlobalDRAM<float_type> g_b;
 DrvAPIGlobalDRAM<float_type> g_c;
 
+DrvAPIGlobalDRAM<float_type> contrib;
+DrvAPIGlobalDRAM<float_type> old_rank;
+DrvAPIGlobalDRAM<int>        out_degree;
+DrvAPIGlobalDRAM<float_type> new_rank;
 
 int FloatMain(int argc, char *argv[])
 {
-    float_type a = 1.0;
-    float_type b = 2.0;
-    float_type c;
-    c = a * b;
+    int V = 128;
+    g_a = 1.0/V;
+    printf("g_a: %1.12f\n", (float)g_a);
 
-    g_a = a;
-    g_b = b;
-    g_c = c;
+    float_type damp = 0.85;
+    float_type beta_score = (1.0 - damp) / V; // *
+    printf("beta_score: %1.12f\n", (float)beta_score);
 
-    g_c = g_a * g_b;
-    g_c = muladd(g_a, g_b, g_c);
-    printf("c   = %f\n", (float)c);
-    printf("g_c = %f\n", (float)g_c);
-    printf("float_type::stats = %s\n", float_type::Stats().to_string().c_str());
+    contrib = 0.0;
+    old_rank = 1.0/8;
+    out_degree = 2;
+
+    contrib = old_rank / out_degree;
+    printf("contrib: %1.12f\n", (float)contrib);
+
+    float_type rank = 0.0;
+    rank += contrib;
+    new_rank = rank;
+    printf("new_rank: %1.12f\n", (float)new_rank);
+
+    rank = damp * new_rank + beta_score;
+    printf("damp: %1.12f, new_rank: %1.12f, beta_score: %1.12f\n", (float)damp, (float)new_rank, (float)beta_score);
+    printf("rank: %1.12f\n", (float)rank);
+    old_rank = rank;
+    printf("old_rank: %1.12f\n", (float)old_rank);
     return 0;
 }
 
