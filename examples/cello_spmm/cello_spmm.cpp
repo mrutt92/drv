@@ -40,6 +40,19 @@ using namespace DrvAPI;
 template <typename T>
 using EigenSparseMatrix = Eigen::SparseMatrix<T, Eigen::RowMajor>;
 
+namespace {
+[[maybe_unused]] std::string to_string(const float &v) {
+    return std::to_string(v);
+}
+std::string to_string(const int &v) {
+    return std::to_string(v);
+}
+
+[[maybe_unused]] std::string to_string(const DrvAPI::float_type &v) {
+    return std::to_string(v.value);
+}
+}
+
 struct native_sparse_matrix {
     int rows = 0;
     int cols = 0;
@@ -96,7 +109,7 @@ struct native_sparse_matrix {
 using idx_t = int32_t;
 
 // value type
-using value_t = float;
+using value_t = float_type;
 
 struct nonzero {
     idx_t   idx;
@@ -107,7 +120,7 @@ struct nonzero {
     }
 
     std::string to_string() const {
-        return "(" + std::to_string(idx) + ":" + std::to_string(val) + ")";
+        return "(" + ::to_string(idx) + ":" + ::to_string(val) + ")";
     }
     template <typename Dst>
     static void copy(Dst &dst, const nonzero &src) {
@@ -292,7 +305,7 @@ struct vector {
     std::string to_string() const {
         std::string s;
         for (idx_t i = 0; i < size; i++) {
-            s += std::to_string(data[i].idx()) + ":" + std::to_string(data[i].val()) + " ";
+            s += ::to_string(data[i].idx()) + ":" + ::to_string(data[i].val()) + " ";
         }
         return s;
     }
@@ -599,11 +612,11 @@ sparse_matrix_product operator*(handle_t<sparse_matrix> I0, handle_t<sparse_matr
         // for each nonzero in I0[i]
         for (nonzero nz : I0.nonzeros(i)) {
             idx_t j = nz.idx;
-            float v = nz.val;
+            value_t v = nz.val;
             // for each nonzero in I1[j]
             for (nonzero nz : I1.nonzeros(j)) {
                 idx_t k = nz.idx;
-                float w = nz.val;
+                value_t w = nz.val;
                 fadd_buffer.push_back(nonzero{k, v*w});
             }
             merge(merge_buffer, fadd_buffer, result_buffer, [](value_t a, value_t b) -> value_t { return a+b; });
@@ -742,6 +755,8 @@ int CelloMain(int argc, char** argv) {
                 }
             }
         }
+
+        printf("%s\n", value_t::Stats().to_string().c_str());
     }
 
     return 0;
