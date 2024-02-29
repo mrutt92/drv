@@ -62,8 +62,10 @@ sim_args.log:
 sim_options.log:
 	@echo $(SIM_OPTIONS) > $@
 
-run: $(APP_NAME).so
+run.log: $(APP_NAME).so
 	$(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS) | tee run.log
+
+run: run.log
 
 run-valgrind: $(APP_NAME).so
 	valgrind --trace-children=yes $(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS) | tee run.log
