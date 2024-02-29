@@ -28,7 +28,8 @@ using namespace util;
 typedef int32_t idx;
 typedef idx  vertex;
 typedef idx  edge;
-typedef float val;
+//typedef float val;
+typedef float_type val;
 
 using DrvAPI::pointer;
 using DrvAPI::value_handle;
@@ -202,11 +203,12 @@ int CelloMain(int argc, char** argv) {
                 std::tie(u_size, u_neih) = g.neighbors(u);
                 vertex common = intersection(v_neih, u_neih, v_size, u_size);
                 pr_dbg("v: %d, u: %d, common: %d\n", v, u, common);
-                float j = (float)common / (v_size + u_size - common);
+                val j = (val)common / (v_size + u_size - common);
                 m(v, u) = j;
                 m(u, v) = j;                
             });
         });
+        printf("%s\n", val::Stats().to_string().c_str());
     }
 
     return 0;
