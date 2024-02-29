@@ -51,13 +51,15 @@ class Testbench(object):
                 tdir = self.test_to_dir(test)
                 with open(tdir + '/run.log', 'r') as f:
                     seconds = 0.0
+                    stats = {}
                     for line in f:
                         seconds += self.parse_seconds(line)
+                        stats = self.parse_stats(line, stats)
 
                 with open(tdir + '/sim_options.log','r') as f:
                     sim_options = f.read().strip()
 
-                results.write(self.result(test, sim_options, seconds))
+                results.write(self.result(test, sim_options, seconds, stats))
                 
     def upload_results(self):
         """
@@ -103,13 +105,19 @@ class Testbench(object):
         """
         raise NotImplementedError
 
+    def parse_stats(self, line, stats):
+        """
+        Parse the flops from a line
+        """
+        return stats
+    
     def result_header(self):
         """
         Return the header for the results file
         """
         raise NotImplementedError
 
-    def result(self, test, sim_options, seconds):
+    def result(self, test, sim_options, seconds, stats):
         """
         Return the result for a single test
         """
