@@ -35,10 +35,28 @@ class JSTestbench(tb.Testbench):
             return float(match.group(1))
         return 0.0
 
-    def result(self, test, sim_options, seconds):
+    def parse_stats(self, line, stats):
+        match = re.search(r'jaccard: fadd: ([0-9]+)', line)
+        if match:
+            stats['fadd'] = int(match.group(1))
+        match = re.search(r'jaccard: fsub: ([0-9]+)', line)
+        if match:
+            stats['fsub'] = int(match.group(1))
+        match = re.search(r'jaccard: fmul: ([0-9]+)', line)
+        if match:
+            stats['fmul'] = int(match.group(1))
+        match = re.search(r'jaccard: fdiv: ([0-9]+)', line)
+        if match:
+            stats['fdiv'] = int(match.group(1))
+        match = re.search(r'jaccard: fmadd: ([0-9]+)', line)
+        if match:
+            stats['fmad'] = int(match.group(1))
+        return stats
+
+    def result(self, test, sim_options, seconds, stats):
         inputs, cores, threads = test
         graph = inputs
-        return "{Application:},{Input:},{SimOptions:},{PXN:},{Pods:},{Cores:},{Threads:},{Seconds:1.12f}\n".format(
+        return "{Application:},{Input:},{SimOptions:},{PXN:},{Pods:},{Cores:},{Threads:},{Seconds:1.12f},{FADDS:},{FSUBS:},{FMULS:},{FDIVS:},{FMADDS:}\n".format(        
             Application="cello_jaccard",
             Input="graph_{}".format(graph),
             SimOptions=sim_options,
@@ -47,6 +65,11 @@ class JSTestbench(tb.Testbench):
             Cores=cores,
             Threads=threads,
             Seconds=seconds,
+            FADDS=stats['fadd'],
+            FSUBS=stats['fsub'],
+            FMULS=stats['fmul'],
+            FDIVS=stats['fdiv'],
+            FMADDS=stats['fmad']
         )
 
 JSTestbench("cello_jaccard").run()
