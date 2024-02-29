@@ -17,6 +17,20 @@ struct numeric_stats {
     std::atomic<int> num_sub;
     std::atomic<int> num_muladd;
 
+    numeric_stats() : num_mul(0), num_div(0), num_add(0), num_sub(0), num_muladd(0) {}
+    numeric_stats(const numeric_stats &o) = delete;
+    numeric_stats(numeric_stats &&o) = delete;
+    numeric_stats &operator=(const numeric_stats &o) {
+        num_mul = o.num_mul.load();
+        num_div = o.num_div.load();
+        num_add = o.num_add.load();
+        num_sub = o.num_sub.load();
+        num_muladd = o.num_muladd.load();
+        return *this;
+    }
+    numeric_stats &operator=(numeric_stats &&o) = delete;
+    ~numeric_stats() = default;
+    
     std::string to_string() const {
         return "num_mul: " + std::to_string(num_mul)
             + " num_div: " + std::to_string(num_div)
