@@ -223,9 +223,7 @@ public:
  * This class is used to represent a pointer to a value in the target process
  * supports dereferencing and array indexing
  *
- * Does not support the -> operator (sorry)
- *
- * To get support something like the -> operator, use the value_handle class
+ * To get support for the -> operator, use the value_handle class
  * and the helper macros to specialize it for your type
  */
 template <typename T>
