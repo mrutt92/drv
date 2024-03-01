@@ -309,6 +309,16 @@ class value_handle<pointer<T>> {
         return p[index];
     }
 
+    value_handle<T> operator*() {
+        pointer<T> p = *this;
+        return *p;
+    }
+
+    const value_handle<T> operator*() const {
+        pointer<T> p = *this;
+        return *p;
+    }
+
     DRV_API_VALUE_HANDLE_ADDRESSOF_OPERATORS(pointer<T>)
     DRV_API_VALUE_HANDLE_INTERNAL(pointer<T>)
 };
