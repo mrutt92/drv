@@ -50,7 +50,7 @@ class JSTestbench(tb.Testbench):
             stats['fdiv'] = int(match.group(1))
         match = re.search(r'jaccard: fmadd: ([0-9]+)', line)
         if match:
-            stats['fmad'] = int(match.group(1))
+            stats['fmadd'] = int(match.group(1))
         return stats
 
     def result(self, test, sim_options, seconds, stats):
@@ -69,7 +69,7 @@ class JSTestbench(tb.Testbench):
             FSUBS=stats['fsub'],
             FMULS=stats['fmul'],
             FDIVS=stats['fdiv'],
-            FMADDS=stats['fmad']
+            FMADDS=stats['fmadd']
         )
 
 JSTestbench("cello_jaccard").run()
