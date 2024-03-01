@@ -307,12 +307,12 @@ DrvAPI::pointer<void> allocate(uint64_t size)
                     new_block.prev() = new_block_ptr;
                 } else {
                     // remove the block from the free list
-                    DrvAPI::pointer<block> next_block_ptr = curr_block.next();
-                    DrvAPI::pointer<block> prev_block_ptr= curr_block.prev();
-                    new_block.next() = next_block_ptr;
-                    new_block.prev() = prev_block_ptr;
-                    (*next_block_ptr).prev() = new_block_ptr;
-                    (*prev_block_ptr).next() = new_block_ptr;
+                    DrvAPI::value_handle<block> next_block = *(curr_block.next());
+                    DrvAPI::value_handle<block> prev_block = *(curr_block.prev());
+                    new_block.next() = next_block.address();
+                    new_block.prev() = prev_block.address();
+                    next_block.prev() = new_block.address();
+                    prev_block.next() = new_block.address();
                 }
                 allocator.free_list() = new_block_ptr;
                 curr_block.is_free() = false;
@@ -327,13 +327,13 @@ DrvAPI::pointer<void> allocate(uint64_t size)
             } else {
                 // remove the block from the free list
                 DrvAPI::value_handle<block> curr_block = *curr_block_ptr;
-                DrvAPI::pointer<block> next_block_ptr = curr_block.next();
-                DrvAPI::pointer<block> prev_block_ptr = curr_block.prev();
+                DrvAPI::value_handle<block> next_block = *(curr_block.next());
+                DrvAPI::value_handle<block> prev_block = *(curr_block.prev());
                 // if the block is not the only one in the list
-                (*next_block_ptr).prev() = prev_block_ptr;
-                (*prev_block_ptr).next() = next_block_ptr;
+                next_block.prev() = prev_block.address();
+                prev_block.next() = next_block.address();
                 // update the successor
-                allocator.free_list() = next_block_ptr;
+                allocator.free_list() = next_block.address();
                 curr_block.successor().is_predecessor_free() = false;
                 curr_block.is_free() = false;
                 // return the address of the data
@@ -351,14 +351,12 @@ DrvAPI::pointer<void> allocate(uint64_t size)
         allocator.free_list() = slab_ptr;
     } else {
         DrvAPI::value_handle<block> slab = *slab_ptr;
-        DrvAPI::pointer<block> next_block_ptr = allocator.free_list();
-        DrvAPI::value_handle<block> next_block = *next_block_ptr;
-        DrvAPI::pointer<block> prev_block_ptr = next_block.prev();
-        DrvAPI::value_handle<block> prev_block = *prev_block_ptr;
-        slab.next() = next_block_ptr;
-        slab.prev() = prev_block_ptr;
-        next_block.prev() = slab_ptr;
-        prev_block.next() = slab_ptr;
+        DrvAPI::value_handle<block> next_block = *allocator.free_list();
+        DrvAPI::value_handle<block> prev_block = *(next_block.prev());
+        slab.next() = next_block.address();
+        slab.prev() = prev_block.address();
+        next_block.prev() = slab.address();
+        prev_block.next() = slab.address();
     }
     goto scan_free_list;
     return {-1ul};
@@ -387,14 +385,12 @@ void deallocate(DrvAPI::pointer<void> ptr, uint64_t size)
             free_block.prev() = free_block_ptr;
             allocator.free_list() = free_block_ptr;
         } else {
-            DrvAPI::pointer<block> next_block_ptr = allocator.free_list();
-            DrvAPI::value_handle<block> next_block = *next_block_ptr;
-            DrvAPI::pointer<block> prev_block_ptr = next_block.prev();
-            DrvAPI::value_handle<block> prev_block = *prev_block_ptr;
-            free_block.next() = next_block_ptr;
-            free_block.prev() = prev_block_ptr;
-            next_block.prev() = free_block_ptr;
-            prev_block.next() = free_block_ptr;
+            DrvAPI::value_handle<block> next_block = *allocator.free_list();
+            DrvAPI::value_handle<block> prev_block = *next_block.prev();
+            free_block.next() = next_block.address();
+            free_block.prev() = prev_block.address();
+            next_block.prev() = free_block.address();
+            prev_block.next() = free_block.address();
         }
     } else if (free_block.is_predecessor_free() && !free_block.successor().is_free()) {
         // 2. predecessor is free, but successor is not
@@ -411,20 +407,18 @@ void deallocate(DrvAPI::pointer<void> ptr, uint64_t size)
         free_block.size() = free_block.size() + successor.size();
         free_block.is_free() = true;
         free_block.footer() = free_block.size();
-        DrvAPI::pointer<block> next_block_ptr = successor.next();
-        DrvAPI::pointer<block> prev_block_ptr = successor.prev();
-        DrvAPI::value_handle<block> next_block = *next_block_ptr;
-        DrvAPI::value_handle<block> prev_block = *prev_block_ptr;
-        if (next_block_ptr == successor.address()) {
+        DrvAPI::value_handle<block> next_block = *successor.next();
+        DrvAPI::value_handle<block> prev_block = *successor.prev();
+        if (next_block.address() == successor.address()) {
             free_block.next() = free_block.address();
             free_block.prev() = free_block.address();
         } else {
-            free_block.next() = next_block_ptr;
-            free_block.prev() = prev_block_ptr;
-            next_block.prev() = free_block_ptr;
-            prev_block.next() = free_block_ptr;
+            free_block.next() = next_block.address();
+            free_block.prev() = prev_block.address();
+            next_block.prev() = free_block.address();
+            prev_block.next() = free_block.address();
         }
-        allocator.free_list() = free_block_ptr;
+        allocator.free_list() = free_block.address();
     } else {
         // 4. both predecessor and successor are free
         //printf("case 4\n");
@@ -433,13 +427,11 @@ void deallocate(DrvAPI::pointer<void> ptr, uint64_t size)
         predecessor.size() = predecessor.size() + free_block.size() + successor.size();
         predecessor.footer() = predecessor.size();
         // remove the successor from the free list
-        DrvAPI::pointer<block> next_block_ptr = successor.next();
-        DrvAPI::pointer<block> prev_block_ptr = successor.prev();
-        DrvAPI::value_handle<block> next_block = *next_block_ptr;
-        DrvAPI::value_handle<block> prev_block = *prev_block_ptr;
-        next_block.prev() = prev_block_ptr;
-        prev_block.next() = next_block_ptr;
-        allocator.free_list() = next_block_ptr;
+        DrvAPI::value_handle<block> next_block = *successor.next();
+        DrvAPI::value_handle<block> prev_block = *successor.prev();
+        next_block.prev() = prev_block.address();
+        prev_block.next() = next_block.address();
+        allocator.free_list() = next_block.address();
     }
     //print_free_list("deallocate");
 }
