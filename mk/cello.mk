@@ -9,6 +9,7 @@ vpath %.cpp $(DRV_DIR)/cello
 vpath %.c   $(DRV_DIR)/cello
 
 CELLO_CXXSOURCES_DRVX += cello_core_drvx.cpp
+CELLO_CXXSOURCES_DRVX += cello_core_drvx_allocator.cpp
 
 CELLO_LDFLAGS_DRVX +=
 CELLO_LDFLAGS_DRVR +=
