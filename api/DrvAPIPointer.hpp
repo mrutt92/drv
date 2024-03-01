@@ -276,7 +276,15 @@ public:
     const value_handle<T> operator[](size_t index) const {
         return value_handle<T>(_ptr + index * sizeof(T));
     }
-    
+
+    std::unique_ptr<value_handle<T>> operator->() {
+        return std::unique_ptr<value_handle<T>>(new value_handle<T>(_ptr));
+    }
+
+    std::unique_ptr<const value_handle<T>> operator->() const {
+        return std::unique_ptr<const value_handle<T>>(new value_handle<T>(_ptr));
+    }
+
     DrvAPI::DrvAPIAddress _ptr;
 };
 

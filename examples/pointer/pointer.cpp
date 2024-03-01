@@ -83,6 +83,13 @@ int PointerMain(int argc, char* argv[])
         pr("bref.obaz() = %d\n", static_cast<int>(bref.obaz()));
         pr("bref.obar() = %f\n", static_cast<float>(bref.obar()));
         pr("bref.sum()  = %f\n", bref.sum());
+
+        bptr->obaz() = 42;
+        bptr->obar() = 2.71828f;
+        pr("bptr->obaz() = %d\n", static_cast<int>(bptr->obaz()));
+        pr("bptr->obar() = %f\n", static_cast<float>(bptr->obar()));
+        pr("bptr->sum()  = %f\n", bptr->sum());
+
         // void pointer
         DrvAPIPointer<void> voidptr = DrvAPI::DrvAPIVAddress::MyL2Base().encode();
         pr("voidptr = 0x%016" PRIx64 "\n", static_cast<uint64_t>(voidptr));
