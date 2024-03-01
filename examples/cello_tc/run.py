@@ -21,7 +21,7 @@ class TCTestbench(tb.Testbench):
         )
 
     def result_header(self):
-        return "Application,Input,Sim Options,PXN,Pods,Cores,Threads,Seconds\n"
+        return "Application,Input,Sim Options,PXN,Pods,Cores,Threads,Seconds,FADDS,FSUBS,FMULS,FDIVS,FMADDS\n"
 
     def test_to_dir(self, test):
         inputs, cores, threads = test
