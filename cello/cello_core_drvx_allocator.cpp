@@ -403,6 +403,7 @@ void deallocate(DrvAPI::pointer<void> ptr, uint64_t size)
     } else if (!free_block.is_predecessor_free() && free_block.successor().is_free()) {
         // 3. predecessor is not free, but successor is
         //printf("case 3\n");
+        // coalesce with the successor
         DrvAPI::value_handle<block> successor = free_block.successor();
         free_block.size() = free_block.size() + successor.size();
         free_block.is_free() = true;
@@ -422,6 +423,7 @@ void deallocate(DrvAPI::pointer<void> ptr, uint64_t size)
     } else {
         // 4. both predecessor and successor are free
         //printf("case 4\n");
+        // coalesce with both predecessor and successor
         DrvAPI::value_handle<block> predecessor = free_block.predecessor();
         DrvAPI::value_handle<block> successor = free_block.successor();
         predecessor.size() = predecessor.size() + free_block.size() + successor.size();
