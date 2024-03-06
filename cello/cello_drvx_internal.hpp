@@ -33,7 +33,7 @@ template <typename T>
 using Pointer = DrvAPI::DrvAPIPointer<T>;
 
 #ifndef CORE_THREADS
-#define CORE_THREADS 16
+#define CORE_THREADS 64
 #endif
 
 
