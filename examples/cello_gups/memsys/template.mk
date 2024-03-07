@@ -18,7 +18,6 @@ APP_NAME := cello_gups
 
 SIM_OPTIONS += --core-threads=$(threads) --pod-cores=$(cores)
 SIM_OPTIONS += --pxn-pods=$(pods) --num-pxn=$(pxns)
-SIM_OPTIONS += --drvx-stack-in-l1sp
 SIM_OPTIONS += --core-stats --stats-load-level=3
 SIM_OPTIONS += --pxn-dram-banks=$(ports) --pod-l2sp-banks=2
 
