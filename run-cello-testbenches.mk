@@ -14,5 +14,9 @@ testbenches_run = $(addsuffix .run, $(testbenches))
 .PHONY: all
 all: $(testbenches_run)
 $(testbenches_run): %.run:
-	@echo "Running $<"
-	@cd $(DRV_DIR)/examples/$* && python3 run.py
+	@echo "Running $*"
+	@cd $(DRV_DIR)/examples/$* && python3 run.py --do=generate
+#	@$(MAKE) -C $(DRV_DIR)/examples/$* purge
+	@cd $(DRV_DIR)/examples/$* && python3 run.py --do=run
+	@cd $(DRV_DIR)/examples/$* && python3 run.py --do=coalesce_results
+	@cd $(DRV_DIR)/examples/$* && python3 run.py --do=upload
