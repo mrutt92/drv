@@ -15,7 +15,6 @@ APP_EXE ?= $(APP_PATH)/$(test-name)/$(APP_NAME).so
 
 SIM_OPTIONS += --core-threads=$(threads) --pod-cores=$(cores)
 SIM_OPTIONS += --pxn-pods=$(pods) --num-pxn=$(pxns)
-SIM_OPTIONS += --drvx-stack-in-l1sp
 SIM_ARGS += $(start) $(stop) $(step) $(grain)
 
 include $(DRV_DIR)/mk/config.mk

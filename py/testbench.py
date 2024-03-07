@@ -1,5 +1,8 @@
 import subprocess
 import datetime
+import argparse
+import pandas
+import re
 
 class Testbench(object):
     HOST = "bicycle.cs.washington.edu"
@@ -25,7 +28,36 @@ class Testbench(object):
             host=self.HOST,
             tb_name=self.tbname
         )
-    
+
+    def parse_args(self):
+        """
+        Parse the arguments
+        """
+        parser = argparse.ArgumentParser(description='Run a testbench')
+        parser.add_argument('--do', type=str, default="all",
+                            help='Do one step of running the testbench [all, generate, run, coalesce_results, upload]')
+        self.args = parser.parse_args()
+
+    @property
+    def do(self):
+        return self.args.do
+
+    @property
+    def do_generate(self):
+        return self.do == "all" or self.do == "generate"
+
+    @property
+    def do_run(self):
+        return self.do == "all" or self.do == "run"
+
+    @property
+    def do_coalesce_results(self):
+        return self.do == "all" or self.do == "coalesce_results"
+
+    @property
+    def do_upload(self):
+        return self.do == "all" or self.do == "upload"    
+        
     def generate_tests(self):
         """
         Generate the tests
@@ -59,6 +91,32 @@ class Testbench(object):
                 with open(tdir + '/sim_options.log','r') as f:
                     sim_options = f.read().strip()
 
+                with open(tdir + '/tags.csv','r') as f:
+                    try:
+                        tags = pandas.read_csv(f)
+                    except Exception as e:
+                        print("Error reading {}/tags.csv: {}".format(tdir, e))
+                        exit(1)
+
+                with open(tdir + '/stats.csv', 'r') as f:
+                    try:
+                        data = pandas.read_csv(f)
+                    except Exception as e:
+                        print("Error reading {}/stats.csv: {}".format(tdir, e))
+                        exit(1)
+
+                data = pandas.merge(data, tags, on='SimTime')
+                for op in ('load', 'store', 'atomic'):
+                    stats[op + 's'] = 0
+                
+                for tag in self.tag_prefixes():
+                    starts = data[data['TagName'] == tag + '_start']
+                    ends = data[data['TagName'] == tag + '_stop']
+                    for op in ('load', 'store', 'atomic'):
+                        ops_start = starts[starts['StatisticName'].str.contains(op + '_')]
+                        ops_end = ends[ends['StatisticName'].str.contains(op + '_')]
+                        stats[op + 's'] += int(ops_end['Sum.u64'].sum() - ops_start['Sum.u64'].sum())
+
                 results.write(self.result(test, sim_options, seconds, stats))
                 
     def upload_results(self):
@@ -76,10 +134,22 @@ class Testbench(object):
         """
         Run the testbench
         """
-        self.generate_tests()
-        self.run_tests()
-        self.coalesce_results()
-        self.upload_results()
+        self.parse_args()
+        if self.do_generate:
+            print("{}: Generating tests".format(self.tbname))
+            self.generate_tests()
+
+        if self.do_run:
+            print("{}: Running tests".format(self.tbname))
+            self.run_tests()
+
+        if self.do_coalesce_results:
+            print("{}: Coalescing results".format(self.tbname))
+            self.coalesce_results()
+
+        if self.do_upload:
+            print("{}: Uploading results".format(self.tbname))
+            self.upload_results()
 
     def tests(self):
         """
@@ -93,6 +163,12 @@ class Testbench(object):
         """
         raise NotImplementedError
 
+    def tag_prefixes(self):
+        """
+        Return the prefix for the tags
+        """
+        raise NotImplementedError
+    
     def test_to_dir(self, test):
         """
         Convert a test to a directory
@@ -110,7 +186,7 @@ class Testbench(object):
         Parse the flops from a line
         """
         return stats
-    
+
     def result_header(self):
         """
         Return the header for the results file
@@ -123,3 +199,58 @@ class Testbench(object):
         """
         raise NotImplementedError
         
+
+class CoreThreadSpeedupTestbench(Testbench):
+    CORES = range(1,33)
+    THREADS = range(1,33)
+    INPUTS = [""]
+    def __init__(self, tbname, application):
+        super().__init__(tbname)
+        self.application = application
+    
+    def result_header(self):
+        return "Application,Input,Sim Options,PXN,Pods,Cores,Threads,Seconds,FADDS,FSUBS,FMULS,FDIVS,FMADDS,LOADS,STORES,ATOMICS\n"
+
+    def result(self, test, sim_options, seconds, stats):
+        inputs, cores, threads = test
+        return "{Application:},{Input:},{SimOptions:},{PXN:},{Pods:},{Cores:},{Threads:},{Seconds:1.12f},{FADDS:},{FSUBS:},{FMULS:},{FDIVS:},{FMADDS:},{LOADS:},{STORES:},{ATOMICS:}\n".format(
+            Application=self.application,
+            Input=self.format_input(inputs),
+            SimOptions=sim_options,
+            PXN=1,
+            Pods=1,
+            Cores=cores,
+            Threads=threads,
+            Seconds=seconds,
+            FADDS=stats['fadds'],
+            FSUBS=stats['fsubs'],
+            FMULS=stats['fmuls'],
+            FDIVS=stats['fdivs'],
+            FMADDS=stats['fmadds'],
+            LOADS=stats['loads'],
+            STORES=stats['stores'],
+            ATOMICS=stats['atomics']
+        )
+
+    def format_input(self, input):
+        raise NotImplementedError
+
+    def parse_stats(self, line, stats):
+        for op in ['fadd', 'fsub', 'fmul', 'fdiv', 'fmadd']:
+            if op+'s' not in stats:
+                stats[op + 's'] = 0
+            
+            for tag in self.tag_prefixes():
+                match = re.search(r'{}: {}: ([0-9]+)'.format(tag,op), line)
+                if match:
+                    stats[op + 's'] += int(match.group(1))
+
+        return stats
+
+    def parse_seconds(self, line):
+        for tag in self.tag_prefixes():
+            match = re.search(r'{}: Elapsed time: ([0-9.]+) seconds'.format(tag), line)
+            if match:
+                return float(match.group(1))
+        
+        return 0.0
