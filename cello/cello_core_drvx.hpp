@@ -173,7 +173,7 @@ template <typename F1, typename F2>
 void parallel_invoke_impl(F1 && f1, F2 && f2) {
     // create a joiner
     using namespace DrvAPI;
-    dram_dynamic<cello::joiner> joiner;
+    l1sp_dynamic<cello::joiner> joiner;
     joiner.init();
     joiner.add(1);
 
@@ -206,7 +206,7 @@ template <typename F1, typename F2, typename F3>
 void parallel_invoke_impl(F1 && f1, F2 && f2, F3 && f3) {
     // create a joiner
     using namespace DrvAPI;
-    dram_dynamic<cello::joiner> joiner;
+    l1sp_dynamic<cello::joiner> joiner;
     joiner.init();
     joiner.add(2);
     

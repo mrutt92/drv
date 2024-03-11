@@ -22,7 +22,11 @@ public:
      * @brief constructor
      */
     dynamic_data():
-        value_handle<T>(DrvAPI::DrvAPIMemoryAlloc(MEMTYPE, sizeof(T))) {        
+        value_handle<T>(DrvAPI::DrvAPIMemoryAllocateType<T>(MEMTYPE)) {
+    }
+
+    ~dynamic_data() {
+        DrvAPI::DrvAPIMemoryDeallocateType<T>(this->_ptr);
     }
 
     dynamic_data(const T&v) :
@@ -50,10 +54,6 @@ public:
         value_handle<T> handle(this->_ptr);
         handle = v;
         return *this;
-    }
-    
-    ~dynamic_data() {
-        DrvAPI::DrvAPIMemoryFree(this->_ptr);
     }
 };
 
