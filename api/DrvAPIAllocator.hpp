@@ -35,5 +35,28 @@ void DrvAPIMemoryFree(const DrvAPIPointer<void> &ptr);
  */
 void DrvAPIMemoryAllocatorInit();
 
+/**
+ * @brief allocate specific type
+ * @tparam the type
+ * @param the memory type
+ * return the pointer
+ */
+template <typename T>
+inline DrvAPIPointer<T> DrvAPIMemoryAllocateType(DrvAPIMemoryType type)
+{
+    return (DrvAPIPointer<T>)DrvAPIMemoryAlloc(type, sizeof(T));
+}
+
+/**
+ * @brief deallocate specific type
+ * @tparam the type
+ * @param the pointer
+ */
+template <typename T>
+inline void DrvAPIMemoryDeallocateType(const DrvAPIPointer<T> &ptr)
+{
+    DrvAPIMemoryFree((DrvAPIPointer<void>)ptr);
+}
+
 }
 #endif
