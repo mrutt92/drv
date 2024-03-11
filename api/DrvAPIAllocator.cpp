@@ -26,6 +26,7 @@ namespace DrvAPI
 #endif
 
 namespace allocator {
+class bump_allocator;
 class slab_allocator;
 class block_allocator;
 
@@ -156,13 +157,15 @@ namespace allocator {
 
 } // namespace allocator
 
-
-
 ////////////////////
-// SLAB ALLOCATOR //
+// BUMP ALLOCATOR //
 ////////////////////
 namespace allocator {
-class slab_allocator {
+
+/**
+ * @brief uses atomic add to allocate memory
+ */
+class bump_allocator {
 public:
     FIELD(address_t, base, base_)
     FIELD(address_t, size, size_)
@@ -174,25 +177,22 @@ public:
         dst.status() = src.status();
     }
 };
-} // namespace allocator
+
+}
 
 template <>
-class value_handle<slab_allocator> {
-    DRV_API_VALUE_HANDLE_DEFAULTS(slab_allocator)
-    DRV_API_VALUE_HANDLE_FIELD(slab_allocator, base, address_t, base_)
-    DRV_API_VALUE_HANDLE_FIELD(slab_allocator, size, address_t, size_)
-    DRV_API_VALUE_HANDLE_FIELD(slab_allocator, status, status_t, status_)
-    void init(memtype_t type) {
-        using namespace allocator;
-        do_once(status().address(), [this, type](){
-            DrvAPISection &section = DrvAPI::DrvAPISection::GetSection(type);
-            address_t sz = static_cast<address_t>(section.getSize());
-            // align to 16-byte boundary
-            sz = (sz + 15) & ~15;
-            // make a global address
-            address_t localBase = section.getBase(myPXNId(), myPodId(), myCoreId());
-            address_t globalBase = toGlobalAddress(localBase, myPXNId(), myPodId(), myCoreY(), myCoreX());
-            base() = globalBase + sz;
+class value_handle<bump_allocator> {
+    DRV_API_VALUE_HANDLE_DEFAULTS(bump_allocator)
+    DRV_API_VALUE_HANDLE_FIELD(bump_allocator, base, address_t, base_)
+    DRV_API_VALUE_HANDLE_FIELD(bump_allocator, size, address_t, size_)
+    DRV_API_VALUE_HANDLE_FIELD(bump_allocator, status, status_t, status_)
+    /**
+     * @brief initialize the allocator
+     */
+    void init(address_t base, address_t size) {
+        do_once(status().address(), [this, base, size](){
+            this->base() = base;
+            this->size() = size;
         });
     }
 
@@ -205,10 +205,61 @@ class value_handle<slab_allocator> {
         size = (size + 7) & ~7;
         address_t addr = DrvAPI::atomic_add<address_t>(base().address(), size);
 
-        if (addr + size > base() + this->size())
-            throw std::runtime_error("slab_allocator: out of memory");
+        if (addr + size > this->base() + this->size())
+            throw std::runtime_error("bump_allocator: out of memory");
 
         return pointer<void>(addr);
+    }
+};
+
+////////////////////
+// SLAB ALLOCATOR //
+////////////////////
+namespace allocator {
+class slab_allocator {
+public:
+    FIELD(bump_allocator, bump_alloc, bump_alloc_)
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.bump_alloc() = src.bump_alloc();
+    }
+};
+} // namespace allocator
+
+template <>
+class value_handle<slab_allocator> {
+    DRV_API_VALUE_HANDLE_DEFAULTS(slab_allocator)
+    DRV_API_VALUE_HANDLE_FIELD(slab_allocator, bump_alloc, allocator::bump_allocator, bump_alloc_)
+    void init(memtype_t type) {
+        using namespace allocator;
+        DrvAPISection &section = DrvAPI::DrvAPISection::GetSection(type);
+        address_t sz = static_cast<address_t>(section.getSize());
+        // align to 16-byte boundary
+        sz = (sz + 15) & ~15;
+        // make a global address
+        address_t localBase = section.getBase(myPXNId(), myPodId(), myCoreId());
+        address_t globalBase = toGlobalAddress(localBase, myPXNId(), myPodId(), myCoreY(), myCoreX());
+        bump_alloc().init(globalBase+sz, getMemSize(type)-sz);
+    }
+
+    address_t getMemSize(memtype_t type) {
+        switch (type) {
+        case DrvAPIMemoryL1SP:
+            return DrvAPI::coreL1SPSize();
+        case DrvAPIMemoryL2SP:
+            return DrvAPI::podL2SPSize();
+        case DrvAPIMemoryDRAM:
+            return DrvAPI::pxnDRAMSize();
+        default:
+            throw std::runtime_error("slab_allocator: unknown memory type");
+        }
+    }
+    
+    /**
+     * allocate a slab of memory
+     */
+    pointer<void> allocate(address_t size) {
+        return bump_alloc().allocate(size);
     }
 };
 
