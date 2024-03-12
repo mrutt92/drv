@@ -24,9 +24,8 @@ int CelloMain(int argc, char *argv[])
     }
     {
         util::timer _("vadd");
-        cello::parallel_for(0, n, 1, [&v, &x, a, b, c](int i) mutable {
+        cello::parallel_for(0, n, 1, [a, b, c](int i) mutable {
             c[i] = a[i] + b[i];
-            v[i] = true;
         });
     }
     return 0;    
