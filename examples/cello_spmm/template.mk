@@ -43,7 +43,7 @@ $(APP_NAME).so: $(CELLO_OBJECTS)
 
 MATRICES := $(INPUT_DIR)/$(m0).mtx
 MATRICES += $(INPUT_DIR)/$(m1).mtx
-run: $(MATRICES)
+run.log: $(MATRICES)
 
 $(MATRICES): $(INPUT_DIR)/%.mtx:
 	$(MAKE) -C $(dir $@)  $*.mtx
