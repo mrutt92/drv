@@ -582,7 +582,7 @@ class DrvAPI::value_handle<sparse_matrix_product> {
                 dst[j] = src[j];
             }
         });
-        DrvAPIMemoryFree(tree);
+        DrvAPIMemoryFree(tree, tree_size*sizeof(idx_t));
         return O;
     }
 };

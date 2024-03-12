@@ -69,7 +69,7 @@ class DrvAPI::value_handle<frontier_data> {
     }
     
     void destroy() {
-      DrvAPIMemoryFree(static_cast<pointer<void>>(vertices()));
+        DrvAPIMemoryFree(static_cast<pointer<void>>(vertices()), capacity() * sizeof(int32_t));
     }
 
     void clear() {
@@ -240,7 +240,6 @@ int CelloMain(int argc, char* argv[]) {
     pointer<int32_t> fwd_edges = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, e*sizeof(int32_t));
     pointer<int32_t> rev_edges = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, e*sizeof(int32_t));
     pointer<int32_t> distance = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, v*sizeof(int32_t));
-
     using namespace util;
     {
         timer _("csr construction");
