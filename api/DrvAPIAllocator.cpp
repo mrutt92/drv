@@ -34,6 +34,7 @@ typedef int64_t          lock_t;
 typedef int64_t          status_t;
 typedef DrvAPIAddress    address_t;
 typedef DrvAPIMemoryType memtype_t;
+static const pointer<void> null_ptr = -1;
 }
 using namespace allocator;
 
@@ -168,12 +169,12 @@ namespace allocator {
 class bump_allocator {
 public:
     FIELD(address_t, base, base_)
-    FIELD(address_t, size, size_)
+    FIELD(address_t, end,  end_)
     FIELD(status_t, status, status_)
     template <typename Dst, typename Src>
     static void copy(Dst &dst, const Src &src) {
         dst.base() = src.base();
-        dst.size() = src.size();
+        dst.end() = src.end();
         dst.status() = src.status();
     }
 };
@@ -184,7 +185,7 @@ template <>
 class value_handle<bump_allocator> {
     DRV_API_VALUE_HANDLE_DEFAULTS(bump_allocator)
     DRV_API_VALUE_HANDLE_FIELD(bump_allocator, base, address_t, base_)
-    DRV_API_VALUE_HANDLE_FIELD(bump_allocator, size, address_t, size_)
+    DRV_API_VALUE_HANDLE_FIELD(bump_allocator, end, address_t,  end_)
     DRV_API_VALUE_HANDLE_FIELD(bump_allocator, status, status_t, status_)
     /**
      * @brief initialize the allocator
@@ -192,7 +193,7 @@ class value_handle<bump_allocator> {
     void init(address_t base, address_t size) {
         do_once(status().address(), [this, base, size](){
             this->base() = base;
-            this->size() = size;
+            this->end() = base + size;
         });
     }
 
@@ -204,11 +205,28 @@ class value_handle<bump_allocator> {
         // align to 8-byte boundary
         size = (size + 7) & ~7;
         address_t addr = DrvAPI::atomic_add<address_t>(base().address(), size);
-
-        if (addr + size > this->base() + this->size())
-            throw std::runtime_error("bump_allocator: out of memory");
+        pr_dbg("bump allocator allocated %s (%10lx + size = %lu)\n",
+               DrvAPIVAddress{addr}.to_string().c_str(),
+               addr,
+               size);
+        if (addr + size > this->end()) {
+            pr_dbg("bump allocator returning null pointer\n");
+            return allocator::null_ptr;
+        }
 
         return pointer<void>(addr);
+    }
+
+    /**
+     * reset the allocator
+     */
+    void reset(address_t base, address_t size) {
+        // mark as uninitialized (only if still marked as initialized)
+        atomic_cas(status().address(), STATUS_INIT, STATUS_UNINIT);
+        do_once(status().address(), [this, base, size](){
+            this->base() = base;
+            this->end() = base + size;
+        });
     }
 };
 
@@ -259,7 +277,11 @@ class value_handle<slab_allocator> {
      * allocate a slab of memory
      */
     pointer<void> allocate(address_t size) {
-        return bump_alloc().allocate(size);
+        pointer<void>r = bump_alloc().allocate(size);
+        if (r == allocator::null_ptr) {
+            throw std::runtime_error("slab_allocator: out of memory");
+        }
+        return r;
     }
 };
 
@@ -680,9 +702,165 @@ public:
     }
 };
 
-//////////////////////
-// SCALAR ALLOCATOR //
-//////////////////////
+//////////////////////////
+// FIXED SIZE ALLOCATOR //
+//////////////////////////
+namespace allocator {
+/**
+ * allocator for fixed size objects
+ */
+template <address_t SIZE>
+struct object {
+    static constexpr address_t DWORDS = (SIZE + sizeof(address_t) - 1) / sizeof(address_t);
+    union {
+        pointer<object> next_;
+        std::array<address_t, DWORDS> data_;
+    };
+    const pointer<object> &next() const { return next_; }
+    pointer<object> &next() { return next_; }
+    const std::array<address_t, DWORDS> &data() const { return data_; }
+    std::array<address_t, DWORDS> &data() { return data_; }
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.next() = src.next();
+        dst.data() = src.data();
+    }
+};
+
+/**
+ * allocator for fixed size objects with free list
+ */
+template <address_t SIZE>
+class free_list_object_allocator {
+public:
+    FIELD(pointer<object<SIZE>>, head, head_)
+    FIELD(status_t, status, status_)
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.head() = src.head();
+    }
+};
+
+/**
+ * fixed size object allocator with free list and bump
+ */
+template <address_t SIZE>
+class object_allocator {
+public:
+    FIELD(free_list_object_allocator<SIZE>, free_list, free_list_)
+    FIELD(bump_allocator, bump, bump_)
+    FIELD(pointer<slab_allocator>, slab_alloc_ptr, slab_alloc_ptr_)
+    FIELD(status_t, status, status_)
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.free_list() = src.free_list();
+        dst.bump() = src.bump();
+        dst.slab_alloc_ptr() = src.slab_alloc_ptr();
+    }    
+};
+}
+
+/**
+ * specialization for object
+ */
+template <address_t SIZE>
+class value_handle<allocator::object<SIZE>> {
+    DRV_API_VALUE_HANDLE_DEFAULTS(allocator::object<SIZE>)
+    DRV_API_VALUE_HANDLE_FIELD(allocator::object<SIZE>, next, pointer<allocator::object<SIZE>>, next_)
+};
+
+/**
+ * specialization for free_list_object_allocator
+ */
+template <address_t SIZE>
+class value_handle<allocator::free_list_object_allocator<SIZE>> {
+    typedef pointer<allocator::object<SIZE>> object_pointer;
+    DRV_API_VALUE_HANDLE_DEFAULTS(allocator::free_list_object_allocator<SIZE>)
+    DRV_API_VALUE_HANDLE_FIELD(allocator::free_list_object_allocator<SIZE>, head, pointer<allocator::object<SIZE>>, head_)
+    void init() {
+        head() = head().address();
+        pr_dbg("free_list allocator: init: &head = %s, head = %s\n",
+               DrvAPIVAddress{head().address()}.to_string().c_str(),
+               DrvAPIVAddress{head()}.to_string().c_str());
+    }
+
+    bool empty() const {
+        pointer<void> head_ptr = head();
+        return head_ptr == head().address();
+    }
+
+    object_pointer allocate() {
+        while (true) {
+            object_pointer head_ptr = head();
+            object_pointer next_ptr = head_ptr->next();
+            pr_dbg("free_list allocator: allocate: &head = %s, head = %s, next = %s\n",
+                   DrvAPIVAddress{head().address()}.to_string().c_str(),
+                   DrvAPIVAddress{head_ptr}.to_string().c_str(),
+                   DrvAPIVAddress{next_ptr}.to_string().c_str());
+            object_pointer result = atomic_cas(head().address(), head_ptr, next_ptr);
+            pr_dbg("free_list allocator: allocate: &head = %s, allocated %s\n",
+                   DrvAPIVAddress{head().address()}.to_string().c_str(),
+                   DrvAPIVAddress{result}.to_string().c_str());
+            
+            if (result == head().address())
+                return allocator::null_ptr;
+            else if (result == head_ptr)
+                return head_ptr;
+        }
+    }
+    
+    void deallocate(object_pointer ptr) {
+        while (true) {
+            object_pointer head_ptr = head();
+            ptr->next() = head_ptr;
+            object_pointer result = atomic_cas(head().address(), head_ptr, ptr);
+            if (result == head_ptr)
+                return;
+        }
+    }
+};
+
+template <address_t SIZE>
+class value_handle<allocator::object_allocator<SIZE>> {
+    typedef pointer<allocator::object<SIZE>> object_pointer;    
+    DRV_API_VALUE_HANDLE_DEFAULTS(allocator::object_allocator<SIZE>)
+    DRV_API_VALUE_HANDLE_FIELD(allocator::object_allocator<SIZE>, free_list, allocator::free_list_object_allocator<SIZE>, free_list_)
+    DRV_API_VALUE_HANDLE_FIELD(allocator::object_allocator<SIZE>, bump, bump_allocator, bump_)
+    DRV_API_VALUE_HANDLE_FIELD(allocator::object_allocator<SIZE>, slab_alloc_ptr, pointer<slab_allocator>, slab_alloc_ptr_)
+    DRV_API_VALUE_HANDLE_FIELD(allocator::object_allocator<SIZE>, status, status_t, status_)
+    static constexpr address_t SLAB_SIZE = SIZE * 32;
+    void init(pointer<slab_allocator> slab_alloc_ptr) {
+        do_once(status().address(), [slab_alloc_ptr, this] {
+            this->slab_alloc_ptr() = slab_alloc_ptr;
+            this->free_list().init();
+            this->bump().init(0,0);
+        });
+    }
+
+    object_pointer allocate() {
+        object_pointer ptr;
+        ptr = bump().allocate(SIZE);
+        if (ptr != allocator::null_ptr)
+            return ptr;
+
+        ptr = free_list().allocate();
+        if (ptr != allocator::null_ptr)
+            return ptr;
+
+        pointer<slab_allocator> slab_alloc_ptr = this->slab_alloc_ptr();
+        bump().reset(slab_alloc_ptr->allocate(SLAB_SIZE), SLAB_SIZE);
+        ptr = bump().allocate(SIZE);
+        if (ptr != allocator::null_ptr)
+            return ptr;
+
+        throw std::runtime_error("object allocator: out of memory");
+    }
+
+    void deallocate(pointer<allocator::object<SIZE>> ptr) {
+        free_list().deallocate(ptr);
+    }
+};
 
 ///////////////////////////
 // GLOBAL MEMORY OBJECTS //
@@ -694,10 +872,14 @@ namespace allocator {
 struct global_memory {
     FIELD(slab_allocator, slab_alloc, slab_alloc_)
     FIELD(block_allocator, block_alloc, block_alloc_)
+    FIELD(object_allocator<sizeof(uint64_t)>, dword_alloc, dword_alloc_)
+    FIELD(object_allocator<2*sizeof(uint64_t)>, qword_alloc, qword_alloc_)    
     template <typename Dst, typename Src>
     static void copy(Dst &dst, const Src &src) {
         dst.slab_alloc() = src.slab_alloc();
         dst.block_alloc() = src.block_alloc();
+        dst.dword_alloc() = src.dword_alloc();
+        dst.qword_alloc() = src.qword_alloc();
     }
 };
 } // namespace allocator
@@ -707,24 +889,38 @@ class value_handle<global_memory> {
     DRV_API_VALUE_HANDLE_DEFAULTS(global_memory)
     DRV_API_VALUE_HANDLE_FIELD(global_memory, slab_alloc, slab_allocator, slab_alloc_)
     DRV_API_VALUE_HANDLE_FIELD(global_memory, block_alloc, block_allocator, block_alloc_)
+    DRV_API_VALUE_HANDLE_FIELD(global_memory, dword_alloc, object_allocator<sizeof(uint64_t)>, dword_alloc_)
+    DRV_API_VALUE_HANDLE_FIELD(global_memory, qword_alloc, object_allocator<2*sizeof(uint64_t)>, qword_alloc_)
     void init(memtype_t type) {
         slab_alloc().init(type);
         block_alloc().init(slab_alloc().address());
+        dword_alloc().init(slab_alloc().address());
+        qword_alloc().init(slab_alloc().address());
     }
 
     pointer<void> allocate(address_t size) {
-#define BLOCK_ALLOCATE
-#ifdef  BLOCK_ALLOCATE
-        return block_alloc().allocate(size);
-#else
+        //#define BUMP_ALLOCATE_ONLY
+#ifdef  BUMP_ALLOCATE_ONLY
         return slab_alloc().allocate(size);
+#else
+        if (size <= sizeof(uint64_t))
+            return dword_alloc().allocate();
+        else if (size <= 2*sizeof(uint64_t))
+            return qword_alloc().allocate();
+        else
+            return block_alloc().allocate(size);
 #endif
     }
 
-    void deallocate(pointer<void> ptr) {
-#ifdef BLOCK_ALLOCATE
-        block_alloc().deallocate(ptr);
+    void deallocate(pointer<void> ptr, address_t size) {
+#ifdef BUMP_ALLOCATE_ONLY
 #else
+        if (size <= sizeof(uint64_t))
+            dword_alloc().deallocate(ptr);
+        else if (size <= 2*sizeof(uint64_t))
+            qword_alloc().deallocate(ptr);
+        else
+            block_alloc().deallocate(ptr);
 #endif
     }
 };
@@ -784,14 +980,14 @@ DrvAPIPointer<void> DrvAPIMemoryAlloc(DrvAPIMemoryType type, size_t size) {
     return {0};
 }
 
-void DrvAPIMemoryFree(const DrvAPIPointer<void> &ptr) {
+void DrvAPIMemoryFree(const DrvAPIPointer<void> &ptr, size_t size) {
     DrvAPIVAddress vaddr(ptr);
     if (vaddr.is_l1()) {
-        l1sp_memory.deallocate(ptr);
+        l1sp_memory.deallocate(ptr, size);
     } else if (vaddr.is_l2()) {
-        l2sp_memory.deallocate(ptr);
+        l2sp_memory.deallocate(ptr, size);
     } else if (vaddr.is_dram()) {
-        dram_memory.deallocate(ptr);
+        dram_memory.deallocate(ptr, size);
     } else {
         std::cerr << "ERROR: invalid memory address: " << ptr << std::endl;
         exit(1);

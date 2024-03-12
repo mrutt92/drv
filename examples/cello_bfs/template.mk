@@ -40,7 +40,7 @@ $(APP_NAME).so: read_graph.o
 $(APP_NAME).so: transpose_graph.o
 $(APP_NAME).so: $(CELLO_OBJECTS)
 
-run: $(INPUT_DIR)/$(graph).mtx
+run.log: $(INPUT_DIR)/$(graph).mtx
 
 $(INPUT_DIR)/$(graph).mtx:
 	$(MAKE) -C $(dir $@)  $(graph).mtx

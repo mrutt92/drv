@@ -26,7 +26,7 @@ DrvAPIPointer<void> DrvAPIMemoryAlloc(DrvAPIMemoryType type, size_t size);
  * @param size 
  * @return DrvAPIPointer<uint8_t> 
  */
-void DrvAPIMemoryFree(const DrvAPIPointer<void> &ptr);
+void DrvAPIMemoryFree(const DrvAPIPointer<void> &ptr, size_t size);
 
 
 /**
@@ -55,7 +55,7 @@ inline DrvAPIPointer<T> DrvAPIMemoryAllocateType(DrvAPIMemoryType type)
 template <typename T>
 inline void DrvAPIMemoryDeallocateType(const DrvAPIPointer<T> &ptr)
 {
-    DrvAPIMemoryFree((DrvAPIPointer<void>)ptr);
+    DrvAPIMemoryFree((DrvAPIPointer<void>)ptr, sizeof(T));
 }
 
 }
