@@ -899,7 +899,7 @@ class value_handle<global_memory> {
     }
 
     pointer<void> allocate(address_t size) {
-        //#define BUMP_ALLOCATE_ONLY
+#define BUMP_ALLOCATE_ONLY
 #ifdef  BUMP_ALLOCATE_ONLY
         return slab_alloc().allocate(size);
 #else
