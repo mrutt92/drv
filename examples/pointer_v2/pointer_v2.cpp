@@ -92,14 +92,15 @@ class vector_impl {
 public:
     vector_impl(const VectorDataT &data):
         vector(data) {
-        vector.data() = DrvAPI::pointer<typename VectorDataT::value_type>(0ul);
+        vector.data() = DrvAPI::pointer<typename VectorDataT::value_type>(-1ul);
         vector.capacity() = 0;
         vector.size() = 0;
     }
 
     void resize(size_t new_size) {
         if (vector.capacity() < new_size) {
-            DrvAPI::DrvAPIMemoryFree((DrvAPI::DrvAPIAddress)vector.data());
+            if (vector.data() != -1ul)
+                DrvAPI::DrvAPIMemoryFree((DrvAPI::DrvAPIAddress)vector.data(), vector.capacity() * sizeof(typename VectorDataT::value_type));
             vector.data() = (DrvAPI::DrvAPIAddress)DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, new_size * sizeof(typename VectorDataT::value_type));
             vector.capacity() = new_size;
             vector.size() = new_size;

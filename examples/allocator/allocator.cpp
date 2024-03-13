@@ -38,18 +38,25 @@ int AllocatorMain(int argc, char *argv[])
     std::stringstream ss;
     using namespace DrvAPI;
     DrvAPIMemoryAllocatorInit();
-    std::vector<std::tuple<DrvAPIMemoryType, std::string>> tests = {
-      {DrvAPIMemoryL1SP, "L1SP"},
-      {DrvAPIMemoryL2SP, "L2SP"},
-      {DrvAPIMemoryDRAM, "DRAM"},
+    std::vector<std::tuple<DrvAPIMemoryType, std::string, DrvAPIAddress>> tests = {
+        {DrvAPIMemoryL1SP, "L1SP", 0x1000},
+        {DrvAPIMemoryL2SP, "L2SP", 0x1000},
+        {DrvAPIMemoryDRAM, "DRAM", 0x1000},
+        {DrvAPIMemoryL1SP, "L1SP", sizeof(uint64_t)},
+        {DrvAPIMemoryL2SP, "L2SP", sizeof(uint64_t)},
+        {DrvAPIMemoryDRAM, "DRAM", sizeof(uint64_t)},
+        {DrvAPIMemoryL1SP, "L1SP", 2*sizeof(uint64_t)},
+        {DrvAPIMemoryL2SP, "L2SP", 2*sizeof(uint64_t)},
+        {DrvAPIMemoryDRAM, "DRAM", 2*sizeof(uint64_t)},
     };
 
     for (auto &t: tests) {
 	DrvAPIMemoryType type;
 	std::string type_name;
-	std::tie(type, type_name) = t;
-        DrvAPIPointer<int> p0 = DrvAPIMemoryAlloc(type, 0x1000);
-        DrvAPIPointer<int> p1 = DrvAPIMemoryAlloc(type, 0x1000);
+        DrvAPIAddress size;
+	std::tie(type, type_name, size) = t;
+        DrvAPIPointer<int> p0 = DrvAPIMemoryAlloc(type, size);
+        DrvAPIPointer<int> p1 = DrvAPIMemoryAlloc(type, size);
         ss << "Core " << myCoreId() << " Thread " << myThreadId() <<":";
         ss << "p0 = " << DrvAPIVAddress{p0}.to_string() << " should be " << type_name << std::endl;
         ss << "Core " << myCoreId() << " Thread " << myThreadId() <<":";
@@ -58,6 +65,9 @@ int AllocatorMain(int argc, char *argv[])
         ss << "p0 = 0x" << std::hex << p0 << std::endl;
         ss << "Core " << myCoreId() << " Thread " << myThreadId() <<":";
         ss << "p1 = 0x" << std::hex << p1 << std::endl;
+        DrvAPIMemoryFree(p0, size);
+        DrvAPIMemoryFree(p1, size);
+        
     }
     f.a() = 1;
     f.b() = 2;
