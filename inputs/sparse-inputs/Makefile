@@ -26,6 +26,7 @@ gdrive: $(get-from-gdrive)
 $(get-from-gdrive): %.mtx:
 	$(eval tarfile=$@.tar.gz)
 	$(eval tarurl=$($*-url))
+	rm -f $(tarfile)
 	gdown --fuzzy $(tarurl)
 	tar zxf $(tarfile)
 	rm -f $(tarfile)
@@ -65,6 +66,7 @@ uflorida: $(get-from-uflorida)
 $(get-from-uflorida): %.mtx:
 	$(eval tarurl=$($*-url))
 	$(eval tarfile=$*.tar.gz)
+	rm -f $(tarfile)
 	wget $(tarurl)
 	tar zxf $(tarfile)
 	ln -s $*/$@ $@
@@ -126,6 +128,7 @@ cswashington: $(get-from-cswashington)
 $(get-from-cswashington): %.mtx:
 	$(eval tarurl=$($*-url))
 	$(eval tarfile=$*.mtx.tar.gz)
+	rm -f $(tarfile)
 	wget $(tarurl)
 	tar zxf $(tarfile)
 	rm -f $(tarfile)
