@@ -6,7 +6,6 @@ include parameters.mk
 include app_path.mk
 
 DRV_DIR := $(shell git rev-parse --show-toplevel)
-memsys := Latency70ns-1Greq
 include $(DRV_DIR)/mk/cello.mk
 
 vpath %.c   $(APP_PATH)

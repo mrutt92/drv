@@ -1,4 +1,5 @@
 import testbench as tb
+import itertools
 class VectorAddTestbench(tb.CoreThreadSpeedupTestbench):
     INPUTS = [str(2**20)]
     def __init__(self, tbname):
@@ -26,6 +27,6 @@ class VectorAddTestbench(tb.CoreThreadSpeedupTestbench):
 
     def format_input(self, inputs):
         n = inputs
-        return "n_{}".format(graph)
+        return "n_{}".format(n)
 
 VectorAddTestbench("cello_vector_add").run()
