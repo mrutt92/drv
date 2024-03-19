@@ -104,7 +104,7 @@ void compute_block(idx block_d0, idx block_d1)
         }
         for (idx sx = 0; sx < BLOCK_D2; sx++) {
             for (idx sy = 0; sy < BLOCK_D0; sy++) {
-                psum(sy, sx) += vec1(sy, 0) * vec2(0, sx);
+                psum(sy, sx) = muladd(vec1(sy, 0), vec2(0, sx), psum(sy, sx));
             }
         }
     }
