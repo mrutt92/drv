@@ -94,7 +94,7 @@ public:
     }
 
     value_handle &operator=(typename numeric_type<T>::underlying_type value) {
-        static_cast<numeric_type<T>>(*this) = value;
+        *this = numeric_type<T>(value);
         return *this;
     }
 };
