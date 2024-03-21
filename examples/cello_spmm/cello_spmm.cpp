@@ -6,69 +6,308 @@
 #include <util/timer.hpp>
 #include <Eigen/Sparse>
 #include <set>
-using namespace DrvAPI;
+#include <iomanip>
+#include <iostream>
 
-//#define DEBUG
-#ifdef DEBUG
-#define pr_dbg(fmt, ...)                                                \
-    do {                                                                \
-        printf("DEBUG: tid=%4ld: " fmt ""                               \
-               ,cello::tid()                                            \
-               ,##__VA_ARGS__);                                         \
+#define DEBUG
+
+using namespace DrvAPI;
+using namespace util;    
+
+//////////////////////////
+// forward declarations //
+//////////////////////////
+struct sparse_matrix;
+struct sparse_matrix_product;
+struct sparse_vector;
+struct pool_link;
+struct nonzero_pool_link;
+
+/*
+ * convenience macro for defining ostream operator
+ */
+#define ostream_format_function(type)           \
+    std::ostream& operator<<(std::ostream& os, const type& t) { \
+        os << t.str();                                          \
+        return os;                                              \
+    }
+/*
+ * convenience macro for defining fields in a struct
+ * defines getter and setter for a field
+ */
+#define FIELD(type, pub, priv)                                          \
+    public:                                                             \
+    type priv;                                                          \
+    const type& pub() const { return priv; }                            \
+    type& pub() { return priv; }
+
+#define FMT_IDX(idx) std::dec << std::setw(5) << idx
+#define FMT_VAL(val) std::setprecision(2) << std::setw(5) << val
+#define FMT_TID(tid) std::dec << std::setw(4) << tid
+#define FMT_ADDR(addr) DrvAPIVAddress{addr}.to_string()
+/*
+ * wrap a iostream statement in a debug macro
+ * disabled if DEBUG not set
+ */
+#ifdef  DEBUG
+#define DEBUG_STMT(stmt)                                \
+    do {                                                \
+        std::stringstream ss;                           \
+        ss << "DEBUG: ";                                \
+        ss << "tid=" << FMT_TID(cello::tid()) << ": ";  \
+        ss << stmt;                                     \
+        std::cout << ss.str() << std::endl;             \
     } while (0)
 #else
-#define pr_dbg(fmt, ...)                                                \
-    do {                                                                \
+#define DEBUG_STMT(stmt)                        \
+    do {                                        \
     } while (0)
 #endif
 
-#define pr_info(fmt, ...)                                               \
+/*
+ * wrap a iostream statement in a info macro
+ */
+#define INFO_STMT(stmt)                                                 \
     do {                                                                \
-        printf("INFO: tid=%4ld: " fmt ""                                \
-               ,cello::tid()                                            \
-               ,##__VA_ARGS__);                                         \
-        fflush(stdout);                                                 \
+        std::stringstream ss;                                           \
+        ss << "INFO: ";                                                 \
+        ss << "tid=" << FMT_TID(cello::tid()) << ": ";                  \
+        ss << stmt;                                                     \
+        ss << std::endl;                                                \
+        std::cout << ss.str();                                          \
     } while (0)
 
-#define pr_error(fmt, ...)                                              \
+/*
+ * wrap a iostream statement in a error macro
+ */
+#define ERROR_STMT(stmt)                                                \
     do {                                                                \
-        printf("ERROR: tid=%4ld: " fmt ""                               \
-               ,cello::tid()                                            \
-               ,##__VA_ARGS__);                                         \
+        std::stringstream ss;                                           \
+        ss << "ERROR: ";                                                \
+        ss << "tid=" << FMT_TID(cello::tid()) << ": ";                  \
+        ss << stmt;                                                     \
+        ss << std::endl;                                                \
+        std::cerr << ss.str();                                          \
     } while (0)
 
+/*
+ * sparse matrix type from Eigen
+ */
 template <typename T>
 using EigenSparseMatrix = Eigen::SparseMatrix<T, Eigen::RowMajor>;
 
-namespace {
-[[maybe_unused]] std::string to_string(const float &v) {
-    return std::to_string(v);
+template <typename T>
+using EigenSparseVector = Eigen::SparseVector<T>;
+
+///////////////
+// link type //
+///////////////
+struct pool_link {
+    FIELD(pointer<pool_link>, next, next_);
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.next() = src.next();
+    }
+};
+
+template<>
+class DrvAPI::value_handle<pool_link> {
+    DRV_API_VALUE_HANDLE_DEFAULTS(pool_link);
+    DRV_API_VALUE_HANDLE_FIELD(pool_link, next, pointer<pool_link>, next_);    
+};
+
+///////////////////////
+// idx and val types //
+///////////////////////
+// idx type
+using idx_type = int32_t;
+
+// value type
+using val_type = float_type;
+
+//////////////////
+// nonzero type //
+//////////////////
+struct nonzero {
+    FIELD(idx_type, idx, idx_);
+    FIELD(val_type, val, val_);
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.idx() = src.idx();
+        dst.val() = src.val();
+    }
+
+    operator std::tuple<idx_type, val_type>() const {
+        return std::make_tuple(idx(), val());
+    }
+
+    /*
+     * format as string
+     */       
+    std::string str() const {
+        std::stringstream ss;
+        idx_type idx = this->idx();
+        float val = (float)this->val();
+        ss << "(" << FMT_IDX(idx) << ", " << FMT_VAL(val) << ")";
+        return ss.str();
+    }    
+};
+ostream_format_function(nonzero);
+
+template <>
+class DrvAPI::value_handle<nonzero> {
+    DRV_API_VALUE_HANDLE_DEFAULTS(nonzero);
+    DRV_API_VALUE_HANDLE_FIELD(nonzero, idx, idx_type, idx_);
+    DRV_API_VALUE_HANDLE_FIELD(nonzero, val, val_type, val_);
+};
+
+/////////////////////////////////////////
+// memory pool for allocating nonzeros //
+/////////////////////////////////////////
+struct nonzero_pool_link {
+    FIELD(idx_type, capacity, capacity_);
+    FIELD(pointer<nonzero_pool_link>, next, next_);
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.capacity() = src.capacity();
+        dst.next() = src.next();
+    }
+};
+
+template <>
+class DrvAPI::value_handle<nonzero_pool_link> {
+    DRV_API_VALUE_HANDLE_DEFAULTS(nonzero_pool_link);
+    DRV_API_VALUE_HANDLE_FIELD(nonzero_pool_link, capacity, idx_type, capacity_);
+    DRV_API_VALUE_HANDLE_FIELD(nonzero_pool_link, next, pointer<nonzero_pool_link>, next_);
+};
+
+static constexpr idx_type NONZERO_POOL_S = 0; //!< small pool
+static constexpr idx_type NONZERO_POOL_M = 1; //!< medium pool
+static constexpr idx_type NONZERO_POOL_L = 2; //!< large pool
+static constexpr idx_type NONZERO_POOL_N = 3; //!< number of pools
+
+/**
+ * @brief nonzero_size_to_pool
+ *
+ * @param size
+ *
+ * @return
+ */
+static idx_type nonzero_size_to_pool(idx_type size) {
+    if (size <= 16) {
+        return NONZERO_POOL_S;
+    } else if (size <= 128) {
+        return NONZERO_POOL_M;
+    } else {
+        return NONZERO_POOL_L;
+    }
 }
-std::string to_string(const int &v) {
-    return std::to_string(v);
+/**
+ * @brief nonzero_pool
+ */
+static l1sp_static<nonzero_pool_link> nonzero_pool[NONZERO_POOL_N][SPMM_THREADS];
+static l1sp_static<idx_type> allocated_nonzeros[NONZERO_POOL_N][SPMM_THREADS];
+
+/**
+ * @brief allocate_nonzeros
+ *
+ * @param size
+ */
+pointer<nonzero> allocate_nonzeros(idx_type size) {
+    idx_type pool = nonzero_size_to_pool(size);
+
+    pointer<nonzero_pool_link> head = nonzero_pool[pool][DrvAPI::myThreadId()].address();
+    pointer<nonzero_pool_link> prev = head;
+    pointer<nonzero_pool_link> curr = head->next();
+    while (curr != 0) {
+        // will this fit?
+        if (curr->capacity() >= size) {
+            //DEBUG_STMT(__PRETTY_FUNCTION__ << "allocated from pool " << pool << " size " << size);
+            // remove from the list
+            pointer<nonzero_pool_link> next = curr->next();
+            prev->next() = next;
+            curr->next() = 0;
+            return curr->next().address();
+        }
+        prev = curr;
+        curr = curr->next();
+    }
+    // allocate a new buffer
+    // todo: can save a word here?
+    //DEBUG_STMT(__PRETTY_FUNCTION__ << "allocated from heap " << pool << " size " << size);    
+    pointer<nonzero_pool_link> new_link = DrvAPIMemoryAlloc
+        (DrvAPIMemoryDRAM, sizeof(nonzero_pool_link) + size * sizeof(nonzero));
+
+    atomic_add(allocated_nonzeros[pool][DrvAPI::myThreadId()].address(),
+               sizeof(nonzero_pool_link) + size * sizeof(nonzero));
+    
+    new_link->capacity() = size;
+    new_link->next() = 0;
+    return new_link->next().address();
 }
 
-[[maybe_unused]] std::string to_string(const DrvAPI::float_type &v) {
-    return std::to_string(v.value);
-}
+/**
+ * @brief deallocate_nonzeros
+ */
+void deallocate_nonzeros(pointer<nonzero> ptr) {
+    pointer<nonzero_pool_link> pool_link
+        = ((pointer<void>)ptr)
+        - offsetof(nonzero_pool_link, next_);
+
+    //DEBUG_STMT(__PRETTY_FUNCTION__ << "deallocated from pool " << pool_link->capacity());
+
+    idx_type pool = nonzero_size_to_pool(pool_link->capacity());
+    pointer<nonzero_pool_link> head = nonzero_pool[pool][DrvAPI::myThreadId()].address();
+    pointer<nonzero_pool_link> next = head->next();
+    pool_link->next() = next;
+    head->next() = pool_link;
 }
 
+//////////////////////////
+// native sparse matrix //
+//////////////////////////
+/**
+ * @brief native_sparse_matrix
+ *
+ */
 struct native_sparse_matrix {
-    int rows = 0;
-    int cols = 0;
-    int nnz = 0;
-    std::vector<int> rowptr;
-    std::vector<std::pair<int, float>> nonzeros;
+    FIELD(int, rows, rows_); //!< number of rows
+    FIELD(int, cols, cols_); //!< number of columns
+    FIELD(int, nnz, nnz_); //!< number of nonzeros
 
-    /**
-     * @brief native_sparse_matrix
-     *
+    std::vector<int> rowptr_; //!< row pointers
+    std::vector<int> & rowptr() {
+        return rowptr_;
+    }
+    const std::vector<int> & rowptr() const {
+        return rowptr_;
+    }
+    
+    std::vector<std::pair<int,float>> nonzeros_; //!< nonzeros
+    std::vector<std::pair<int,float>> & nonzeros() {
+        return nonzeros_;
+    }
+    const std::vector<std::pair<int,float>> & nonzeros() const {
+        return nonzeros_;
+    }
+
+    /*
+     * constructors
      */
     native_sparse_matrix() = default;
     native_sparse_matrix(const native_sparse_matrix &) = delete;
-    native_sparse_matrix & operator=(const native_sparse_matrix &) = delete;
     native_sparse_matrix(native_sparse_matrix &&) = default;
+    /*
+     * assignment
+     */
+    native_sparse_matrix & operator=(const native_sparse_matrix &) = delete;
     native_sparse_matrix & operator=(native_sparse_matrix &&) = default;
+    /*
+     * destructor
+     */
     ~native_sparse_matrix() = default;
 
     /**
@@ -80,12 +319,12 @@ struct native_sparse_matrix {
         native_sparse_matrix m;
         read_sparse_matrix(
             filename,
-            &m.rows,
-            &m.nnz,
-            m.rowptr,
-            m.nonzeros
+            &m.rows(),
+            &m.nnz(),
+            m.rowptr(),
+            m.nonzeros()
         );
-        m.cols = m.rows;
+        m.cols() = m.rows();
         return m;
     }
 
@@ -93,672 +332,388 @@ struct native_sparse_matrix {
      * convert to and Eigen sparse matrix
      */
     EigenSparseMatrix<float> to_eigen() const {
-        EigenSparseMatrix<float> m(rows, cols);
+        EigenSparseMatrix<float> m(rows(), cols());
         std::vector<Eigen::Triplet<float>> triplets;
-        for (int i = 0; i < rows; i++) {
-            for (int j = rowptr[i]; j < rowptr[i + 1]; j++) {
-                triplets.push_back({i, nonzeros[j].first, nonzeros[j].second});
+        for (int i = 0; i < rows(); i++) {
+            for (int j = rowptr_[i]; j < rowptr_[i + 1]; j++) {
+                triplets.push_back({i, nonzeros_[j].first, nonzeros_[j].second});
             }
         }
         m.setFromTriplets(triplets.begin(), triplets.end());
         return m;
     }
-};
 
-// idx type
-using idx_t = int32_t;
-
-// value type
-using value_t = float_type;
-
-struct nonzero {
-    idx_t   idx;
-    value_t val;
-
-    operator std::tuple<idx_t, value_t>() const {
-        return std::make_tuple(idx, val);
-    }
-
-    std::string to_string() const {
-        return "(" + ::to_string(idx) + ":" + ::to_string(val) + ")";
-    }
-    template <typename Dst>
-    static void copy(Dst &dst, const nonzero &src) {
-        dst.idx() = src.idx;
-        dst.val() = src.val;
-    }
-    template <typename Src>
-    static void copy(nonzero &dst, const Src &src) {
-        dst.idx = src.idx();
-        dst.val = src.val();
+    std::string str() const {
+        std::stringstream ss;
+        ss <<  rows() << " X " << cols() << ", nnz=" << nnz();
+        return ss.str();
     }
 };
+ostream_format_function(native_sparse_matrix);
 
-using DrvAPI::value_handle;
-using DrvAPI::pointer;
-template <typename T>
-using pointer_t = pointer<T>;
-template <typename T>
-using handle_t = value_handle<T>;
-
-template<>
-class DrvAPI::value_handle<nonzero> {
-    DRV_API_VALUE_HANDLE_DEFAULTS(nonzero)
-    DRV_API_VALUE_HANDLE_FIELD(nonzero, idx, idx_t, idx)
-    DRV_API_VALUE_HANDLE_FIELD(nonzero, val, value_t, val)
-
-    value_handle& operator=(const std::pair<idx_t, value_t> &p) {
-        idx() = p.first;
-        val() = p.second;
-        return *this;
-    }
-
-    std::string to_string() const {
-        nonzero n;
-        n.idx = idx();
-        n.val = val();
-        return n.to_string();
-    }
-};
-
+////////////////////////
+// sparse matrix type //
+////////////////////////
 struct sparse_matrix {
-    int rows;
-    int cols;
-    int nnz;
-    pointer_t<idx_t> rowptr;
-    pointer_t<nonzero> nonzeros;
-
-    template <typename Dst>
-    static void copy(Dst &dst, const sparse_matrix &src) {
-        dst.rows() = src.rows;
-        dst.cols() = src.cols;
-        dst.nnz() = src.nnz;
-        dst.rowptr() = src.rowptr;
-        dst.nonzeros() = src.nonzeros;
-    }
-
-    template <typename Src>
-    static void copy(sparse_matrix &dst, const Src &src) {
-        dst.rows = src.rows();
-        dst.cols = src.cols();
-        dst.nnz = src.nnz();
-        dst.rowptr = src.rowptr();
-        dst.nonzeros = src.nonzeros();
-    }
-};
-
-/**
- * @brief iterator over nonzero pointer
- */
-class nonzero_iterator {
-    pointer_t<nonzero> p;
-    idx_t i;
 public:
-    nonzero_iterator(pointer_t<nonzero> p, idx_t i) : p(p), i(i) {}
-    bool operator!=(const nonzero_iterator &other) const {
-        return i != other.i;
+    FIELD(idx_type, rows, rows_); //!< number of rows
+    FIELD(idx_type, cols, cols_); //!< number of columns
+    FIELD(idx_type, nnz, nnz_); //!< number of nonzeros
+    FIELD(pointer<idx_type>, rowptr, rowptr_); //!< row pointers
+    FIELD(pointer<nonzero>, nonzeros, nonzeros_); //!< nonzeros
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.rows() = src.rows();
+        dst.cols() = src.cols();
+        dst.nnz() = src.nnz();
+        dst.rowptr() = src.rowptr();
+        dst.nonzeros() = src.nonzeros();
     }
-    nonzero_iterator &operator++() {
-        i++;
-        return *this;
-    }
-    nonzero operator*() const {
-        return p[i];
-    }
+
 };
 
-/**
- * @brief range over nonzero pointer
- */
-class nonzero_range {
-    pointer_t<nonzero> p;
-    idx_t n;
-public:
-    nonzero_range(pointer_t<nonzero> p, idx_t n) : p(p), n(n) {}
-    nonzero_iterator begin() const {
-        return nonzero_iterator(p, 0);
-    }
-    nonzero_iterator end() const {
-        return nonzero_iterator(p, n);
-    }
-};
-
-template<>
+template <>
 class DrvAPI::value_handle<sparse_matrix> {
-    DRV_API_VALUE_HANDLE_DEFAULTS(sparse_matrix)
-    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, rows, idx_t, rows)
-    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, cols, idx_t, cols)
-    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, nnz, idx_t, nnz)
-    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, rowptr, pointer_t<idx_t>, rowptr)
-    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, nonzeros, pointer_t<nonzero>, nonzeros)
-
-    idx_t get_rows() const  {
-        return rows();
-    }
-
-    idx_t get_cols() const {
-        return cols();
-    }
-
-    idx_t get_nnz() const {
-        return nnz();
-    }
-
-    handle_t<idx_t> rowptr(idx_t i) {
-        pointer_t<idx_t> p = rowptr();
-        return p[i];
-    }
-
-    pointer_t<nonzero> nonzerosof(idx_t i) {
-        pointer_t<nonzero> p = nonzeros();
-        idx_t off = rowptr(i);
-        return &p[off];
-    }
-
-    idx_t nnzof(idx_t i) {
-        pointer_t<idx_t> p = rowptr();
-        return p[i+1] - p[i];
+    DRV_API_VALUE_HANDLE_DEFAULTS(sparse_matrix);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, rows, idx_type, rows_);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, cols, idx_type, cols_);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, nnz, idx_type, nnz_);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, rowptr, pointer<idx_type>, rowptr_);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix, nonzeros, pointer<nonzero>, nonzeros_);
+    void initFromNative(const native_sparse_matrix &src) {
+        rows() = src.rows();
+        cols() = src.cols();
+        nnz() = src.nnz();        
+        rowptr() = (pointer<idx_type>)DrvAPIMemoryAlloc
+            (DrvAPIMemoryDRAM,(src.rows()+1)*sizeof(idx_type));
+        nonzeros() = (pointer<nonzero>)DrvAPIMemoryAlloc
+            (DrvAPIMemoryDRAM,src.nnz()*sizeof(nonzero));
+        
+        cello::parallel_for(0, src.rows()+1, 1, [&](int i) {
+            rowptr()[i] = src.rowptr()[i];
+        });
+        cello::parallel_for(0, src.nnz(), 1, [&](int i) {
+            nonzeros()[i].idx() = src.nonzeros()[i].first;
+            nonzeros()[i].val() = src.nonzeros()[i].second;
+        });
     }
 
     /**
-     * return nonzeros of outer index i
+     * multiply two sparse matrices together
      */
-    nonzero_range nonzeros(idx_t i) {
-        return nonzero_range(nonzerosof(i), nnzof(i));
-    }
+    static void multiply
+    (DrvAPI::value_handle<sparse_matrix_product> &o,
+     DrvAPI::value_handle<sparse_matrix> &i0,
+     DrvAPI::value_handle<sparse_matrix> &i1);
 
-    handle_t<nonzero> nonzero_at(idx_t i) {
-        pointer_t<nonzero> p = nonzeros();
-        return p[i];
-    }
-
-    void init(native_sparse_matrix &native) {
-        rows() = native.rows;
-        cols() = native.cols;
-        nnz() = native.nnz;
-        rowptr() = (pointer_t<idx_t>)DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, (rows()+1)*sizeof(idx_t));
-        nonzeros() = (pointer_t<nonzero>)DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, nnz()*sizeof(nonzero));
-        cello::parallel_invoke(
-            [this, &native]() {
-                cello::parallel_for(0, get_rows()+1, 1, [this, &native](idx_t i) {
-                    rowptr(i) = native.rowptr[i];
-                });
-            },
-            [this, &native]() {
-                cello::parallel_for(0, get_nnz(), 1, [this, &native](idx_t i) {
-                    nonzero_at(i) = native.nonzeros[i];
-                });
-            }
-        );
+    /**
+     * get nonzeros of row
+     */
+    std::pair<pointer<nonzero>,idx_type> nonzerosof(idx_type i) {
+        pointer<nonzero> nonzeros = this->nonzeros();
+        pointer<idx_type> rowptr = this->rowptr();
+        return {nonzeros[rowptr[i]].address(), rowptr[i+1]-rowptr[i]};
     }
 };
 
-/**
- * a vector class with fixed capacity
- */
-struct vector {
-    vector() = default;
-    vector(idx_t size, pointer_t<nonzero> data, idx_t capacity) : size(size), data(data), capacity(capacity) {}
-    idx_t size;
-    pointer_t<nonzero> data;
-    idx_t capacity;
-    std::string to_string() const {
-        std::string s;
-        for (idx_t i = 0; i < size; i++) {
-            s += ::to_string(data[i].idx()) + ":" + ::to_string(data[i].val()) + " ";
+////////////////////////
+// sparse vector type //
+////////////////////////
+struct sparse_vector {
+    FIELD(idx_type, capacity, capacity_); //!< capacity
+    FIELD(idx_type, size, size_); //!< number of elements
+    FIELD(pointer<nonzero>, nonzeros, nonzeros_); //!< nonzeros
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.size() = src.size();
+        dst.capacity() = src.capacity();
+        dst.nonzeros() = src.nonzeros();
+    }
+
+    std::string str() const {
+        std::stringstream ss;
+        ss << "size=" << size() << " ";
+        ss << "{";
+        for (idx_type i = 0; i < size(); i++) {
+            ss << nonzeros()[i];
+            ss << " ; ";
         }
-        return s;
-    }
-
-    handle_t<nonzero> operator[](idx_t i) {
-        return data[i];
-    }
-
-    nonzero_iterator begin() {
-        return nonzero_iterator(data, 0);
-    }
-
-    nonzero_iterator end() {
-        return nonzero_iterator(data, size);
-    }
-    
-    template <typename Dst>
-    static void copy(Dst &dst, const vector &src) {
-        dst.size() = src.size;
-        dst.data() = src.data;
-        dst.capacity() = src.capacity;
-    }
-
-    template <typename Src>
-    static void copy(vector &dst, const Src &src) {
-        dst.size = src.size();
-        dst.data = src.data();
-        dst.capacity = src.capacity();
+        ss << "}";
+        return ss.str();
     }
 };
+ostream_format_function(sparse_vector);
 
-template<>
-class DrvAPI::value_handle<vector> {
-    DRV_API_VALUE_HANDLE_DEFAULTS(vector)
-    DRV_API_VALUE_HANDLE_FIELD(vector, size, idx_t, size)
-    DRV_API_VALUE_HANDLE_FIELD(vector, data, pointer_t<nonzero>, data)
-    DRV_API_VALUE_HANDLE_FIELD(vector, capacity, idx_t, capacity)
-
-    void init(idx_t capacity) {
+template <>
+class DrvAPI::value_handle<sparse_vector> {
+    DRV_API_VALUE_HANDLE_DEFAULTS(sparse_vector);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_vector, capacity, idx_type, capacity_);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_vector, size, idx_type, size_);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_vector, nonzeros, pointer<nonzero>, nonzeros_);
+    void initFromNative(const std::vector<std::pair<int,float>> &src) {
+        capacity() = src.size();
+        size() = src.size();
+        nonzeros() = (pointer<nonzero>)DrvAPIMemoryAlloc
+            (DrvAPIMemoryDRAM,src.size()*sizeof(nonzero));
+        cello::parallel_for(0, (idx_type)src.size(), 1, [&](int i) {
+            nonzeros()[i].idx() = src[i].first;
+            nonzeros()[i].val() = src[i].second;
+        });
+    }
+    void initFromSize(idx_type size) {
+        this->capacity() = size;
+        this->size() = size;
+        this->nonzeros() = allocate_nonzeros(size);
+    }
+    void initFromCapacity(idx_type capacity) {
         this->capacity() = capacity;
         this->size() = 0;
-        this->data() = (pointer_t<nonzero>)DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, capacity*sizeof(nonzero));
+        this->nonzeros() = allocate_nonzeros(capacity);
+    }
+    void dest() {
+        deallocate_nonzeros(nonzeros());
+        this->capacity() = 0;
+        this->size() = 0;
+        this->nonzeros() = 0;
     }
 
-    void clear() {
-        size() = 0;
-    }
-
-    handle_t<nonzero> at(idx_t i) {
-        pointer_t<nonzero> p = data();
-        return p[i];
-    }
-
-    handle_t<nonzero> operator[](idx_t i) {
-        return at(i);
-    }
-
-    void push_back(const nonzero& val) {
-        idx_t i = DrvAPI::atomic_add(size().address(), 1);
-        at(i) = val;
-    }
-    
-    operator vector() {
-        return vector{size(), data(), capacity()};
-    }
-
-
-    std::string to_string() {
-        vector v = *this;
-        return v.to_string();
+    void update(value_handle<sparse_vector> other, idx_type max_capacity) {
+        // determine new capacity
+        idx_type sum = this->size() + other.size(); // worst case no compression
+        idx_type new_capacity = std::min(sum, max_capacity);
+        // allocate new nonzeros
+        l1sp_dynamic<sparse_vector> into;
+        into.initFromCapacity(new_capacity);
+        // merge nonzeros
+        idx_type i = 0, j = 0, k = 0;
+        while (i < this->size() && j < other.size()) {
+            if (this->nonzeros()[i].idx() < other.nonzeros()[j].idx()) {
+                into.nonzeros()[k++] = this->nonzeros()[i++];
+            } else if (this->nonzeros()[i].idx() > other.nonzeros()[j].idx()) {
+                into.nonzeros()[k++] = other.nonzeros()[j++];
+            } else {
+                into.nonzeros()[k].idx() = this->nonzeros()[i].idx();
+                into.nonzeros()[k++].val() = this->nonzeros()[i++].val() + other.nonzeros()[j++].val();
+            }
+        }
+        while (i < this->size()) {
+            into.nonzeros()[k++] = this->nonzeros()[i++];
+        }
+        while (j < other.size()) {
+            into.nonzeros()[k++] = other.nonzeros()[j++];
+        }
+        into.size() = k;
+        // move into to this
+        dest();
+        (*this) = into;
     }
 };
 
-/**
- * swap two vectors of nonzeros
+/*
+ * memory pool for sparse_vector
  */
-void swap(handle_t<vector> a, handle_t<vector> b) {
-    vector tmp = a;
-    a = b;
-    b = tmp;
+static l1sp_static<pointer<pool_link>> sparse_vector_pool [SPMM_THREADS];
+
+/*
+ * specialize allocation for sparse_vector to keep a memory pool 
+ */
+template <>
+pointer<sparse_vector>
+DrvAPI::DrvAPIMemoryAllocateType<sparse_vector>(DrvAPIMemoryType type) {
+    pointer<pool_link> head = sparse_vector_pool[DrvAPI::myThreadId()];
+    if (head != 0) {
+        //DEBUG_STMT("allocating from pool");
+        sparse_vector_pool[DrvAPI::myThreadId()] = head->next();
+        return (pointer<sparse_vector>)head;
+    }
+    //DEBUG_STMT("allocating from heap");
+    pointer<pool_link> newpool_link = (pointer<pool_link>)DrvAPIMemoryAlloc(type,sizeof(sparse_vector));    
+    newpool_link->next() = 0;
+    return (pointer<sparse_vector>)newpool_link;
 }
 
-/**
- * merge two sorted vectors of nonzeros
+/*
+ * specialize deallocation for sparse_vector to keep a memory pool 
  */
-template <typename merge_value>
-void merge(handle_t<vector> o_, handle_t<vector> i0_, handle_t<vector> i1_, merge_value &&mergef) {
-    idx_t i = 0, j = 0, k = 0;
-    o_.clear();
-
-    vector o = o_;
-    vector i0 = i0_;
-    vector i1 = i1_;    
-    if (i0.size == 0 && i1.size == 0) {
-        pr_dbg("merge [o: %s]\n", o.to_string().c_str());
-        return;
-    } else if (i0.size == 0) {
-        swap(o_, i1_);
-        pr_dbg("merge [o: %s]\n", o.to_string().c_str());
-        return;
-    } else if (i1.size == 0) {
-        swap(o_, i0_);
-        pr_dbg("merge [o: %s]\n", o.to_string().c_str());
-        return;
-    }
-    while (i < i0.size && j < i1.size) {
-        if (i0[i].idx() < i1[j].idx()) {
-            o[k++] = i0[i++];
-        } else if (i0[i].idx() > i1[j].idx()) {
-            o[k++] = i1[j++];
-        } else {
-            o[k].idx() = i0[i].idx();
-            o[k].val() = mergef(i0[i].val(), i1[j].val());
-            k++;
-            i++;
-            j++;
-        }
-    }
-    while (i < i0.size) {
-        o[k++] = i0[i++];
-    }
-    while (j < i1.size) {
-        o[k++] = i1[j++];
-    }
-    i0_.clear();
-    i1_.clear();
-    o_.size() = k;
-    pr_dbg("merge [o: %s]\n", o.to_string().c_str());
+template <>
+void DrvAPI::DrvAPIMemoryDeallocateType<sparse_vector>(const pointer<sparse_vector> &ptr)
+{
+    //DEBUG_STMT("deallocating to pool");
+    pointer<pool_link> new_head = (pointer<pool_link>)ptr;
+    pointer<pool_link> old_head = sparse_vector_pool[DrvAPI::myThreadId()];
+    new_head->next() = old_head;
+    sparse_vector_pool[DrvAPI::myThreadId()] = new_head;
 }
 
-/**
- * a product class with place holder data
- */
+///////////////////////////
+// sparse matrix product //
+///////////////////////////
 struct sparse_matrix_product {
-    idx_t rows;
-    idx_t cols;
-    pointer_t<vector> row_data;
-
-    template <typename Dst>
-    static void copy(Dst &dst, const sparse_matrix_product &src) {
-        dst.rows() = src.rows;
-        dst.cols() = src.cols;
-        dst.row_data() = src.row_data;
-    }
-
-    template <typename Src>
-    static void copy(sparse_matrix_product &dst, const Src &src) {
-        dst.rows = src.rows();
-        dst.cols = src.cols();
-        dst.row_data = src.row_data();
+    FIELD(idx_type, rows, rows_); //!< number of rows
+    FIELD(idx_type, cols, cols_); //!< number of columns
+    FIELD(pointer<sparse_vector>, row_vecs, row_vecs_); //!< row pointers
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.rows() = src.rows();
+        dst.cols() = src.cols();
+        dst.row_vecs() = src.row_vecs();
     }
 };
 
 template <>
 class DrvAPI::value_handle<sparse_matrix_product> {
-    DRV_API_VALUE_HANDLE_DEFAULTS(sparse_matrix_product)
-    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix_product, rows, idx_t, rows)
-    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix_product, cols, idx_t, cols)
-    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix_product, row_data, pointer_t<vector>, row_data)
+    DRV_API_VALUE_HANDLE_DEFAULTS(sparse_matrix_product);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix_product, rows, idx_type, rows_);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix_product, cols, idx_type, cols_);
+    DRV_API_VALUE_HANDLE_FIELD(sparse_matrix_product, row_vecs, pointer<sparse_vector>, row_vecs_);
 
-    handle_t<vector> row_data(idx_t i) {
-        pointer_t<vector> p = row_data();
-        handle_t<vector> ref(&p[i]);
-        return ref;
-    }
-
-    idx_t get_rows() const {
-        return rows();
-    }
-
-    void init(handle_t<sparse_matrix> I0, handle_t<sparse_matrix> I1) {
-        rows() = I0.get_rows();
-        cols() = I1.get_cols();
-        row_data() = (pointer_t<vector>)DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, (1+rows())*sizeof(vector));
-        row_data(rows()).size() = 0;    
-    }
-
-    ///////////////////////////////////////////////
-    // Create a CSR from a Sparse Matrix Proudct //
-    ///////////////////////////////////////////////
-    operator sparse_matrix() {
-        auto ceil_log2 = [](idx_t x) -> idx_t {
-            idx_t y = 0;
-            while (x > 0) {
-                x >>= 1;
-                y++;
-            }
-            return y;
-        };
-        auto floor_log2 = [](idx_t x) -> idx_t {
-            idx_t y = 0;
-            while (x > 1) {
-                x >>= 1;
-                y++;
-            }
-            return y;
-        };
-        auto tree_lchild = [](idx_t root)  -> idx_t { return 2*root + 1; };
-        auto tree_rchild = [](idx_t root)  -> idx_t { return 2*root + 2; };
-        auto tree_levels = [ceil_log2](idx_t leafs) -> idx_t { return ceil_log2(leafs); };
-
-        DrvAPI::DrvAPIVar<sparse_matrix> O;
-        // 0. allocate row vector
-        O.rows() = (idx_t)rows();
-        O.cols() = (idx_t)cols();
-        idx_t N = O.rows()+1;
-        O.rowptr() = (pointer_t<idx_t>)DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, N*sizeof(idx_t));
-
-        idx_t regions = std::min(1l<<floor_log2(8*cello::num_threads()),
-                                 1l<<floor_log2(N));
-        idx_t tree_size = 1<<ceil_log2(regions);
-        pointer_t<idx_t> tree = DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, tree_size*sizeof(idx_t));
-        cello::parallel_for(0, tree_size, 1, [tree](idx_t i) mutable {
-            tree[i] = 0;
-        });
-
-        // 1. computer row vector with prefix sum
-        // 1. i. compute local nnz in each region
-        pr_dbg("regions = %d, tree_size = %d\n", regions, tree_size);
-        cello::parallel_for(0, regions, 1, [=, &O](idx_t i) mutable {
-            idx_t region_size = (N + regions - 1) / regions;
-            idx_t start = i * region_size;
-            idx_t end = std::min(start + region_size, N);
-            idx_t nnz = 0;
-            for (idx_t j = start; j < end; j++) {
-                O.rowptr(j) = nnz;
-                nnz += row_data(j).size();
-            }
-            idx_t r = 0;
-            idx_t m = regions;
-            idx_t L = tree_levels(m);
-            for (idx_t l = 0; l < L; l++) {
-                DrvAPI::atomic_add(tree[r].address(), nnz);
-                m >>= 1;
-                if (m & i) {
-                    r = tree_rchild(r);
-                } else {
-                    r = tree_lchild(r);
-                }
-            }
-        });
-        // 1. ii. update region with nnz from its subtree
-        cello::parallel_for(0, regions, 1, [=, &O](idx_t i) mutable {
-            idx_t region_size = (N + regions - 1) / regions;
-            idx_t start = i * region_size;
-            idx_t end = std::min(start + region_size, N);
-            idx_t nnz = 0;
-            idx_t r = 0;
-            idx_t m = regions;
-            idx_t L = tree_levels(m);
-            for (idx_t l = 0; l < L; l++) {
-                m >>= 1;
-                if (i & m) {
-                    nnz += tree[tree_lchild(r)];
-                    r = tree_rchild(r);
-                } else {
-                    r = tree_lchild(r);
-                }
-            }
-
-            for (idx_t j = start; j < end; j++) {
-                idx_t r = DrvAPI::atomic_add(O.rowptr(j).address(), nnz);
-            }
-        });
-        // 2. allocate flat nonzero vector
-        pr_dbg("allocating float nonzero vector (size = %d)\n", (idx_t)O.rowptr(O.rows()));
-        O.nonzeros() = (pointer_t<nonzero>)DrvAPIMemoryAlloc(DrvAPIMemoryDRAM, O.rowptr(O.rows()) * sizeof(nonzero));
-        // 3. copy nonzeros into flat nonzero vector
-        cello::parallel_for(0, (idx_t)O.rows(), 1, [&O, this](idx_t i) mutable {
-            vector src_v = row_data(i);
-            pointer_t<nonzero> src = src_v.data;
-            pointer_t<nonzero> dst = O.nonzerosof(i);
-            for (idx_t j = 0; j < src_v.size; j++) {
-                dst[j] = src[j];
-            }
-        });
-        DrvAPIMemoryFree(tree, tree_size*sizeof(idx_t));
-        return O;
+    void initFromOperands(DrvAPI::value_handle<sparse_matrix> &i0,
+                          DrvAPI::value_handle<sparse_matrix> &i1) {
+        rows() = i0.rows();
+        cols() = i1.cols();
+        row_vecs() = (pointer<sparse_vector>)DrvAPIMemoryAlloc
+            (DrvAPIMemoryDRAM,i0.rows()*sizeof(sparse_vector));
     }
 };
 
-/////////////////////////////////////
-// Compute a Sparse Matrix Product //
-/////////////////////////////////////
-sparse_matrix_product operator*(handle_t<sparse_matrix> I0, handle_t<sparse_matrix> I1)
-{
-    DrvAPI::DrvAPIVar<sparse_matrix_product> O;
-    O.init(I0, I1);
-    std::atomic<idx_t> rows_done(0); // for the heartbeat
-    idx_t rows = O.get_rows();
-    float report_step = std::max(1.0f, (float)rows / 100);
-    cello::parallel_for(0, O.get_rows(), 1, [I0, I1, &O, &rows_done, report_step](idx_t i) mutable {
-        // initialize buffers
-        DrvAPI::DrvAPIVar<vector> nonzero_buffers[3];
-        handle_t<vector>
-            merge_buffer (nonzero_buffers[0]),
-            fadd_buffer (nonzero_buffers[1]),
-            result_buffer (nonzero_buffers[2]);
 
-        merge_buffer.init(I1.cols());
-        fadd_buffer.init(I1.cols());
-        result_buffer.init(I1.cols());
-
-        // for each nonzero in I0[i]
-        for (nonzero nz : I0.nonzeros(i)) {
-            idx_t j = nz.idx;
-            value_t v = nz.val;
-            // for each nonzero in I1[j]
-            for (nonzero nz : I1.nonzeros(j)) {
-                idx_t k = nz.idx;
-                value_t w = nz.val;
-                fadd_buffer.push_back(nonzero{k, v*w});
+/////////////////////////////////////////////////////////////////////////////
+// multiply: produce a sparse_matrix_product from two sparse_matrix inputs //
+/////////////////////////////////////////////////////////////////////////////
+void DrvAPI::value_handle<sparse_matrix>::multiply
+(DrvAPI::value_handle<sparse_matrix_product> &o,
+ DrvAPI::value_handle<sparse_matrix> &i0,
+ DrvAPI::value_handle<sparse_matrix> &i1){
+    // initialize the output
+    o.initFromOperands(i0, i1);
+    // for each row of i0...
+    cello::parallel_for(0, (idx_type)i0.rows(), 1, [&](idx_type i0_row){
+        // ror each nonzero in the row...
+        pointer<nonzero> i0_row_nz;
+        idx_type i0_row_nnz;
+        std::tie(i0_row_nz, i0_row_nnz) = i0.nonzerosof(i0_row);
+        l1sp_dynamic<sparse_vector> sum;
+        sum.initFromCapacity(4); // todo: make an init empty
+        for (idx_type i0_col_idx = 0; i0_col_idx < i0_row_nnz; i0_col_idx++) {
+            // compute i0_nz.val() * i1[i0_nz.idx();]
+            nonzero i0_nz = i0_row_nz[i0_col_idx];
+            pointer<nonzero> i1_col_nz;
+            idx_type i1_col_nnz;
+            std::tie(i1_col_nz, i1_col_nnz) = i1.nonzerosof(i0_nz.idx());
+            l1sp_dynamic<sparse_vector> psum;            
+            psum.initFromSize(i1_col_nnz);            
+            sparse_vector psumv = psum;
+            for (idx_type i1_col_idx = 0; i1_col_idx < i1_col_nnz; i1_col_idx++) {
+                nonzero i1_nz = i1_col_nz[i1_col_idx];
+                psum.nonzeros()[i1_col_idx].idx() = i1_nz.idx();
+                psum.nonzeros()[i1_col_idx].val() = i0_nz.val() * i1_nz.val();
             }
-            merge(merge_buffer, fadd_buffer, result_buffer, [](value_t a, value_t b) -> value_t { return a+b; });
-            swap(merge_buffer, result_buffer);
-            fadd_buffer.clear();
+            psum = psumv;
+            sum.update(psum, i1.cols());
+            //DEBUG_STMT("row " << FMT_IDX(i0_row) << ": sum = " << sum);
+            psum.dest();
         }
-
-        pr_dbg("O[%4d;].size() = %4d\n", i, (idx_t)result_buffer.size());
-        O.row_data(i) = result_buffer;
-        pr_dbg("O[%4d;] = [%s]\n", i, O.row_data(i).to_string().c_str());
-        idx_t done = rows_done++;
-        if (std::fmod(done,report_step) < 1) {
-            pr_info("%4d/%4d rows_done\n", done, (idx_t)O.get_rows());
-        }
+        // move sum into the output
+        DEBUG_STMT("row: " << FMT_IDX(i0_row) << ": " << FMT_IDX(sum.size()) << " nonzeros");
+        o.row_vecs()[i0_row] = sum;
     });
-    return O;
 }
 
-int CelloMain(int argc, char** argv) {
-    std::string i0 = argv[1];
-    std::string i1 = argv[2];
-
-    native_sparse_matrix I0_ = native_sparse_matrix::FromFile(i0);
-    native_sparse_matrix I1_ = native_sparse_matrix::FromFile(i1);
-
-    pr_info("CelloMain: I0.rows = %d, nnz = %d\n", I0_.rows, I0_.nnz);
-    pr_info("CelloMain: I1.rows = %d, nnz = %d\n", I1_.rows, I1_.nnz);
-
-    // compute a reference product
-    EigenSparseMatrix<float> reference
-        = I0_.to_eigen()
-        * I1_.to_eigen();
-
-    pr_info("CelloMain: reference{rows,nnz} = %4d, %4d\n", (idx_t)reference.rows(), (idx_t)reference.nonZeros());
-
-    using namespace util;
-    
-    DrvAPI::DrvAPIVar<sparse_matrix> I0, I1;
-    // init the inputs
-    {
-        timer _("inputs init");
-        I0.init(I0_);
-        I1.init(I1_);
+/*
+ * compare two rows of a sparse matrix product
+ * in the form of an std::map
+ */
+void compare_rows
+(idx_type i,
+ std::map<idx_type,float> &ref_map,
+ std::map<idx_type,float>&sol_map)
+{
+    for (auto itr = ref_map.begin(); itr != ref_map.end(); ++itr) {
+        idx_type j = itr->first;
+        float v = itr->second;
+        auto ito = sol_map.find(j);
+        if (ito == sol_map.end()) {
+            ERROR_STMT("sol["
+                       << FMT_IDX(i) << "," << FMT_IDX(j) << "] = " << 0.0
+                       << ", ref["
+                       << FMT_IDX(i) << "," << FMT_IDX(j) << "] = " << v);
+        } else if(ito->second != v) {
+            ERROR_STMT("sol["
+                       << FMT_IDX(i) << "," << FMT_IDX(j) << "] = " << ito->second
+                       << ", ref["
+                       << FMT_IDX(i) << "," << FMT_IDX(j) << "] = " << v);
+        }
     }
 
-    // find the product
-    DrvAPI::DrvAPIVar<sparse_matrix_product> O;
+    for (auto ito = sol_map.begin(); ito != sol_map.end(); ++ito) {
+        idx_type j = ito->first;
+        float v = ito->second;
+        auto itr = ref_map.find(j);
+        if (itr == ref_map.end()) {
+            ERROR_STMT("sol["
+                       << FMT_IDX(i) << "," << FMT_IDX(j) << "] = " << v
+                       << ", ref["
+                       << FMT_IDX(i) << "," << FMT_IDX(j) << "] = " << 0.0);
+        }
+    }
+}
+int CelloMain(int argc, char** argv) {
+    std::string i0_name = argv[1];
+    std::string i1_name = argv[2];
+
+    INFO_STMT("computing " << i0_name << " X " << i1_name);
+    
+    native_sparse_matrix i0_native = native_sparse_matrix::FromFile(i0_name);
+    native_sparse_matrix i1_native = native_sparse_matrix::FromFile(i1_name);
+
+    INFO_STMT(std::setw(10) << "i0: " << i0_native);
+    INFO_STMT(std::setw(10) << "i1: " << i1_native);
+    
+    // compute a reference product
+    EigenSparseMatrix<float> o_ref
+        = i0_native.to_eigen()
+        * i1_native.to_eigen();
+
+    INFO_STMT(std::setw(10) << "o_ref: "
+              << o_ref.rows() << " X " << o_ref.cols()
+              << ", nnz=" << o_ref.nonZeros());
+
+    dram_dynamic<sparse_matrix> i0, i1;
+    i0.initFromNative(i0_native);
+    i1.initFromNative(i1_native);
+    dram_dynamic<sparse_matrix_product> o;
     {
         timer _("row-wise product");
-        O = I0 * I1;
+        DrvAPI::value_handle<sparse_matrix>::multiply(o, i0, i1);
     }
-
-    // compare result to reference output
     {
-        timer _("check product");
-
-        pr_dbg("O.rows = %d\n", (idx_t)O.get_rows());
-        for (idx_t i = 0; i < O.rows(); i++) {
-            vector o = O.row_data(i);
-            Eigen::SparseVector<float> ref = reference.row(i);
-            std::map<idx_t, float> ref_row, o_row;
-            for (Eigen::SparseVector<float>::InnerIterator it(ref); it; ++it) {
-                idx_t j = it.index();
-                float v = it.value();
-                ref_row.insert(std::pair<idx_t, float>(j, v));
+        // check the reference product
+        for (idx_type i = 0; i < o_ref.rows(); i++) {
+            EigenSparseVector<float> ref = o_ref.row(i);
+            std::map<idx_type, float> ref_map;
+            for (EigenSparseVector<float>::InnerIterator it(ref); it; ++it) {
+                ref_map[it.index()] = it.value();
             }
-            for (idx_t j = 0; j < o.size; j++) {
-                nonzero nz = o[j];
-                o_row.insert(std::pair<idx_t, float>(nz.idx, nz.val));
+            sparse_vector sol = o.row_vecs()[i];
+            std::map<idx_type, float> sol_map;
+            for (idx_type i = 0; i < sol.size(); i++) {
+                nonzero nz = sol.nonzeros()[i];
+                sol_map[nz.idx()] = (float)nz.val();
             }
-
-            
-            for (auto itr = ref_row.begin(); itr != ref_row.end(); itr++) {
-                idx_t j = itr->first;
-                float v = itr->second;
-                auto ito = o_row.find(j);
-                if (ito == o_row.end()) {
-                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, 0.0f, i, j, v);
-                } else if (v != ito->second) {
-                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, ito->second, i, j, v);
-                }
-            }
-            for (auto ito = o_row.begin(); ito != o_row.end(); ito++) {
-                idx_t j = ito->first;
-                float v = ito->second;
-                auto itr = ref_row.find(j);
-                if (itr == ref_row.end()) {
-                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, v, i, j, 0.0f);
-                }
-            }
+            // compare maps
+            compare_rows(i, ref_map, sol_map);
         }        
     }
-    
 
-    // convert product to csr
-    DrvAPI::DrvAPIVar<sparse_matrix> O_csr;
-    {
-        timer _("product to csr");
-        O_csr = (sparse_matrix)O;
+    idx_type l1_used = 0;
+    for (long tid = 0; tid < SPMM_THREADS; tid++) {
+        l1_used += allocated_nonzeros[NONZERO_POOL_S][tid];
+        l1_used += allocated_nonzeros[NONZERO_POOL_M][tid];
+        l1_used += allocated_nonzeros[NONZERO_POOL_L][tid];
     }
-
-    // compare csr product to reference output
-    {
-        timer _("check csr");
-        handle_t<sparse_matrix> O(O_csr);
-        for (idx_t i = 0; i < O.rows(); i++) {
-            Eigen::SparseVector<float> ref = reference.row(i);
-            std::map<idx_t, float> ref_row, o_row;
-            if (O.nnzof(i) != ref.nonZeros()) {
-                pr_error("O[%4d;].nnz = %4d, Ref[%4d;].nnz = %4ld\n", i, O.nnzof(i), i, ref.nonZeros());
-            }
-            for (Eigen::SparseVector<float>::InnerIterator it(ref); it; ++it) {
-                idx_t j = it.index();
-                float v = it.value();
-                ref_row.insert(std::pair<idx_t, float>(j, v));
-            }
-            for (nonzero nz : O.nonzeros(i)) {
-                o_row.insert(std::pair<idx_t, float>(nz.idx, nz.val));
-            }
-            for (auto itr = ref_row.begin(); itr != ref_row.end(); itr++) {
-                idx_t j = itr->first;
-                float v = itr->second;
-                auto ito = o_row.find(j);
-                if (ito == o_row.end()) {
-                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, 0.0f, i, j, v);
-                } else if (v != ito->second) {
-                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, ito->second, i, j, v);
-                }
-            }
-            for (auto ito = o_row.begin(); ito != o_row.end(); ito++) {
-                idx_t j = ito->first;
-                float v = ito->second;
-                auto itr = ref_row.find(j);
-                if (itr == ref_row.end()) {
-                    pr_error("O[%4d,%4d] = %4.4f, Ref[%4d,%4d] = %4.4f\n", i, j, v, i, j, 0.0f);
-                }
-            }
-        }
-
-        printf("%s\n", value_t::Stats().to_string().c_str());
-    }
-
+    INFO_STMT("l1 used: " << FMT_IDX(l1_used) << " bytes");
     return 0;
 }
 

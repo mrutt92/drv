@@ -31,6 +31,7 @@ SIM_THREADS := 1
 include $(DRV_DIR)/mk/config.mk
 include $(DRV_DIR)/mk/application_common.mk
 
+CXXFLAGS += -DSPMM_THREADS=$(threads)
 CXXFLAGS += $(CELLO_CXXFLAGS)
 CXXFLAGS += $(EIGEN_CXXFLAGS)
 CXXFLAGS += -I$(DRV_DIR)/common/sparse_matrix_helpers
