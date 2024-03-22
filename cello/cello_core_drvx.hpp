@@ -53,6 +53,15 @@ struct thread_id_t {
     thread_id_t (long pxn, long pod, long core, long thread)
       : pxn(pxn), pod(pod), core(core), thread(thread) {
     }
+
+    bool operator==(const thread_id_t &rhs) const {
+        return pxn == rhs.pxn && pod == rhs.pod && core == rhs.core && thread == rhs.thread;
+    }
+
+    bool operator!=(const thread_id_t &rhs) const {
+        return !(*this == rhs);
+    }
+
     long pxn = 0;
     long pod = 0;
     long core = 0;

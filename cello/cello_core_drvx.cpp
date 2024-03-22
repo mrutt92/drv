@@ -3,6 +3,8 @@
 #include <cello_drvx_internal.hpp>
 #include <deque>
 #include <memory>
+#include <ostream>
+#include <fstream>
 #include <inttypes.h>
 
 using namespace DrvAPI;
@@ -51,6 +53,209 @@ task_queue_ref task_queue_of(const thread_id_t &tid) {
     Pointer<task_queue> ptr = vaddr.encode();
     return *ptr;
 }
+
+//////////////////////////////////////////////////
+// clock handler for profiling task queue sizes //
+//////////////////////////////////////////////////
+class task_queue_profiler {
+public:
+    /**
+     * constructor
+     */
+    task_queue_profiler() {
+        file().open("task_queue_profiler.csv");
+        file() << csv_header() << std::endl;
+        system_ = DrvAPI::DrvAPIThread::current()->getSystem();
+        for (int i = 0; i < CORE_THREADS; i++) {
+            task_queue_vaddr_[i] = DrvAPIVAddress{thread_task_queue[i].address()};
+        }
+    }
+
+    /**
+     * copy constructor
+     */
+    task_queue_profiler(const task_queue_profiler &) = default;
+
+    /**
+     * move constructor
+     */
+    task_queue_profiler(task_queue_profiler &&) = default;
+
+    /**
+     * copy assignment
+     */
+    task_queue_profiler &operator=(const task_queue_profiler &) = default;
+
+    /**
+     * move assignment
+     */
+    task_queue_profiler &operator=(task_queue_profiler &&) = default;
+
+    /**
+     * destructor
+     */
+    ~task_queue_profiler() = default;
+
+    /**
+     * thread id iterator
+     */
+    class system_thread_iterator {
+    public:
+        system_thread_iterator() : id_() {}
+        system_thread_iterator(const thread_id_t &id) : id_(id) {}
+        system_thread_iterator(const system_thread_iterator &) = default;
+        system_thread_iterator(system_thread_iterator &&) = default;
+        system_thread_iterator &operator=(const system_thread_iterator &) = default;
+        system_thread_iterator &operator=(system_thread_iterator &&) = default;
+        ~system_thread_iterator() = default;
+
+        /**
+         *post increment
+         */
+        system_thread_iterator &operator++() {
+            id().thread++;
+            if (id().thread >= DrvAPI::numCoreThreads()) {
+                id().thread = 0;
+                id().core++;
+                if (id().core >= DrvAPI::numPodCores()) {
+                    id().core = 0;
+                    id().pod++;
+                    if (id().pod >= DrvAPI::numPXNPods()) {
+                        id().pod = 0;
+                        id().pxn++;
+                    }
+                }
+            }            
+            return *this;
+        }
+
+        /**
+         * return the thread id
+         */
+        thread_id_t operator*() const {
+            return id_;
+        }
+
+        bool operator==(const system_thread_iterator &rhs) const {
+            return id() == rhs.id();
+        }
+
+        bool operator!=(const system_thread_iterator &rhs) const {
+            return id() != rhs.id();
+        }
+
+        /**
+         * return the thread id
+         */
+        thread_id_t& id() {
+            return id_;
+        }
+
+        /**
+         * return the thread id
+         */
+        const thread_id_t& id() const {
+            return id_;
+        }
+
+    private:
+        thread_id_t id_;
+    };
+
+    struct system_thread_range {
+        system_thread_iterator begin_ = system_thread_iterator{thread_id_t{0, 0, 0, 0}};        
+        system_thread_iterator end_ = system_thread_iterator{
+            thread_id_t{DrvAPI::numPXNs(),
+                        DrvAPI::numPXNPods()-1,
+                        DrvAPI::numPodCores()-1,
+                        DrvAPI::numCoreThreads()-1}
+        };
+        system_thread_range() = default;
+        system_thread_iterator begin() const {
+            return begin_;
+        }
+        system_thread_iterator end() const {
+            return end_;
+        }
+    };
+    
+    /**
+     * get system thread ids
+     */
+    system_thread_range system_thread_ids() {
+        return system_thread_range{};
+    }
+
+    /**
+     * get the task queue of a specific thread
+     */
+    task_queue *task_queue_pointer_of(const thread_id_t &tid) {
+        DrvAPIVAddress vaddr = task_queue_vaddr_[tid.thread];
+        vaddr.pxn() = tid.pxn;
+        vaddr.pod() = tid.pod;
+        vaddr.core_x() = coreXFromId(tid.core);
+        vaddr.core_y() = coreYFromId(tid.core);
+        void *p; size_t _;
+        DrvAPIAddressToNative(vaddr.encode(), &p, &_);
+        return (task_queue *)p;
+    }
+    
+    /**
+     * run the clock handler
+     */
+    void run() {
+        for (thread_id_t tid : system_thread_ids()) {
+            task_queue * tq = task_queue_pointer_of(tid);
+            auto queue = tq->queue_;
+            file() << (uint64_t)(system().getSeconds() * 1e12) << ","
+                   << tid.pxn << ","
+                   << tid.pod << ","
+                   << tid.core << ","
+                   << tid.thread << ","
+                   << queue->size() << "\n";
+        }
+    }
+
+    /**
+     * get the output file
+     */
+    std::ofstream &file() {
+        return file_;
+    }
+
+    /**
+     * get the output file
+     */
+    const std::ofstream &file() const {
+        return file_;
+    }
+
+    /**
+     * get the system
+     */
+    DrvAPI::DrvAPISystem &system() {
+        return *system_;
+    }
+
+    /**
+     * get the system
+     */
+    const DrvAPI::DrvAPISystem &system() const {
+        return *system_;
+    }
+
+    /**
+     * get the csv header
+     */
+    const std::string csv_header() const {
+        return "time,pxn,pod,core,thread,size";
+    }
+
+private:
+    std::shared_ptr<DrvAPI::DrvAPISystem> system_; //!< system
+    std::ofstream       file_; //!< output file
+    DrvAPIVAddress task_queue_vaddr_[CORE_THREADS]; //!< task queue addresses (local addresses)
+};
 
 //////////////////////////////////
 // each pxn has a copy of these //
@@ -172,9 +377,15 @@ int cello_start(int argc, char *argv[])
     pr_dbg("%" PRId64 "/%" PRId64 " threads are ready\n"
 	   , ready
 	   , num_threads());
-    
+
     if (tid() == 0) {
         auto call_main = [argc, argv](){
+            std::shared_ptr<task_queue_profiler> profiler
+                = std::make_shared<task_queue_profiler>();
+            DrvAPI::registerUserClock("25MHz", [=](){
+                profiler->run();
+                return false;
+            });
             {
                 DrvAPI::DrvAPITagGuard guard(DrvAPI::DEFAULT_TAG);
                 CelloMain(argc, argv);
@@ -186,7 +397,7 @@ int cello_start(int argc, char *argv[])
         };
         task_impl <decltype(call_main)> main_task (call_main);
         
-        spawn(&main_task);        
+        spawn(&main_task);
     }
 
     while (*terminate_ptr() != 1) {
