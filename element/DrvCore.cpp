@@ -479,3 +479,22 @@ void DrvCore::handleMMIOWriteRequest(Interfaces::StandardMem::Write* req) {
                      "PXN %d: POD %d: Core %d: handling mmio write request\n"
                      ,pxn_,pod_,id_);
 }
+
+/**
+ * @brief register a user clock handler
+ */
+void DrvCore::registerUserClockHandler(const std::string &clock_rate, DrvAPI::DrvAPIUserClockHandler handler) {
+    Clock::Handler<DrvCore, DrvAPI::DrvAPIUserClockHandler>* handler_ptr =
+        (new Clock::Handler<DrvCore, DrvAPI::DrvAPIUserClockHandler>(this, &DrvCore::userClockTrampoline, handler));
+    registerClock(clock_rate, handler_ptr);
+    user_clock_handlers_.insert(std::move(handler_ptr));
+}
+
+/**
+ * @brief call a clock handler, called from clock
+ */
+bool DrvCore::userClockTrampoline(uint64_t cycles, DrvAPI::DrvAPIUserClockHandler user_clock_handler) {
+    output_->verbose(CALL_INFO, 20, DEBUG_CLK, "user clock tick!\n");
+    return user_clock_handler();
+}
+

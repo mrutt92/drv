@@ -4,8 +4,24 @@
 #define DRV_API_SYSTEM_HPP
 #include "DrvAPIAddress.hpp"
 #include <stdexcept>
+#include <functional>
 namespace DrvAPI
 {
+
+/**
+ * @brief User clock handler
+ *
+ * Some rules about code executing in a clock handler:
+ *
+ * It cannot access modeled memory using the simulation model.
+ * Code executing in a clock handler should use the to_native() function
+ * on DrvAPIPointer objects to get a native pointer to the memory.
+ *
+ * @return true if the clock should be unregistered
+ */
+using DrvAPIUserClockHandler = std::function<bool()>;
+
+
 /**
  * @brief System-level API
  *
@@ -73,6 +89,13 @@ public:
      */
     virtual void outputStatistics(const std::string &tagname) {
         throw std::runtime_error("outputStatistics() not implemented");
+    }
+
+    /**
+     * @brief Register a user clock handler
+     */
+    virtual void registerUserClockHandler(const std::string &clock_rate, DrvAPIUserClockHandler handler) {
+        throw std::runtime_error("registerUserClockHandler() not implemented");
     }
 };
 }
