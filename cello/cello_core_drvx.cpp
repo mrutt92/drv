@@ -380,12 +380,14 @@ int cello_start(int argc, char *argv[])
 
     if (tid() == 0) {
         auto call_main = [argc, argv](){
+#ifdef CELLO_ENABLE_TASK_QUEUE_PROFILER
             std::shared_ptr<task_queue_profiler> profiler
                 = std::make_shared<task_queue_profiler>();
-            DrvAPI::registerUserClock("25MHz", [=](){
+            DrvAPI::registerUserClock("25MHz", [profiler](){
                 profiler->run();
                 return false;
             });
+#endif
             {
                 DrvAPI::DrvAPITagGuard guard(DrvAPI::DEFAULT_TAG);
                 CelloMain(argc, argv);
