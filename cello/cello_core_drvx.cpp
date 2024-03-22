@@ -383,7 +383,7 @@ int cello_start(int argc, char *argv[])
 #ifdef CELLO_ENABLE_TASK_QUEUE_PROFILER
             std::shared_ptr<task_queue_profiler> profiler
                 = std::make_shared<task_queue_profiler>();
-            DrvAPI::registerUserClock("25MHz", [profiler](){
+            DrvAPI::registerUserClock("1MHz", [profiler](){
                 profiler->run();
                 return false;
             });
