@@ -32,6 +32,9 @@ $(addsuffix /parameters.mk,$(TESTS_DIRS)): %/parameters.mk:
 
 include $(DRV_DIR)/mk/testbench_common.mk
 
+run-testbench:
+	PYTHONPATH=$(DRV_DIR)/py python3 run.py
+
 # for regression
 EXECUTION_DIRS := (addprefix $(APP_PATH)/,$(TESTS_DIRS))
 
