@@ -194,6 +194,12 @@ inline void outputStatistics(const std::string& tag) {
     DrvAPIThread::current()->getSystem()->outputStatistics(tag);
 }
 
+///////////////////
+// Clock Handler //
+///////////////////
+inline void registerUserClock(const std::string &name, DrvAPIUserClockHandler handler) {
+    DrvAPIThread::current()->getSystem()->registerUserClockHandler(name, handler);
+}
 
 } // namespace DrvAPI
 #endif

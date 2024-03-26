@@ -28,6 +28,7 @@ public:
     virtual uint64_t getClockHz() override;
     virtual double getSeconds() override; 
     virtual void outputStatistics(const std::string& tagname) override;
+    virtual void registerUserClockHandler(const std::string &clock_rate, DrvAPI::DrvAPIUserClockHandler handler) override;
     DrvCore &core_;
 };
 
