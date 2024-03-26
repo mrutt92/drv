@@ -461,6 +461,16 @@ public:
         return sys_config_;
     }
 
+    /**
+     * @brief register a user clock handler
+     */
+    void registerUserClockHandler(const std::string &clock_rate, DrvAPI::DrvAPIUserClockHandler handler);
+
+    /**
+     * @brief call a clock handler, called from clock
+     */
+    bool userClockTrampoline(uint64_t cycles, DrvAPI::DrvAPIUserClockHandler user_clock_handler);
+
 private:  
   std::unique_ptr<SST::Output> output_; //!< for logging
   SST::Output tag_; //!< for stats collection
@@ -488,6 +498,8 @@ private:
   std::vector<ThreadStat> thread_stats_; //!< the thread statistics
   Statistic<uint64_t> *busy_cycles_; //!< busy cycles
   Statistic<uint64_t> *stall_cycles_; //!< stall cycles
+    std::set<Clock::Handler<DrvCore,DrvAPI::DrvAPIUserClockHandler>*> user_clock_handlers_; //!< user clock handlers
+
 public:
   DrvMemory* memory_;  //!< the memory hierarchy
   SST::TimeConverter *clocktc_; //!< the clock time converter
