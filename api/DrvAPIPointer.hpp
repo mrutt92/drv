@@ -4,6 +4,7 @@
 #define DRV_API_POINTER_H
 #include <DrvAPIAddress.hpp>
 #include <DrvAPIMemory.hpp>
+#include <DrvAPIAddressToNative.hpp>
 #include <cstddef>
 namespace DrvAPI
 {
@@ -281,6 +282,12 @@ public:
 
     std::unique_ptr<const value_handle<T>> operator->() const {
         return std::unique_ptr<const value_handle<T>>(new value_handle<T>(_ptr));
+    }
+
+    T *to_native() {
+        void *p; size_t _;
+        DrvAPIAddressToNative(_ptr, &p, &_);
+        return reinterpret_cast<T*>(p);
     }
 
     DrvAPI::DrvAPIAddress _ptr;
