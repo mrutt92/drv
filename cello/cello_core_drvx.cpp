@@ -166,9 +166,9 @@ public:
         system_thread_iterator begin_ = system_thread_iterator{thread_id_t{0, 0, 0, 0}};        
         system_thread_iterator end_ = system_thread_iterator{
             thread_id_t{DrvAPI::numPXNs(),
-                        DrvAPI::numPXNPods()-1,
-                        DrvAPI::numPodCores()-1,
-                        DrvAPI::numCoreThreads()-1}
+                        0,
+                        0,
+                        0}
         };
         system_thread_range() = default;
         system_thread_iterator begin() const {
@@ -191,6 +191,8 @@ public:
      */
     task_queue *task_queue_pointer_of(const thread_id_t &tid) {
         DrvAPIVAddress vaddr = task_queue_vaddr_[tid.thread];
+        vaddr.global() = true;
+        vaddr.l2_not_l1() = false;
         vaddr.pxn() = tid.pxn;
         vaddr.pod() = tid.pod;
         vaddr.core_x() = coreXFromId(tid.core);

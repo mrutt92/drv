@@ -28,6 +28,7 @@ struct timer {
                 (flops_stop.num_muladd+double_stop.num_muladd)-(flops_start.num_muladd+double_start.num_muladd));
         fflush(stdout);
         DrvAPI::outputStatistics(name+"_stop");
+        DrvAPI::wait(1);
     }
     DrvAPI::numeric_stats flops_start;
     DrvAPI::numeric_stats flops_stop;
