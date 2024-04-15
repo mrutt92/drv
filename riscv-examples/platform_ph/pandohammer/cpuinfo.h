@@ -43,6 +43,47 @@ inline int myCoreId()
     return (int)cid;
 }
 
+
+/**
+ * return a core's x  w.r.t my pod
+ */
+inline int coreXFromId(int core)
+{
+    return core & 7;
+}
+
+/**
+ * return a core's y  w.r.t my pod
+ */
+inline int coreYFromId(int core)
+{
+    return (core >> 3) & 7;
+}
+
+/**
+ * return a core's id from its x y
+ */
+inline int coreIdFromXY(int x, int y)
+{
+    return x + (y << 3);
+}
+
+/**
+ * return a core's x w.r.t my pod
+ */
+inline int myCoreX()
+{
+    return coreXFromId(myCoreId());
+}
+
+/**
+ * return a core's y w.r.t my pod
+ */
+inline int myCoreY()
+{
+    return coreYFromId(myCoreId());
+}
+    
 /**
  * pod id wrt my pxn
  */
@@ -74,6 +115,14 @@ inline int myCoreThreads()
 }
 
 /**
+ * number of hardware threads in a core
+ */
+inline int numCoreThreads()
+{
+    return myCoreThreads();
+}
+
+/**
  * number of pxns in system
  */
 inline int numPXN()
@@ -83,6 +132,14 @@ inline int numPXN()
     return (int)num;
 }
 
+/**
+ * an alias for numPXN (makes copy-pasting easier)
+ */
+inline int numPXNs()
+{
+    return numPXN();
+}
+    
 /**
  * number of cores in a pod
  */
