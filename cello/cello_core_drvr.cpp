@@ -298,8 +298,6 @@ int main(int argc, char *argv[])
     }
     if (tid() == 0) {
         // call main
-        //void *buff = malloc(sizeof(task_impl<call_main>));
-        //auto *call_main_p = new (buff) task_impl<call_main>(argc, argv);
         auto *call_main_p = new_task<task_impl<call_main>>(argc, argv);
         spawn(call_main_p);
     };
