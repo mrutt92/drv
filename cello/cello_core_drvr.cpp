@@ -221,14 +221,14 @@ void steal() {
     // select a random victim
     static l1sp_storage(unsigned long) seed [CORE_THREADS];    
     thread_id_t victim;
-    long pxn = cello::rand(&seed[myThreadId()]);
-    long pod = cello::rand(&seed[myThreadId()]);
-    long core = cello::rand(&seed[myThreadId()]);
-    long thread = cello::rand(&seed[myThreadId()]);
-    victim.pxn    = pxn & (numPXNs()-1);
-    victim.pod    = pod & (numPXNPods()-1);
-    victim.core   = core & (numPodCores()-1);
-    victim.thread = thread & (numCoreThreads()-1);
+    unsigned long pxn = cello::rand(&seed[myThreadId()]);
+    unsigned long pod = cello::rand(&seed[myThreadId()]);
+    unsigned long core = cello::rand(&seed[myThreadId()]);
+    unsigned long thread = cello::rand(&seed[myThreadId()]);
+    victim.pxn    = pxn % (numPXNs());
+    victim.pod    = pod % (numPXNPods());
+    victim.core   = core % (numPodCores());
+    victim.thread = thread % (numCoreThreads());
     //printf("steal from %ld %ld %ld %ld\n", victim.pxn, victim.pod, victim.core, victim.thread);
     auto *victim_queue = task_queue_of(victim);
 
