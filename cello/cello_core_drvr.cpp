@@ -3,9 +3,26 @@
 #include "pandohammer/cpuinfo.h"
 #include "cello_core_drvr.hpp"
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <new>
+
 namespace cello
 {
+
+unsigned long rand(unsigned long *seed)
+{
+    // xorshift
+    long x = *seed;
+    if (x == 0) {
+        x = tid();
+    }
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    *seed = x;
+    return x;
+}
 
 l2sp_storage(int64_t) num_threads_ready = 0; // number of threads ready
 
@@ -202,12 +219,17 @@ void init_queues()
  */
 void steal() {
     // select a random victim
+    static l1sp_storage(unsigned long) seed [CORE_THREADS];    
     thread_id_t victim;
-    victim.pxn    = rand() % numPXNs();    
-    victim.pod    = rand() % numPXNPods();
-    victim.core   = rand() % numPodCores();
-    victim.thread = rand() % numCoreThreads();
-
+    long pxn = cello::rand(&seed[myThreadId()]);
+    long pod = cello::rand(&seed[myThreadId()]);
+    long core = cello::rand(&seed[myThreadId()]);
+    long thread = cello::rand(&seed[myThreadId()]);
+    victim.pxn    = pxn & (numPXNs()-1);
+    victim.pod    = pod & (numPXNPods()-1);
+    victim.core   = core & (numPodCores()-1);
+    victim.thread = thread & (numCoreThreads()-1);
+    //printf("steal from %ld %ld %ld %ld\n", victim.pxn, victim.pod, victim.core, victim.thread);
     auto *victim_queue = task_queue_of(victim);
 
     // pop from the victim's back
