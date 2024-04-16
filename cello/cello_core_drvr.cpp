@@ -1,6 +1,7 @@
 #include "pandohammer/storage.h"
 #include "pandohammer/addressmap.hpp"
 #include "pandohammer/cpuinfo.h"
+#include "pandohammer/allocator.h"
 #include "cello_core_drvr.hpp"
 #include <stdint.h>
 #include <stdio.h>
@@ -15,7 +16,7 @@ unsigned long rand(unsigned long *seed)
     // xorshift
     long x = *seed;
     if (x == 0) {
-        x = tid();
+        x = tid()+1;
     }
     x ^= x << 13;
     x ^= x >> 7;
@@ -98,7 +99,8 @@ public:
  * @brief initialize memory
  */
 static void init_mem()
-{    
+{
+    dram_allocator_init();
 }
 
 /**
@@ -307,6 +309,7 @@ int main(int argc, char *argv[])
     asm volatile ("mv sp, %0" : : "r" (p));
     // initialize memory allocators
     init_mem();
+
     // initialize task queues
     init_queues();
 

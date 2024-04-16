@@ -86,4 +86,14 @@ private:
     uintptr_t address;
 };
 
+#define DRAM_BASE_ADDR(pxn)                     \
+    (virtual_address{0}                         \
+    .set_pxn(pxn)                               \
+    .set_is_ctrl_register(0)                    \
+    .set_is_not_scratchpad(1)                   \
+     )
+
+#define DRAM_SIZE                               \
+    (1024*1024*1024)
+    
 #endif

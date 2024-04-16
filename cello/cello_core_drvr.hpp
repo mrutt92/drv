@@ -275,8 +275,8 @@ struct loop_info {
         if (grain < 1)
             grain = 1;
 
-        if (grain > 2048)
-            grain = 2048;
+        //if (grain > 2048)
+        // grain = 2048;
     }
 
     Idx leafs() const  { return iters/grain; }
