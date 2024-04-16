@@ -2,21 +2,17 @@
 # Copyright (c) 2023 University of Washington
 
 DRV_DIR := $(shell git rev-parse --show-toplevel)
+include $(DRV_DIR)/mk/cello.mk
 
-THREADS := 1
+THREADS := 2
 CORES := 2
 
 ###############
 # cello stuff #
 ###############
 CELLO_DIR := $(DRV_DIR)/cello
-RISCV_CXXFLAGS += -DRISCV
-RISCV_CXXFLAGS += -DCORE_THREADS=$(THREADS)
-RISCV_CXXFLAGS += -std=c++17
-RISCV_CXXFLAGS += -I$(CELLO_DIR)
-vpath %.cpp $(CELLO_DIR)
-vpath %.c   $(CELLO_DIR)
-RISCV_CXXSOURCE += cello_core_drvr.cpp
+RISCV_CXXFLAGS  += $(CELLO_CXXFLAGS_DRVR)
+RISCV_CXXSOURCE += $(CELLO_CXXSOURCES_DRVR)
 RISCV_CXXSOURCE += $(wildcard *.cpp)
 
 

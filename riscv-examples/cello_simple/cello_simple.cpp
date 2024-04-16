@@ -8,32 +8,11 @@
 #include "pandohammer/cpuinfo.h"
 #include "pandohammer/atomic.h"
 #include "pandohammer/mmio.h"
-l1sp_storage(int) wait_until_not_zero;
-
-static int my_printf(const char*fmt, ...)
-{
-#if 1
-    char buffer[256];
-    va_list args;
-    va_start(args, fmt);
-    int ret = vsnprintf(buffer, sizeof(buffer), fmt, args);
-    va_end(args);
-    write(STDOUT_FILENO, buffer, ret);
-    return ret;
-#else
-    return 0;
-#endif
-}
 
 int CelloMain(int argc, char *argv[])
 {
-    cello::parallel_invoke(
-        []() {
-            printf("Hello from task 0: core %d\n", myCoreId());
-        },
-        []() {
-            printf("Hello from task 1: core %d\n", myCoreId());
-        }
-    );
+    cello::parallel_for(0, 32, 1, [](int i) {
+        ph_print_int(i);
+    });
     return 0;
 }

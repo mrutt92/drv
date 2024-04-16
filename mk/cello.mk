@@ -8,9 +8,22 @@ CELLO_CXXFLAGS += -I$(DRV_DIR)/cello
 vpath %.cpp $(DRV_DIR)/cello
 vpath %.c   $(DRV_DIR)/cello
 
+########
+# DRVX #
+########
 CELLO_CXXSOURCES_DRVX += cello_core_drvx.cpp
 CELLO_CXXSOURCES_DRVX += cello_core_drvx_allocator.cpp
 
+########
+# DRVR #
+########
+# sources
+CELLO_CXXSOURCES_DRVR += cello_core_drvr.cpp
+# compile flags
+CELLO_CXXFLAGS_DRVR += $(CELLO_CXXFLAGS)
+CELLO_CXXFLAGS_DRVR += -DRISCV -DCORE_THREADS=$(THREADS)
+CELLO_CXXFLAGS_DRVR += -std=c++17
+# link flags
 CELLO_LDFLAGS_DRVX +=
 CELLO_LDFLAGS_DRVR +=
 
