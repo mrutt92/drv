@@ -11,6 +11,7 @@ N := 9
 ###############
 # cello stuff #
 ###############
+CELLO_BACKEND := DRVR
 CELLO_DIR := $(DRV_DIR)/cello
 RISCV_CXXFLAGS += -DFIB_N=$(N)
 RISCV_CXXFLAGS  += $(CELLO_CXXFLAGS_DRVR)

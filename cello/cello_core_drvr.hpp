@@ -8,7 +8,7 @@
 #include "pandohammer/cpuinfo.h"
 #include "pandohammer/atomic.h"
 #include "pandohammer/profile.h"
-
+#include "pandohammer/allocator.h"
 #ifndef CORE_THREADS
 #error "CORE_THREADS not defined"
 #endif
@@ -43,6 +43,7 @@ private:
 template <typename TaskType, typename ...Args>
 TaskType *new_task(Args &&...args) {
     void *task = malloc(sizeof(TaskType));
+    //void *task = allocate_dram(sizeof(TaskType));
     new (task) TaskType(std::forward<Args>(args)...);
     return reinterpret_cast<TaskType *>(task);
 }
@@ -54,6 +55,7 @@ template <typename TaskType>
 void free_task(TaskType *task) {
     task->~TaskType();
     free(task);
+    //deallocate_dram(task, sizeof(TaskType));
 }
 
 /**

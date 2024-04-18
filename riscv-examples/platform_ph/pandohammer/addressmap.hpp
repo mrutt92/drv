@@ -2,6 +2,7 @@
 #define PANDOHAMMER_ADDRESSMAP_H
 #include <stdint.h>
 #include "pandohammer/bitrange_handle.hpp"
+#include "pandohammer/cpuinfo.h"
 
 struct virtual_address {
     /**
@@ -94,6 +95,6 @@ private:
      )
 
 #define DRAM_SIZE                               \
-    (1024*1024*1024)
+    (pxnDRAMSize())
     
 #endif

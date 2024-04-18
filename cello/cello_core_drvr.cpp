@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cmath>
 #include <new>
 
 namespace cello
@@ -64,8 +65,12 @@ inline void lock_init(lock_t* lock_ptr) {
  */
 inline void lock(lock_t* lock_ptr) {
     int lock_val = 1;
+    unsigned backoff = 1;
+    static constexpr unsigned max_backoff = 1 << 10;
     do {
+        wait_cycles(backoff);
         lock_val = atomic_swap_i32(lock_ptr, 1);
+        backoff = std::min(backoff << 1, max_backoff);
     } while (lock_val != 0);
     return;
 }
@@ -249,11 +254,14 @@ void steal() {
  */
 void find_work() {
     // first try to pop from your own queue
-    task *task = my_task_queue()->pop_front();
-    if (task != nullptr) {
-        // execute the task
-        task->execute();
-        return;
+    auto *my_queue = my_task_queue();
+    if (my_queue->unsafe_empty() == false) {
+        task *task = my_queue->pop_front();
+        if (task != nullptr) {
+            // execute the task
+            task->execute();
+            return;
+        }
     }
     // if you can't find work, try to steal from others
     steal();
@@ -319,7 +327,7 @@ int main(int argc, char *argv[])
     while (ready < num_threads()) {
         // wait for all threads to be ready
         ready = atomic_load_i64(num_threads_ready_ptr());
-        // todo; deschedule
+        wait_cycles(32);
     }
     if (tid() == 0) {
         // call main
@@ -331,6 +339,7 @@ int main(int argc, char *argv[])
         // wait for termination
         find_work();
         // todo; deschedule
+        wait_cycles(1024);
     }
     return 0;
 }    

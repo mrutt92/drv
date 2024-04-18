@@ -2,6 +2,7 @@
 # Copyright (c) 2023 University of Washington
 
 DRV_DIR := $(shell git rev-parse --show-toplevel)
+CELLO_BACKEND := DRVR
 include $(DRV_DIR)/mk/cello.mk
 
 THREADS := 2

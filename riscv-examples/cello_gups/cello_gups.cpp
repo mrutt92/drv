@@ -30,6 +30,7 @@ int CelloGups(int64_t gups_table_size, int64_t updates)
     cello::parallel_for(0l, updates, 1l, [dram_base, gups_table_size](int64_t i) {
         int64_t index = rand(&thread_seeds[cello::tid()]) % gups_table_size;
         dram_base[index] ^= dram_base[index];
+        //        ph_print_int(index);
     });
     return 0;
 }
