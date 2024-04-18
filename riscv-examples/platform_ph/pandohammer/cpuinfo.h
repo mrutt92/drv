@@ -17,6 +17,7 @@ extern "C" {
 #define MCSR_MCOREL1SPSIZE 0xF1C
 #define MCSR_MPODL2SPSIZE  0xF1D
 #define MCSR_MPXNDRAMSIZE  0xF1E
+#define MCSR_MWAIT    0xF1F
 
 #ifndef __stringify
 #define __stringify_1(x) #x
@@ -194,6 +195,14 @@ inline uint64_t cycle() {
     uint64_t cycle;
     asm volatile ("rdcycle %0" : "=r"(cycle));
     return cycle;
+}
+
+/**
+ * wait for a number of cycles
+ */
+inline void wait_cycles(uint64_t cycles) {
+    asm volatile ("csrw " __stringify(MCSR_MWAIT) ", %0" : : "r"(cycles));
+    return;
 }
 
 #ifdef __cplusplus

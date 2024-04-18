@@ -115,10 +115,11 @@ private:
     static constexpr uint64_t CSR_MCOREHARTS = 0xF18;
     static constexpr uint64_t CSR_MPODCORES  = 0xF19;
     static constexpr uint64_t CSR_MPXNPODS   = 0xF1A;
-    static constexpr uint64_t CSR_MNUMPXN    = 0xF1B;
+    static constexpr uint64_t CSR_MNUMPXN    = 0xF1B;    
     static constexpr uint64_t CSR_MCOREL1SPSIZE = 0xF1C;
     static constexpr uint64_t CSR_MPODL2SPSIZE  = 0xF1D;
     static constexpr uint64_t CSR_MPXNDRAMSIZE  = 0xF1E;
+    static constexpr uint64_t CSR_MWAIT = 0xF1F;
     static constexpr uint64_t CSR_MSTATUS = 0x300;
     
     static constexpr uint64_t CSR_FRM     = 0x002;
