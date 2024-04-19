@@ -72,10 +72,7 @@ public:
     0x00
 #define dram_allocator_offset \
     (dram_status_offset + sizeof(status_t))
-
-#define dram_allocator_data_offset              \
-    (dram_allocator_offset + sizeof(allocator))
-
+ 
 /**
  * hardcode the address of the dram status
  */
@@ -91,18 +88,12 @@ public:
     (*dram_allocator_ptr)
 
 /**
- * hardcode the address of the dram data 
- */
-#define dram_allocator_data                     \
-    ((intptr_t)DRAM_BASE_ADDR(myPXNId())+dram_allocator_data_offset)
-
-/**
  * @brief initialize the dram allocator
  */
-void dram_allocator_init() {
-    do_once(&dram_status, []() {
+void dram_allocator_init(intptr_t dram_base, size_t dram_size) {
+    do_once(&dram_status, [=]() {
          new (&dram_allocator) allocator
-             (dram_allocator_data, DRAM_SIZE - dram_allocator_data_offset);
+             (dram_base, dram_size);
     });
 }
 

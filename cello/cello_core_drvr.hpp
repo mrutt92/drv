@@ -358,7 +358,6 @@ void parallel_for(Idx start, Idx stop, Idx step, Idx grain, F && body) {
 }
 }
 
-// Cello main
-extern "C" int CelloMain(int argc, char *argv[]);
+extern "C" int CelloMain(int argc, char **argv);
 
 #endif

@@ -20,10 +20,17 @@ CELLO_CXXSOURCES_DRVX += cello_core_drvx_allocator.cpp
 # sources
 CELLO_CXXSOURCES_DRVR += cello_core_drvr.cpp
 CELLO_CXXSOURCES_DRVR += pandohammer_allocator.cpp
+
 # compile flags
 CELLO_CXXFLAGS_DRVR += $(CELLO_CXXFLAGS)
 CELLO_CXXFLAGS_DRVR += -DRISCV -DCORE_THREADS=$(THREADS)
 CELLO_CXXFLAGS_DRVR += -std=c++17
+
+COMMAND_PROCESSOR_PLATFORM_LOADER := no
+COMMAND_PROCESSOR_COMPILE_FLAGS += -I$(DRV_DIR)/cello
+COMMAND_PROCESSOR_CXXSOURCE += cello_core_drvr_commandprocessor.cpp
+COMMAND_PROCESSOR_CXXSOURCE += cello_core_drvr_makeapp.cpp
+
 # link flags
 CELLO_LDFLAGS_DRVX +=
 CELLO_LDFLAGS_DRVR +=

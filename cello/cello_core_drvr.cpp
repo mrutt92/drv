@@ -3,11 +3,17 @@
 #include "pandohammer/cpuinfo.h"
 #include "pandohammer/allocator.h"
 #include "cello_core_drvr.hpp"
+#include "cello_core_drvr_config.hpp"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <cmath>
 #include <new>
+
+/**
+ * controlled by the command processor
+ */
+l2sp_storage(cello_config) cello_configuration;
 
 namespace cello
 {
@@ -105,7 +111,8 @@ public:
  */
 static void init_mem()
 {
-    dram_allocator_init();
+    dram_allocator_init(cello_configuration.allocator_base(),
+                        cello_configuration.allocator_size());
 }
 
 /**
@@ -293,7 +300,7 @@ struct call_main {
     call_main(int argc, char *argv[]) : argc_(argc), argv_(argv) {}
     void operator()() {
         CelloMain(argc_, argv_);
-        *terminate_ptr() = true;
+        cello_configuration.main_returned() = 1;
     }
     int argc_;
     char **argv_;
@@ -335,7 +342,7 @@ int main(int argc, char *argv[])
         spawn(call_main_p);
     };
     
-    while (*terminate_ptr() == 0) {
+    while (cello_configuration.main_returned() == 0) {
         // wait for termination
         find_work();
         // todo; deschedule

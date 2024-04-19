@@ -18,8 +18,11 @@ CELLO_DIR := $(DRV_DIR)/cello
 RISCV_CXXFLAGS += -DGUPS_UPDATES=$(GUPS_UPDATES) -DGUPS_TABLE_SIZE=$(GUPS_TABLE_SIZE)
 RISCV_CXXFLAGS  += $(CELLO_CXXFLAGS_DRVR)
 RISCV_CXXSOURCE += $(CELLO_CXXSOURCES_DRVR)
-RISCV_CXXSOURCE += $(wildcard *.cpp)
-
+RISCV_CXXSOURCE += cello_gups.cpp cello_gups_main.cpp
 
 SIM_OPTIONS += --core-threads=$(THREADS) --pod-cores=$(CORES)
+
+COMMAND_PROCESSOR_CXXSOURCE += cello_gups_commandprocessor.cpp
+
 include $(DRV_DIR)/mk/riscv_common.mk
+
