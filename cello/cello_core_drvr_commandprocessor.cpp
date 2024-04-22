@@ -1,4 +1,4 @@
-#define PANDOCOMMAND_DEBUG
+//#define PANDOCOMMAND_DEBUG
 #include <iomanip>
 #include "cello_core_drvr_commandprocessor.hpp"
 

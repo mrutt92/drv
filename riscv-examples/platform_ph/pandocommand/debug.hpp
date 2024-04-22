@@ -20,4 +20,7 @@
     do {} while (0)
 #endif
 
+#define CMD_FMT_ADDR(addr)                     \
+    "0x" << std::hex << addr << std::dec
+
 #endif // PANDOCOMMAND_DEBUG_HPP
