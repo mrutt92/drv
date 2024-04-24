@@ -34,15 +34,11 @@ _start:
   csrr t1, mhartid
   csrr t2, MCSR_MCOREL1SPSIZE
   csrr t4, MCSR_MCOREHARTS
-  sd   t2, 0(a0)
   sub  t3, t2, t0
-  sd   t3, 0(a0)
   div  t5, t3, t4
-  sd   t5, 0(a0)        
   mul  t6, t5, t1
-  sd   t6, 0(a0)
   sub  sp, t2, t6
-  sd   sp, 0(a0)
+#  sd   sp, 0(a0)
 .option pop
   # Clear the bss segment
   la      a0, _edata
