@@ -1,6 +1,7 @@
 #include <new>
 #include <stdio.h>
 #include <stdint.h>
+#include "pandohammer/mmio.h"
 #include "pandohammer/allocator.h"
 #include "pandohammer/atomic.h"
 #include "pandohammer/cpuinfo.h"
@@ -48,7 +49,8 @@ public:
     void *allocate(size_t sz) {
         sz = (sz + sizeof(intptr_t) - 1) & ~(sizeof(intptr_t)-1);
         if (base() + sz > end()) {
-            return nullptr;
+            ph_print_hex(0xdeaddeaddeaddead);
+            while(1);
         }
         intptr_t ptr = atomic_fetch_add_i64(&base(), sz);
         return reinterpret_cast<void *>(ptr);
@@ -69,9 +71,10 @@ public:
 };
 
 #define dram_status_offset \
-    0x00
+    (pxnDRAMSize()-0x1000)
+
 #define dram_allocator_offset \
-    (dram_status_offset + sizeof(status_t))
+    (dram_status_offset+sizeof(status_t))
  
 /**
  * hardcode the address of the dram status
