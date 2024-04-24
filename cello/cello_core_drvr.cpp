@@ -1,3 +1,4 @@
+#include "pandohammer/mmio.h"
 #include "pandohammer/storage.h"
 #include "pandohammer/addressmap.hpp"
 #include "pandohammer/cpuinfo.h"
@@ -124,7 +125,7 @@ public:
     Deque(){}
     ~Deque(){}
     void reset();
-    void push_back(const T &t);
+    bool push_back(const T &t);
     T pop_back();
     T pop_front();
     bool unsafe_empty() const {
@@ -140,7 +141,7 @@ private:
     T m_array[QUEUE_SIZE];
 };
 
-using TaskDeque = Deque<task*, 16>;
+using TaskDeque = Deque<task*, 64>;
 
 template <typename T, size_t QUEUE_SIZE>
 void Deque<T, QUEUE_SIZE>::reset()
@@ -157,12 +158,16 @@ void Deque<T, QUEUE_SIZE>::reset()
 }
 
 template <typename T, size_t QUEUE_SIZE>
-void Deque<T, QUEUE_SIZE>::push_back(const T &t)
+bool Deque<T, QUEUE_SIZE>::push_back(const T &t)
 {
     LockGuard lock_guard(&m_mutex);
     if (m_tail_ptr < m_array_end) {
         *m_tail_ptr = t;
         m_tail_ptr++;
+        return true;
+    } else {
+        //ph_print_int(7700);
+        return false;
     }
 }
 
@@ -243,14 +248,13 @@ void steal() {
     victim.pod    = pod % (numPXNPods());
     victim.core   = core % (numPodCores());
     victim.thread = thread % (numCoreThreads());
-    //printf("steal from %ld %ld %ld %ld\n", victim.pxn, victim.pod, victim.core, victim.thread);
     auto *victim_queue = task_queue_of(victim);
 
     // pop from the victim's back
     task *task = victim_queue->pop_back();
-
     if (task != nullptr) {
         // execute the task
+        //ph_print_hex((unsigned long)task);
         task->execute();
     }
 }
@@ -266,6 +270,7 @@ void find_work() {
         task *task = my_queue->pop_front();
         if (task != nullptr) {
             // execute the task
+            //ph_print_hex((unsigned long)task);
             task->execute();
             return;
         }
@@ -281,7 +286,12 @@ void find_work() {
  */
 void spawn(task *task) {
     // new tasks are placed at front
-    my_task_queue()->push_back(task);
+    bool complete = my_task_queue()->push_back(task);
+    if (!complete) {
+        ph_print_int(7700);
+        // execute if task cannot be pushed
+        task->execute();
+    }
 }
 
 /**
@@ -336,6 +346,7 @@ int main(int argc, char *argv[])
         ready = atomic_load_i64(num_threads_ready_ptr());
         wait_cycles(32);
     }
+
     if (tid() == 0) {
         // call main
         auto *call_main_p = new_task<task_impl<call_main>>(argc, argv);

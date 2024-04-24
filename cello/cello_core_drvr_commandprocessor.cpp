@@ -19,7 +19,6 @@ cello_command_processor_app::cello_command_processor_app(int argc, char **argv)
 void cello_command_processor_app::run()
 {
     load_executable();
-    allocate_application_data();
     input_application_data();
     configure_cello();
     run_cores();
@@ -34,8 +33,13 @@ void cello_command_processor_app::load_executable()
 void cello_command_processor_app::configure_cello()
 {
     cfg_ = exe_.symbol<cello_config>("cello_configuration", Place{});
-    DrvAPIAddress base = DrvAPIVAddress::MainMemBase(myPXNId()).encode() + 0x1000;
-    DrvAPIAddress size = pxnDRAMSize() - 0x1000;
+    // this only works if the allocator remains a bump allocator
+    DrvAPIAddress base =
+        DrvAPI::DrvAPIMemoryAlloc(DrvAPI::DrvAPIMemoryDRAM, sizeof(uint64_t));
+    DrvAPIAddress dram_base =
+        DrvAPIVAddress::MainMemBase(myPXNId())
+        .encode();
+    DrvAPIAddress size = pxnDRAMSize() - (base - dram_base) - 0x1000; // reserve last 4KB
     CMD_DBG("base: " << FMT_ADDR(base) << ", size: " << FMT_SIZE(size) << std::endl);
     cfg_->allocator_base() = base;
     cfg_->allocator_size() = size;    
@@ -52,6 +56,7 @@ void cello_command_processor_app::run_cores()
 
 int CelloCommandPorcessorMain(int argc, char *argv[])
 {
+    DrvAPI::DrvAPIMemoryAllocatorInit();
     cmd_dbg("Hello, Cello Command Processor!\n");
     auto *app = MakeApp(argc, argv);
     app->run();

@@ -42,8 +42,8 @@ private:
  */
 template <typename TaskType, typename ...Args>
 TaskType *new_task(Args &&...args) {
-    void *task = malloc(sizeof(TaskType));
-    //void *task = allocate_dram(sizeof(TaskType));
+    //void *task = malloc(sizeof(TaskType));
+    void *task = allocate_dram(sizeof(TaskType));
     new (task) TaskType(std::forward<Args>(args)...);
     return reinterpret_cast<TaskType *>(task);
 }
@@ -54,8 +54,8 @@ TaskType *new_task(Args &&...args) {
 template <typename TaskType>
 void free_task(TaskType *task) {
     task->~TaskType();
-    free(task);
-    //deallocate_dram(task, sizeof(TaskType));
+    //free(task);
+    deallocate_dram(task, sizeof(TaskType));
 }
 
 /**
