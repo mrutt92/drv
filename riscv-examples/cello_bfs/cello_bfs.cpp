@@ -39,33 +39,40 @@ int CelloMain(int argc, char *argv[])
 
     curr.insert(start);
     next.clear();
-    ph_print_time();
 
     bool switched = false,
         rev_not_fwd = false;
 
+    ph_print_time();
     while (!curr.empty()) {
         // decide direction
         vertex mu = 0, mf =0;
-        if (!rev_not_fwd && !switched) {
+
+        if (switched) {
+            rev_not_fwd = false;
+        } else if (!rev_not_fwd) {
             curr.to_sparse();
             // find sum of in degree
-            curr.foreach([&mu, &g](vertex v){
-                common::atomic_add(&mu, g.out_degree(v));
+            curr.foreach([&mf, &g](vertex v){
+                common::atomic_add(&mf, g.out_degree(v));
             });
             // find sum degree unvisited
-            g.foreach_vertex([&mf, &g, distance](vertex v){
+            g.foreach_vertex([&mu, &g, distance](vertex v){
                 if (distance[v] == -1) {
-                    common::atomic_add(&mf, g.out_degree(v));
+                    common::atomic_add(&mu, g.out_degree(v));
                 }
             });
             rev_not_fwd = (mf > (mu/20));
         } else {
             rev_not_fwd = (curr.size() >= g.V()/20);
             switched = true;
-        }        
+        }
+
+        printf("advancing from frontier with %d vertices: ", curr.size());
+
         if (rev_not_fwd) {
             // reverse direction
+            printf("reverse\n");
             curr.to_dense();
             g.foreach_vertex([&curr, &next, &g, distance](vertex v){
                 if (distance[v] == -1) {
@@ -78,6 +85,7 @@ int CelloMain(int argc, char *argv[])
                 }
             });            
         } else {
+            printf("forward\n");
             // forward direction
             curr.to_sparse();
             curr.foreach([&next, &g, distance](vertex v){
@@ -91,7 +99,7 @@ int CelloMain(int argc, char *argv[])
         }
         std::swap(curr, next);
         next.clear();
-        next.to_dense();        
+        next.to_dense();
     }
     ph_print_time();
 
