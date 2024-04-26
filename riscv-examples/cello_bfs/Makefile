@@ -7,7 +7,7 @@ CELLO_BACKEND := DRVR
 include $(DRV_DIR)/mk/cello.mk
 
 THREADS := 1
-CORES := 1
+CORES := 8
 GRAPH := u10k16
 START := 0
 ###############

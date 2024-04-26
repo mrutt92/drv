@@ -264,6 +264,17 @@ struct vertex_set {
     }
 
     /**
+     * get the number of vertices in the set
+     */
+    static vertex_type SIZE(pointer<vertex_set> vertex_set) {
+        if (vertex_set->is_dense()) {
+            return vertex_set->dense()->n();
+        } else {
+            return vertex_set->sparse()->n();
+        }
+    }
+
+    /**
      * clear a vertex set
      */
     static void CLEAR(pointer<vertex_set> vertex_set) {
@@ -349,6 +360,17 @@ struct vertex_set {
         }
     }
 
+    /**
+     * return true if the vertex is in the set
+     */
+    static bool CONTAINS(pointer<vertex_set> vertex_set, vertex_type v) {
+        if (vertex_set->is_dense()) {
+            return dense_set::CONTAINS(vertex_set->dense(), v);
+        } else {
+            return false;
+        }
+    }
+
 #ifdef RISCV
     void init(vertex_type V, bool is_dense) {
         INIT(this, V, is_dense);
@@ -374,6 +396,12 @@ struct vertex_set {
     }
     bool empty() {
         return EMPTY(this);
+    }
+    vertex_type size() {
+        return SIZE(this);
+    }
+    bool contains(vertex_type v) {
+        return CONTAINS(this, v);
     }
 #endif
 };
@@ -415,6 +443,20 @@ struct bidirectional_graph {
     template <typename Body>
     void foreach_in_edge(vertex_type v, Body &&body) {
         rev().foreach_edge(v, body);
+    }
+
+    /**
+     * get out degree
+     */
+    vertex_type out_degree(vertex_type v) {
+        return fwd().degree(v);
+    }
+
+    /**
+     * get in degree
+     */
+    vertex_type in_degree(vertex_type v) {
+        return rev().degree(v);
     }
 #endif
 };
@@ -462,6 +504,20 @@ class value_handle<bidirectional_graph> {
     template <typename Body>
     void foreach_in_edge(vertex_type v, Body &&body) {
         rev().foreach_edge(v, body);
+    }
+
+    /**
+     * get out degree
+     */
+    vertex_type out_degree(vertex_type v) {
+        return fwd().degree(v);
+    }
+
+    /**
+     * get in degree
+     */
+    vertex_type in_degree(vertex_type v) {
+        return rev().degree(v);
     }
 };
 }

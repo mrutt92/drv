@@ -46,6 +46,10 @@ struct csr {
         });
     }
 
+    static idx_type NUM_NONZEROS(pointer<csr> csr, idx_type row) {
+        return csr->offsets()[row+1] - csr->offsets()[row];
+    }
+    
 #ifdef RISCV
     template <typename Body>
     void foreach_row(Body &&body) {
@@ -55,6 +59,10 @@ struct csr {
     template <typename Body>
     void foreach_nonzero(idx_type row, Body &&body) {
         FOREACH_NONZERO(this, row, body);
+    }
+
+    idx_type num_nonzeros(idx_type row) {
+        return NUM_NONZEROS(this, row);
     }
 #endif
 };
@@ -82,6 +90,12 @@ struct csr_graph {
     const pointer<vertex_type> &offsets() const { return CSR().offsets(); }
     const pointer<vertex_type> &edges() const { return CSR().nonzeros(); }
 
+
+    static
+    vertex_type DEGREE(pointer<csr_graph> graph, vertex_type v) {
+        return csr_type::NUM_NONZEROS(common::addressof(graph->CSR()), v);
+    }
+    
     template <typename Body>
     static
     void FOREACH_VERTEX(pointer<csr_graph> graph, Body&&body) {
@@ -102,6 +116,9 @@ struct csr_graph {
     template <typename Body>
     void foreach_edge(vertex_type v, Body &&body) {
         FOREACH_EDGE(this, v, body);
+    }
+    vertex_type degree(vertex_type v) {
+        return DEGREE(this, v);
     }
 #endif
     
@@ -145,6 +162,10 @@ class value_handle<common::csr<idx_type>> {
     void foreach_nonzero(idx_type row, Body &&body) {
         FOREACH_NONZERO(this->address(), row, body);
     }
+
+    idx_type num_nonzeros(idx_type row) {
+        return NUM_NONZEROS(this->address(), row);
+    }
 };
 /**
  * DrvX handle for CSR graph
@@ -187,6 +208,10 @@ class value_handle<common::csr_graph<VERTEX_TYPE>> {
     template <typename Body>
     void foreach_edge(vertex_type v, Body &&body) {
         graph_type::FOREACH_EDGE(this->address(), v, body);
+    }
+
+    vertex_type degree(vertex_type v) {
+        return graph_type::DEGREE(this->address(), v);
     }
 };
 }

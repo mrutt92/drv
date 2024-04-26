@@ -40,16 +40,55 @@ int CelloMain(int argc, char *argv[])
     curr.insert(start);
     next.clear();
     ph_print_time();
+
+    bool switched = false,
+        rev_not_fwd = false;
+
     while (!curr.empty()) {
-        curr.to_sparse();
-        curr.foreach([&next, &g, distance](vertex v){
-            g.foreach_out_edge(v, [&next, v, distance](vertex u) {
-                if (distance[u] == -1) {
-                    distance[u] = distance[v] + 1;
-                    next.insert(u);
+        // decide direction
+        vertex mu = 0, mf =0;
+        if (!rev_not_fwd && !switched) {
+            curr.to_sparse();
+            // find sum of in degree
+            curr.foreach([&mu, &g](vertex v){
+                common::atomic_add(&mu, g.out_degree(v));
+            });
+            // find sum degree unvisited
+            g.foreach_vertex([&mf, &g, distance](vertex v){
+                if (distance[v] == -1) {
+                    common::atomic_add(&mf, g.out_degree(v));
                 }
             });
-        });
+            rev_not_fwd = (mf > (mu/20));
+        } else {
+            rev_not_fwd = (curr.size() >= g.V()/20);
+            switched = true;
+        }        
+        if (rev_not_fwd) {
+            // reverse direction
+            curr.to_dense();
+            g.foreach_vertex([&curr, &next, &g, distance](vertex v){
+                if (distance[v] == -1) {
+                    g.foreach_in_edge(v, [&next, &curr, v, distance](vertex u) {
+                        if (curr.contains(u)) {
+                            distance[v] = distance[u] + 1;
+                            next.insert(v);
+                        }
+                    });
+                }
+            });            
+        } else {
+            // forward direction
+            curr.to_sparse();
+            curr.foreach([&next, &g, distance](vertex v){
+                g.foreach_out_edge(v, [&next, v, distance](vertex u) {
+                    if (distance[u] == -1) {
+                        distance[u] = distance[v] + 1;
+                        next.insert(u);
+                    }
+                });
+            });
+        }
         std::swap(curr, next);
         next.clear();
         next.to_dense();        
