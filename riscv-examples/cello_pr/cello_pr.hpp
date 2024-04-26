@@ -1,13 +1,14 @@
 #ifndef CELLO_PR_HPP
 #define CELLO_PR_HPP
 #include <cstdint>
+#include <vertex.hpp>
+#include <edge.hpp>
+#include <field.hpp>
+#include <csr.hpp>
 #ifndef RISCV
 #include <DrvAPI.hpp>
-#include <vector>
 #endif
 
-typedef int32_t vertex;
-typedef vertex edge;
 
 #ifdef RISCV
 template <typename T>
@@ -17,54 +18,8 @@ template <typename T>
 using pointer = DrvAPI::pointer<T>;
 #endif
 
-#ifndef FIELD
-#define FIELD(type, field, field_data)          \
-    type field_data;                            \
-    type & field() { return field_data; }       \
-    const type & field() const { return field_data; }
-#endif
+using graph = common::csr_graph<vertex>;
 
-/**
- * csr graph
- */
-struct graph {
-    FIELD(vertex, V, _V);
-    FIELD(edge, E, _E);
-    FIELD(pointer<vertex>, offsets, _offsets);
-    FIELD(pointer<edge>, edges, _edges);
-
-    template <typename Dst, typename Src>
-    static void copy(Dst &dst, const Src &src) {
-        dst.V() = src.V();
-        dst.E() = src.E();
-        dst.offsets() = src.offsets();
-        dst.edges() = src.edges();
-    }
-};
-
-#ifndef RISCV
-namespace DrvAPI
-{
-template <>
-class value_handle<graph> {
-    DRV_API_VALUE_HANDLE_DEFAULTS(graph);
-    DRV_API_VALUE_HANDLE_FIELD(graph, V, vertex, _V);
-    DRV_API_VALUE_HANDLE_FIELD(graph, E, edge, _E);
-    DRV_API_VALUE_HANDLE_FIELD(graph, offsets, pointer<vertex>, _offsets);
-    DRV_API_VALUE_HANDLE_FIELD(graph, edges, pointer<edge>, _edges);
-    void init(int V, int E,
-              const std::vector<int> &offsets,const std::vector<int> &edges) {
-        this->V() = (vertex)V;
-        this->E() = (edge)E;
-        constexpr auto memtype = DrvAPI::DrvAPIMemoryDRAM;
-        this->offsets() = (pointer<vertex>)
-            DrvAPI::DrvAPIMemoryAlloc(memtype, (V+1)*sizeof(vertex));
-        this->edges() = (pointer<edge>)
-            DrvAPI::DrvAPIMemoryAlloc(memtype, E*sizeof(edge));
-    }
-};
-}
-#endif
 
 /**
  * pagerank configuration
@@ -90,12 +45,12 @@ namespace DrvAPI
 {
 template <>
 class value_handle<pagerank_config> {
-    DRV_API_VALUE_HANDLE_DEFAULTS(pagerank_config);
-    DRV_API_VALUE_HANDLE_FIELD(pagerank_config, g, pointer<graph>, _g);
-    DRV_API_VALUE_HANDLE_FIELD(pagerank_config, old_rank, pointer<float>, _old_rank);
-    DRV_API_VALUE_HANDLE_FIELD(pagerank_config, new_rank, pointer<float>, _new_rank);
-    DRV_API_VALUE_HANDLE_FIELD(pagerank_config, out_degree, pointer<vertex>, _out_degree);
-    DRV_API_VALUE_HANDLE_FIELD(pagerank_config, contrib, pointer<float>, _contrib);
+    VH_DEFAULTS(pagerank_config);
+    VH_FIELD(pagerank_config, g, _g);
+    VH_FIELD(pagerank_config, old_rank, _old_rank);
+    VH_FIELD(pagerank_config, new_rank, _new_rank);
+    VH_FIELD(pagerank_config, out_degree, _out_degree);
+    VH_FIELD(pagerank_config, contrib, _contrib);
 };
 }
 #endif

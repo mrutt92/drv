@@ -6,7 +6,7 @@
 #include "cello_core_drvr_commandprocessor.hpp"
 #include "cello_pr.hpp"
 
-DrvAPI::dram_static<graph> graph;
+DrvAPI::dram_static<graph> the_graph;
 
 class pagerank_app : public cello_command_processor_app {
 public:
@@ -40,8 +40,8 @@ void pagerank_app::input_application_data() {
         .symbol("pagerank_configure")
         .encode();
     CMD_DBG("found pagerank configure @" << CMD_FMT_ADDR(cfg) << std::endl);
-    graph.init(V, E, rev_offsets, rev_edges);
-    cfg->g() = graph.address();
+    the_graph.init(V, E, rev_offsets, rev_edges);
+    cfg->g() = the_graph.address();
     auto memtype = DrvAPI::DrvAPIMemoryDRAM;
     cfg->old_rank() = (pointer<float>)
         DrvAPI::DrvAPIMemoryAlloc(memtype, V * sizeof(float));

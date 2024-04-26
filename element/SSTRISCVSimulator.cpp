@@ -297,6 +297,22 @@ void RISCVSimulator::visitAMOADDW_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
     visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
 }
 
+void RISCVSimulator::visitAMOORW(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
+void RISCVSimulator::visitAMOORW_RL(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
+void RISCVSimulator::visitAMOORW_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
+void RISCVSimulator::visitAMOORW_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
 void RISCVSimulator::visitAMOSWAPD(RISCVHart &hart, RISCVInstruction &i) {
     visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicSWAP);
 }
@@ -311,6 +327,22 @@ void RISCVSimulator::visitAMOSWAPD_AQ(RISCVHart &hart, RISCVInstruction &i) {
 
 void RISCVSimulator::visitAMOSWAPD_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
     visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicSWAP);
+}
+
+void RISCVSimulator::visitAMOORD(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
+}
+
+void RISCVSimulator::visitAMOORD_RL(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
+}
+
+void RISCVSimulator::visitAMOORD_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
+}
+
+void RISCVSimulator::visitAMOORD_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
 }
 
 void RISCVSimulator::visitAMOADDD(RISCVHart &hart, RISCVInstruction &i) {

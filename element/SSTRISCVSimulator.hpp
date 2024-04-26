@@ -63,6 +63,11 @@ private:
     template <typename T>
     void visitAMO(RISCVHart &hart, RISCVInstruction &i, DrvAPI::DrvAPIMemAtomicType op);
 
+    void visitAMOORW(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORW_RL(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORW_AQ(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORW_RL_AQ(RISCVHart &hart, RISCVInstruction &i) override;
+
     void visitAMOSWAPW(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOSWAPW_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOSWAPW_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
@@ -82,6 +87,11 @@ private:
     void visitAMOADDD_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOADDD_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOADDD_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+
+    void visitAMOORD(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORD_RL(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORD_AQ(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORD_RL_AQ(RISCVHart &hart, RISCVInstruction &i) override;
 
     template <typename T>
     void visitAMOCAS(RISCVHart &hart, RISCVInstruction &i);

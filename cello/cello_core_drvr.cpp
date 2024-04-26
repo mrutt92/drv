@@ -288,7 +288,7 @@ void spawn(task *task) {
     // new tasks are placed at front
     bool complete = my_task_queue()->push_back(task);
     if (!complete) {
-        ph_print_int(7700);
+        //ph_print_int(7700);
         // execute if task cannot be pushed
         task->execute();
     }

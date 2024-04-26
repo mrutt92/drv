@@ -1,5 +1,6 @@
 #ifndef CELLO_CORE_DRVR_HPP
 #define CELLO_CORE_DRVR_HPP
+#include <algorithm>
 #include <utility>
 #include <cstdlib>
 #include <new>
@@ -355,6 +356,18 @@ void parallel_for(Idx start, Idx stop, Idx step, Idx grain, F && body) {
     // create loop info
     loop_info<Idx> info(start, stop, step, grain);
     parallel_for( info, std::forward<F>(body));
+}
+
+/**
+ * @brief parallel for loop block
+ */
+template <typename Idx, typename F>
+void parallel_for_block(Idx start, Idx stop, Idx block_size, F && body) {
+    loop_info<Idx> info(start, stop, block_size);
+    parallel_for(info, [stop, block_size, body](Idx i) {
+        Idx end = std::min(i + block_size, stop);
+        body(i, end);
+    });
 }
 }
 

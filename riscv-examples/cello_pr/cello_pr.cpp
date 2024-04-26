@@ -10,7 +10,6 @@
 #endif
 
 l2sp_storage(pagerank_config) pagerank_configure;
-l1sp_storage(int32_t) count[CORE_THREADS];
 
 void pagerank(pagerank_config cfg)
 {
