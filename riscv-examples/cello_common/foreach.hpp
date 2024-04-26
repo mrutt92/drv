@@ -51,7 +51,7 @@ struct parallel_foreach {
 struct parallel_foreach_block {
     template <typename Idx, typename Body>
     void operator()(Idx start, Idx stop, Idx block_size, Body && body) const {
-        cello::parallel_for(start, stop, block_size, [body, stop, block_size](Idx i) {
+        cello::parallel_for(start, stop, block_size, [body, stop, block_size](Idx i) mutable {
             Idx end = i + block_size;
             if (end > stop) {
                 end = stop;

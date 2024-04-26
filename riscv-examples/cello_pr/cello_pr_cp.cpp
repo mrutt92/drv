@@ -17,11 +17,13 @@ public:
     pagerank_app &operator=(pagerank_app &&) = delete;
     virtual ~pagerank_app() = default;
     virtual void input_application_data() override;
+    virtual void output_application_data() override;
 
     std::string graph_path;
     std::vector<int> fwd_offsets, rev_offsets;
     std::vector<int> fwd_edges, rev_edges;
     int V, E;
+    pointer<pagerank_config> cfg;
 };
 
 pagerank_app::pagerank_app(int argc, char **argv)
@@ -35,8 +37,7 @@ pagerank_app::pagerank_app(int argc, char **argv)
 }
 
 void pagerank_app::input_application_data() {
-    pointer<pagerank_config> cfg
-        = exe_
+    cfg = exe_
         .symbol("pagerank_configure")
         .encode();
     CMD_DBG("found pagerank configure @" << CMD_FMT_ADDR(cfg) << std::endl);
@@ -51,12 +52,22 @@ void pagerank_app::input_application_data() {
         DrvAPI::DrvAPIMemoryAlloc(memtype, V * sizeof(int));
     cfg->contrib() = (pointer<float>)
         DrvAPI::DrvAPIMemoryAlloc(memtype, V * sizeof(float));
-    for (vertex v = 0; v < V; v++) {
+    the_graph.foreach_vertex([&](vertex v) mutable {
         cfg->old_rank()[v] = 1.0 / V;
         cfg->new_rank()[v] = 0.0;
-        cfg->out_degree()[v] = fwd_offsets[v + 1] - fwd_offsets[v];
+        cfg->out_degree()[v]
+            = fwd_offsets[v + 1]
+            - fwd_offsets[v];
         cfg->contrib()[v] = cfg->old_rank()[v] / cfg->out_degree()[v];
-    }
+    });
+}
+
+void pagerank_app::output_application_data() {
+    float sum = 0.0;
+    the_graph.foreach_vertex([this,&sum](vertex v) mutable {
+        sum += cfg->new_rank()[v];
+    }, false);
+    std::cout << "sum of ranks = " << sum << std::endl;
 }
 
 cello_command_processor_app *MakeApp(int argc, char *argv[])

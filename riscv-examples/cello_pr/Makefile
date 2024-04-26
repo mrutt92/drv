@@ -6,9 +6,9 @@ DRV_DIR := $(shell git rev-parse --show-toplevel)
 CELLO_BACKEND := DRVR
 include $(DRV_DIR)/mk/cello.mk
 
-THREADS := 1
-CORES := 1
-GRAPH := u7k1
+THREADS := 8
+CORES := 4
+GRAPH := u12k16
 
 ###############
 # cello stuff #

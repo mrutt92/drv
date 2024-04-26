@@ -38,12 +38,18 @@ struct csr {
     }
 
     template <typename Body>
-    static void FOREACH_NONZERO(pointer<csr> csr, idx_type row, Body &&body) {
-        common::parallel_foreach_block{}(csr->offsets()[row], csr->offsets()[row+1], (idx_type)16, [csr, body](idx_type start, idx_type end) {
-            for (idx_type nz = start; nz < end; nz++) {
+    static void FOREACH_NONZERO(pointer<csr> csr, idx_type row, Body &&body, bool parallel=true) {
+        if (parallel) {
+            common::parallel_foreach_block{}(csr->offsets()[row], csr->offsets()[row+1], (idx_type)16, [csr, body](idx_type start, idx_type end) mutable {
+                for (idx_type nz = start; nz < end; nz++) {
+                    body(csr->nonzeros()[nz]);
+                }
+            });
+        } else {
+            common::serial_foreach{}(csr->offsets()[row], csr->offsets()[row+1], (idx_type)1, [csr, body](idx_type nz) mutable {
                 body(csr->nonzeros()[nz]);
-            }
-        });
+            });
+        }
     }
 
     static idx_type NUM_NONZEROS(pointer<csr> csr, idx_type row) {
@@ -57,8 +63,8 @@ struct csr {
     }
 
     template <typename Body>
-    void foreach_nonzero(idx_type row, Body &&body) {
-        FOREACH_NONZERO(this, row, body);
+    void foreach_nonzero(idx_type row, Body &&body, bool parallel=true) {
+        FOREACH_NONZERO(this, row, body, parallel);
     }
 
     idx_type num_nonzeros(idx_type row) {
@@ -103,8 +109,8 @@ struct csr_graph {
     }
 
     template <typename Body>
-    static void FOREACH_EDGE(pointer<csr_graph> graph, vertex_type v, Body &&body) {
-        csr_type::FOREACH_NONZERO(common::addressof(graph->CSR()), v, body);
+    static void FOREACH_EDGE(pointer<csr_graph> graph, vertex_type v, Body &&body, bool parallel=true) {
+        csr_type::FOREACH_NONZERO(common::addressof(graph->CSR()), v, body, parallel);
     }
 
 #ifdef RISCV
@@ -114,8 +120,8 @@ struct csr_graph {
     }
 
     template <typename Body>
-    void foreach_edge(vertex_type v, Body &&body) {
-        FOREACH_EDGE(this, v, body);
+    void foreach_edge(vertex_type v, Body &&body, bool parallel=true) {
+        FOREACH_EDGE(this, v, body, parallel);
     }
     vertex_type degree(vertex_type v) {
         return DEGREE(this, v);
