@@ -65,6 +65,38 @@ struct parallel_foreach_block {
 using parallel_foreach = serial_foreach;
 using parallel_foreach_block = serial_foreach_block;
 #endif
-}
 
+/**
+ * @brief for-each with parallel as a runtime parameter.
+ */
+struct foreach {
+    foreach(bool parallel) : _parallel(parallel) {}
+    template <typename Idx, typename Body>
+    void operator()(Idx start, Idx stop, Idx step, Body && body) const {
+        if (_parallel) {
+            parallel_foreach()(start, stop, step, std::forward<Body>(body));
+        } else {
+            serial_foreach()(start, stop, step, std::forward<Body>(body));
+        }
+    }
+    bool _parallel;
+};
+
+/**
+ * @brief for-each with block size and parallel as a runtime parameter.
+ */
+struct foreach_block {
+    foreach_block(bool parallel) : _parallel(parallel) {}
+    template <typename Idx, typename Body>
+    void operator()(Idx start, Idx stop, Idx block_size, Body && body) const {
+        if (_parallel) {
+            parallel_foreach_block()(start, stop, block_size, std::forward<Body>(body));
+        } else {
+            serial_foreach_block()(start, stop, block_size, std::forward<Body>(body));
+        }
+    }
+    bool _parallel;
+};
+
+} // namespace common
 #endif // FOREACH_HPP

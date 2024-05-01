@@ -23,11 +23,7 @@ struct sparse_vector {
 
     template <typename Body>
     static void FOREACH_NONZERO(pointer<sparse_vector> vec, Body &&body, bool parallel) {
-        if (parallel) {
-            common::parallel_foreach{}((idx_type)0, (idx_type)vec->NNZ(), (idx_type)1, body);
-        } else {
-            common::serial_foreach{}((idx_type)0, (idx_type)vec->NNZ(), (idx_type)1, body);
-        }        
+        common::foreach{parallel}((idx_type)0, vec->NNZ(), (idx_type)1, body);
     }
 
     template <typename Dst, typename Src>
@@ -88,26 +84,16 @@ struct csr {
     static void FOREACH_ROW(pointer<csr> csr, idx_type start, idx_type stop,  Body &&body, bool parallel=true) {
         if (start < 0) start = 0;
         if (stop > csr->M()) stop = csr->M();
-        if (parallel) {
-            common::parallel_foreach{}(start, stop, (idx_type)1, body);
-        } else {
-            common::serial_foreach{}(start, stop, (idx_type)1, body);
-        }
+        common::foreach{parallel}(start, stop, (idx_type)1, body);
     }
 
     template <typename Body>
     static void FOREACH_NONZERO(pointer<csr> csr, idx_type row, Body &&body, bool parallel=true) {
-        if (parallel) {
-            common::parallel_foreach_block{}(csr->offsets()[row], csr->offsets()[row+1], (idx_type)16, [csr, body](idx_type start, idx_type end) mutable {
-                for (idx_type nz = start; nz < end; nz++) {
-                    body(csr->nonzeros()[nz]);
-                }
-            });
-        } else {
-            common::serial_foreach{}(csr->offsets()[row], csr->offsets()[row+1], (idx_type)1, [csr, body](idx_type nz) mutable {
+        common::foreach_block{parallel}(csr->offsets()[row], csr->offsets()[row+1], (idx_type)16, [csr, body](idx_type start, idx_type end) mutable {
+            for (idx_type nz = start; nz < end; nz++) {
                 body(csr->nonzeros()[nz]);
-            });
-        }
+            }
+        });                                        
     }    
 
     static idx_type NUM_NONZEROS(pointer<csr> csr, idx_type row) {

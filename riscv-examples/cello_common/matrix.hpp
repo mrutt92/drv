@@ -50,50 +50,28 @@ struct matrix {
         // error: this only works for a square matrix
         idx_type n = m->rows();
         idx_type iters = n * (n - 1) / 2;
-        if (parallel) {
-            common::parallel_foreach{}((Idx)0, iters, (Idx)1, [m, body](Idx k) mutable {
-                idx_type i, j;
-                std::tie(i, j) = UPPER_TRIANGLE_INDEX(m, k);
-                body(i, j);
-            });
-        } else {
-            common::serial_foreach{}((Idx)0, iters, (Idx)1, [m, body](Idx k) mutable {
-                idx_type i, j;
-                std::tie(i, j) = UPPER_TRIANGLE_INDEX(m, k);
-                body(i, j);
-            });
-        }
+        common::foreach{parallel}((Idx)0, iters, (Idx)1, [m, body](Idx k) mutable {
+            idx_type i, j;
+            std::tie(i, j) = UPPER_TRIANGLE_INDEX(m, k);
+            body(i, j);
+        });
     }
 
     template <typename Body>
     void FOREACH(pointer<matrix>m, Body &&body, bool parallel = true) {
         idx_type iters = m->rows() * m->columns();
-        if (parallel) {
-            common::parallel_foreach{}((Idx)0, iters, (Idx)1, [m, body](Idx k) mutable {
-                Idx i = k / m->rows();
-                Idx j = k % m->rows();
-                body(i, j);
-            });
-        } else {
-            common::serial_foreach{}((Idx)0, iters, (Idx)1, [m, body](Idx k) mutable {
-                Idx i = k / m->rows();
-                Idx j = k % m->rows();
-                body(i, j);
-            });
-        }
+        common::foreach{parallel}((Idx)0, iters, (Idx)1, [m, body](Idx k) mutable {
+            Idx i = k / m->rows();
+            Idx j = k % m->rows();
+            body(i, j);
+        });
     }
 
     template <typename Body>
     static void FOREACH_ROW(pointer<matrix> m, Body &&body, bool parallel = true) {
-        if (parallel) {
-            common::parallel_foreach{}((Idx)0, m->rows(), (Idx)1, [m, body](Idx i) mutable {
-                body(i);
-            });
-        } else {
-            common::serial_foreach{}((Idx)0, m->rows(), (Idx)1, [m, body](Idx i) mutable {
-                body(i);
-            });
-        }
+        common::foreach{parallel}((Idx)0, m->rows(), (Idx)1, [m, body](Idx i) mutable {
+            body(i);
+        });
     }
 
 #ifdef RISCV
