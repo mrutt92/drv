@@ -12,11 +12,58 @@
 
 namespace common
 {
+
+/**
+ * Sparse vector
+ */
+template <typename idx_type=int32_t>
+struct sparse_vector {
+    FIELD(idx_type, NNZ, _NNZ);
+    FIELD(pointer<idx_type>, nonzeros, _nonzeros);
+
+    template <typename Body>
+    static void FOREACH_NONZERO(pointer<sparse_vector> vec, Body &&body, bool parallel) {
+        if (parallel) {
+            common::parallel_foreach{}((idx_type)0, (idx_type)vec->NNZ(), (idx_type)1, body);
+        } else {
+            common::serial_foreach{}((idx_type)0, (idx_type)vec->NNZ(), (idx_type)1, body);
+        }        
+    }
+
+    template <typename Dst, typename Src>
+    static void copy(Dst &dst, const Src &src) {
+        dst.NNZ() = src.NNZ();
+        pointer<idx_type> _;
+        _ = src.nonzeros();
+        dst.nonzeros() = _;
+    }
+
+    static reference<idx_type> AT(pointer<sparse_vector> vec, idx_type i) {
+        return vec->nonzeros()[i];
+    }
+
+    static const_reference<idx_type> AT(const_pointer<sparse_vector> vec, idx_type i) {
+        return vec->nonzeros()[i];
+    }
+
+    #ifdef RISCV
+    reference<idx_type> at(idx_type i) {
+        return nonzeros()[i];
+    }
+
+    const_reference<idx_type> at(idx_type i) const {
+        return nonzeros()[i];
+    }
+    #endif
+};
+
 /**
  * CSR sparse matrix
  */
 template <typename idx_type=int32_t>
 struct csr {
+    typedef sparse_vector<idx_type> sparse_vector_type;
+    
     FIELD(idx_type, M, _M);
     FIELD(idx_type, NNZ, _NNZ);
     FIELD(pointer<idx_type>, offsets, _offsets);
@@ -33,8 +80,19 @@ struct csr {
     }
 
     template <typename Body>
-    static void FOREACH_ROW(pointer<csr> csr, Body &&body) {
-        common::parallel_foreach{}((idx_type)0, (idx_type)csr->M(), (idx_type)1, body);
+    static void FOREACH_ROW(pointer<csr> csr, Body &&body, bool parallel=true) {
+        FOREACH_ROW(csr, 0, csr->M(), body, parallel);
+    }
+
+    template <typename Body>
+    static void FOREACH_ROW(pointer<csr> csr, idx_type start, idx_type stop,  Body &&body, bool parallel=true) {
+        if (start < 0) start = 0;
+        if (stop > csr->M()) stop = csr->M();
+        if (parallel) {
+            common::parallel_foreach{}(start, stop, (idx_type)1, body);
+        } else {
+            common::serial_foreach{}(start, stop, (idx_type)1, body);
+        }
     }
 
     template <typename Body>
@@ -50,16 +108,37 @@ struct csr {
                 body(csr->nonzeros()[nz]);
             });
         }
-    }
+    }    
 
     static idx_type NUM_NONZEROS(pointer<csr> csr, idx_type row) {
         return csr->offsets()[row+1] - csr->offsets()[row];
     }
+
+
+    static sparse_vector_type ROW(pointer<csr> csr, idx_type row) {
+        sparse_vector_type vec;
+        vec.NNZ() = csr->offsets()[row+1] - csr->offsets()[row];
+        vec.nonzeros() = csr->nonzeros() + csr->offsets()[row];
+        return vec;
+    }
     
 #ifdef RISCV
+    sparse_vector_type row(idx_type row) {
+        return ROW(this, row);
+    }
+
+    const sparse_vector_type row(idx_type row) const {
+        return _offsets;
+    }
+    
     template <typename Body>
-    void foreach_row(Body &&body) {
-        FOREACH_ROW(this, body);
+    void foreach_row(Body &&body, bool parallel=true) {
+        FOREACH_ROW(this, body, parallel);
+    }
+
+    template <typename Body>
+    void foreach_row(idx_type start, idx_type stop, Body &&body, bool parallel=true) {
+        FOREACH_ROW(this, start, stop, body, parallel);
     }
 
     template <typename Body>
