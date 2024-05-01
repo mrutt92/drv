@@ -79,6 +79,7 @@ inline void lock(lock_t* lock_ptr) {
         lock_val = atomic_swap_i32(lock_ptr, 1);
         backoff = std::min(backoff << 1, max_backoff);
     } while (lock_val != 0);
+    asm volatile("" ::: "memory");
     return;
 }
 
@@ -89,6 +90,7 @@ inline void lock(lock_t* lock_ptr) {
  */
 inline void unlock(lock_t* lock_ptr) {
     atomic_swap_i32(lock_ptr, 0);
+    asm volatile("" ::: "memory");
 }
 
 /**
@@ -116,6 +118,132 @@ static void init_mem()
                         cello_configuration.allocator_size());
 }
 
+#ifdef CELLO_DRVR_DEQUE_LIST
+/**
+ * @brief linked list task queue
+ */
+class DequeList {
+public:
+    class InvariantGuard : public LockGuard {
+    public:
+        InvariantGuard(DequeList* deque) : LockGuard(&deque->m_mutex), deque_(deque) {
+            check_invariants();
+        }
+        ~InvariantGuard() {
+            check_invariants();
+        }
+        // invariants:
+        // m_head == nullptr <=> m_tail == nullptr
+        // m_head->prev == nullptr
+        // m_tail->next == nullptr
+        // path(x,y) := x == y || path(x->next, y)
+        // path(m_head, m_tail)
+        bool next_path(task* x, task* y) {
+            if ((x == nullptr) || (y == nullptr))
+                return false;            
+            if (x == y)
+                return true;
+            return next_path(x->next, y);
+        }
+        bool prev_path(task* x, task* y) {
+            if ((x == nullptr) || (y == nullptr))
+                return false;            
+            if (x == y)
+                return true;
+            return prev_path(x, y->prev);
+        }
+        void check_invariants() {
+            //#define DEBUG_DEQUE_LIST
+#ifdef DEBUG_DEQUE_LIST
+#define ASSERT(stmt) \
+            if (!(stmt)) {                                              \
+                printf("invariant failed: %s\n", #stmt);                \
+                while (1);                                              \
+            }
+            ASSERT((deque_->m_head == nullptr) == (deque_->m_tail == nullptr));
+            ASSERT((deque_->m_head == nullptr) || (deque_->m_head->prev == nullptr));
+            ASSERT((deque_->m_tail == nullptr) || (deque_->m_tail->next == nullptr));
+            ASSERT(!((deque_->m_head != nullptr) && (deque_->m_tail == nullptr)) || next_path(deque_->m_head, deque_->m_tail));
+            ASSERT(!((deque_->m_tail != nullptr) && (deque_->m_head == nullptr)) || prev_path(deque_->m_head, deque_->m_tail));
+#undef ASSERT
+#endif
+        }
+    private:
+        DequeList* deque_;
+    };
+    
+    DequeList() {}
+    ~DequeList() {}
+    void reset();
+    bool push_back(task* t);
+    task* pop_back();
+    task* pop_front();
+    bool unsafe_empty() const;
+
+private:
+    lock_t m_mutex;
+    task* m_head;
+    task* m_tail;
+};
+
+void DequeList::reset()
+{
+    m_head = nullptr;
+    m_tail = nullptr;
+    lock_init(&m_mutex);
+}
+
+bool DequeList::push_back(task* t)
+{
+    DequeList::InvariantGuard lock_guard(this);
+    t->prev = m_tail;
+    t->next = nullptr;    
+    if (m_tail) {        
+        m_tail->next = t;
+        m_tail = t;
+    } else {
+        m_head = t;
+        m_tail = t;
+    }
+    return true;
+}
+
+task* DequeList::pop_back()
+{
+    DequeList::InvariantGuard lock_guard(this);
+    task* t = m_tail;
+    if (t) {
+        m_tail = t->prev;
+        if (m_tail) {
+            m_tail->next = nullptr;
+        } else {
+            m_head = nullptr;
+        }
+    }
+    return t;
+}
+
+task* DequeList::pop_front()
+{
+    DequeList::InvariantGuard lock_guard(this);
+    task* t = m_head;
+    if (t) {
+        m_head = t->next;
+        if (m_head) {
+            m_head->prev = nullptr;
+        } else {
+            m_tail = nullptr;
+        }
+    }
+    return t;
+}
+
+bool DequeList::unsafe_empty() const
+{
+    return m_head == nullptr;
+}
+#endif
+
 /**
  * @brief a Deque
  */
@@ -141,8 +269,6 @@ private:
     T m_array[QUEUE_SIZE];
 };
 
-using TaskDeque = Deque<task*, 64>;
-
 template <typename T, size_t QUEUE_SIZE>
 void Deque<T, QUEUE_SIZE>::reset()
 {
@@ -166,7 +292,7 @@ bool Deque<T, QUEUE_SIZE>::push_back(const T &t)
         m_tail_ptr++;
         return true;
     } else {
-        //ph_print_int(7700);
+        ph_print_int(7700);
         return false;
     }
 }
@@ -202,6 +328,12 @@ T Deque<T, QUEUE_SIZE>::pop_front()
     return ret_val;
 }
 
+
+#ifdef CELLO_DRVR_DEQUE_LIST
+using TaskDeque = DequeList;
+#else
+using TaskDeque = Deque<task*, 64>;
+#endif
 l1sp_storage(TaskDeque) thread_task_queue[CORE_THREADS];
 /**
  * @brief get my task queue
@@ -288,7 +420,6 @@ void spawn(task *task) {
     // new tasks are placed at front
     bool complete = my_task_queue()->push_back(task);
     if (!complete) {
-        //ph_print_int(7700);
         // execute if task cannot be pushed
         task->execute();
     }

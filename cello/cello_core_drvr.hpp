@@ -16,6 +16,7 @@
 
 namespace cello
 {
+#define CELLO_DRVR_DEQUE_LIST
 /**
  * task base class
  */
@@ -23,6 +24,10 @@ struct task {
 public:
     task() {}
     virtual void execute() = 0;
+#ifdef CELLO_DRVR_DEQUE_LIST
+    task *next = nullptr;
+    task *prev = nullptr;
+#endif
 };
 
 /**
