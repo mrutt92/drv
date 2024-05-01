@@ -131,7 +131,8 @@ private:
     static constexpr uint64_t CSR_MPXNDRAMSIZE  = 0xF1E;
     static constexpr uint64_t CSR_MWAIT = 0xF1F;
     static constexpr uint64_t CSR_MSTATUS = 0x300;
-    
+
+    static constexpr uint64_t CSR_FFLAGS  = 0x001;
     static constexpr uint64_t CSR_FRM     = 0x002;
     static constexpr uint64_t CSR_MIE     = 0x304; // interrupt enable
     static constexpr uint64_t CSR_MTVEC   = 0x305; // where to jump on trap

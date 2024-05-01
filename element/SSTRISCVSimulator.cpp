@@ -443,6 +443,11 @@ uint64_t RISCVSimulator::visitCSRRWUnderMask(RISCVHart &hart, uint64_t csr, uint
     case CSR_MWAIT: // write-only
         core_->issueWaitRequest(wval & mask, core_->getHartId(shart));
         break;
+    case CSR_FFLAGS: // read-write
+        rval = shart.fflags();
+        shart.fflags() &= ~mask;
+        shart.fflags() |= wval & mask;
+        break;
     case CSR_FRM: // read-write
         rval = shart.rm();
         shart.rm() &= ~mask;
