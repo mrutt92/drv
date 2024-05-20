@@ -8,7 +8,7 @@ include $(DRV_DIR)/mk/cello.mk
 
 THREADS := 2
 CORES := 8
-GRAPH := u12k16
+GRAPH := u7k1
 START := 0
 ###############
 # cello stuff #

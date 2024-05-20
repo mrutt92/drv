@@ -69,6 +69,10 @@ template <typename T>
 pointer<T> addressof(T&v) {
     return &v;
 }
+template <typename T>
+const_pointer<T> addressof(const T&v) {
+    return &v;
+}
 #else
 template <typename T>
 pointer<T> addressof(DrvAPI::value_handle<T>v) {

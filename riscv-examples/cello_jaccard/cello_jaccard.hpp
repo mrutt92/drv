@@ -7,7 +7,7 @@
 
 using idx_type = int32_t;
 using sparse_type = common::csr<idx_type>;
-using matrix_type = common::matrix<idx_type, float>;
+using matrix_type = common::dynamic_matrix<idx_type, float>;
 using sparse_vector_type = common::sparse_vector<idx_type>;
 
 struct jaccard_config {

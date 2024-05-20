@@ -6,6 +6,19 @@
 #include "matrix.hpp"
 
 typedef int32_t idx_type;
+static constexpr idx_type BLOCK_M = 16;
+static constexpr idx_type BLOCK_N = 16;
+static constexpr idx_type BLOCK_K = 16;
+static constexpr idx_type M_BLOCKS  = GEMM_M / BLOCK_M;
+static constexpr idx_type N_BLOCKS  = GEMM_N / BLOCK_N;
+static constexpr idx_type K_BLOCKS = GEMM_K / BLOCK_K;
+
+static constexpr idx_type SUBBLOCK_M = 4;
+static constexpr idx_type SUBBLOCK_K = 4;
+static constexpr idx_type SUBBLOCK_W  = 2; // width of subblock
+
+static constexpr idx_type M_SUBBLOCKS = GEMM_M / SUBBLOCK_M;
+static constexpr idx_type K_SUBBLOCKS = GEMM_K / SUBBLOCK_K;
 
 template <int32_t M, int32_t N>
 using matrix_type =  common::static_matrix<GEMM_M, GEMM_N, int32_t, float>;
@@ -13,7 +26,10 @@ using matrix_type_A = matrix_type<GEMM_M, GEMM_N>;
 using matrix_type_B = matrix_type<GEMM_N, GEMM_K>;
 using matrix_type_C = matrix_type<GEMM_M, GEMM_K>;
 
-typedef common::static_matrix<16, 16, int32_t, float> block_type;
+typedef common::static_matrix<BLOCK_M, BLOCK_N, int32_t, float> block_type_A;
+typedef common::static_matrix<BLOCK_N, BLOCK_K, int32_t, float> block_type_B;
+typedef common::static_matrix<BLOCK_M, BLOCK_K, int32_t, float> block_type_C;
+
 
 struct gemm_config {
     FIELD(pointer<matrix_type_A>, A, _A);

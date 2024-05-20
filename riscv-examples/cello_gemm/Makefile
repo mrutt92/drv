@@ -5,12 +5,13 @@ DRV_DIR := $(shell git rev-parse --show-toplevel)
 #memsys := Latency70ns-1Greq
 CELLO_BACKEND := DRVR
 include $(DRV_DIR)/mk/cello.mk
+include $(DRV_DIR)/mk/eigen_config.mk
 
-THREADS := 4 
+THREADS := 1
 CORES := 16
-M := 32
-N := 32
-K := 32
+M := 256
+N := 256
+K := 256
 
 ###############
 # cello stuff #
@@ -36,6 +37,7 @@ vpath %.c   $(DRV_DIR)/riscv-examples/cello_common
 COMMAND_PROCESSOR_CXXSOURCE += cello_gemm_cp.cpp
 COMMAND_PROCESSOR_COMPILE_FLAGS += -I$(DRV_DIR)/riscv-examples/cello_common
 COMMAND_PROCESSOR_COMPILE_FLAGS += -DGEMM_M=$(M) -DGEMM_N=$(N) -DGEMM_K=$(K)
+COMMAND_PROCESSOR_COMPILE_FLAGS += $(EIGEN_CXXFLAGS)
 
 include $(DRV_DIR)/mk/riscv_common.mk
 

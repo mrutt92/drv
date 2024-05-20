@@ -7,7 +7,7 @@
 
 using idx_type = int32_t;
 using sparse_type = common::csr<idx_type>;
-using matrix_type = common::matrix<idx_type, float>;
+using matrix_type = common::dynamic_matrix<idx_type, float>;
 using sparse_vector_type = sparse_type::sparse_vector_type;
 
 struct tc_configure {

@@ -6,8 +6,8 @@ DRV_DIR := $(shell git rev-parse --show-toplevel)
 CELLO_BACKEND := DRVR
 include $(DRV_DIR)/mk/cello.mk
 
-THREADS := 8
-CORES := 1
+THREADS := 4
+CORES := 32
 GUPS_UPDATES = $(shell echo 2^16 | bc)
 GUPS_TABLE_SIZE = $(shell echo 2^26 | bc)
 
