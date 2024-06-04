@@ -231,48 +231,10 @@ class DRAMTile(Endpoint):
         # create the cache
         self.cache = self.make_cache()
         # connect the cache to the memory
-        mem_port = self.memory.setSubComponent("cpulink", "memHierarchy.MemNIC")
-        mem_port.addParams({
-            "group" : group["dram"],
-            "sources" : sources["dram"],
-            "destinations" : destinations["dram"],
-            "network_bw" : "1GB/s",
-        })
-        mem_port.addParams(nic_debug)
-        
-        cache_port = self.cache.setSubComponent("memlink", "memHierarchy.MemNIC")
-        cache_port.addParams({
-            "group" : group["vcache"],
-            "sources" : sources["vcache"],
-            "destinations" : destinations["vcache"],
-            "network_bw" : "1GB/s",            
-        })
-        cache_port.addParams(nic_debug)
-
-        rtr = sst.Component("dram_rtr", "merlin.hr_router")
-        rtr.addParams({
-            "id" : "0",
-            "num_ports" : 2,
-            "flit_size" : "64B",
-            "input_buf_size" : "1KB",
-            "output_buf_size" : "1KB",
-            "link_bw" : "1GB/s",
-            "xbar_bw" : "1GB/s",
-            "input_latency" : "1ps",
-            "output_latency" : "1ps",
-        })
-        rtr.setSubComponent("topology", "merlin.singlerouter")
-        
-        link = sst.Link("vcache2rtr")
-        link.connect(
-            (rtr, "port0", "1ps"),
-            (cache_port, "port", "1ps")
-        )
-        link = sst.Link("rtr2mem")
-        link.connect(
-            (rtr, "port1", "1ps"),
-            (mem_port, "port", "1ps")
-        )
+        mem_port = self.memory.setSubComponent("cpulink", "memHierarchy.MemLink")
+        cache_port = self.cache.setSubComponent("memlink", "memHierarchy.MemLink")
+        link = sst.Link("vcache2mem")
+        link.connect((cache_port, "port", "1ns"), (mem_port, "port", "1ns"))
         
     def make_memory(self):
         # create the memory
@@ -281,8 +243,8 @@ class DRAMTile(Endpoint):
             "clock" : "1GHz",
             "addr_range_start" : self.dramrange.start,
             "addr_range_end"   : self.dramrange.end,
-            "interleave_size"  : str(self.dramrange.interleave_size) + 'B',
-            "interleave_step"  : str(self.dramrange.interleave_step) + 'B',
+            "interleave_size"  : self.dramrange.interleave_size,
+            "interleave_step"  : self.dramrange.interleave_step,
             "debug" : 0,
             "debug_level" : 0,
             "verbose" : arguments.verbose_memory,
@@ -317,8 +279,8 @@ class DRAMTile(Endpoint):
             "mshr_num_entries" : 2,
             "addr_range_start" : self.dramrange.start,
             "addr_range_end" : self.dramrange.end,
-            "interleave_size" : str(self.dramrange.interleave_size) + 'B',
-            "interleave_step" : str(self.dramrange.interleave_step) + 'B',
+            "interleave_size" : self.dramrange.interleave_size,
+            "interleave_step" : self.dramrange.interleave_step,
         })
         cache.addParams(dram_cachectrl_debug)
         return cache
