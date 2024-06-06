@@ -3,7 +3,6 @@
 import sst
 from drv import *
 
-
 class MemoryBank(object):
     """
     Base class for memory banks
@@ -127,7 +126,7 @@ class DRAMBankBase(MemoryBank):
                 "mem_size" : self.address_range.bank_size,
             })
         elif (arguments.dram_backend == "dramsim3"):
-            backend = self.memory.setSubComponent("backend", "memHierarchy.dramsim3")
+            backend = self.memory.setSubComponent("backend", "Drv.DrvDRAMSim3MemBackend")
             backend.addParams({
                 "config_ini" : arguments.dram_backend_config,
                 "mem_size" : self.address_range.bank_size,
@@ -166,6 +165,12 @@ class DRAMBankBase(MemoryBank):
     def is_coherent(self):
         """
         Return true if this bank is coherent
+        """
+        raise NotImplementedError
+
+    def clock(self):
+        """
+        @brief return the clock frequency of this bank
         """
         raise NotImplementedError
 

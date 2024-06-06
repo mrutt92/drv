@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023 University of Washington
-#include "DrvAPIGlobal.hpp"
+#include "DrvAPISection.hpp"
 #include <sstream>
 #include <array>
 namespace DrvAPI

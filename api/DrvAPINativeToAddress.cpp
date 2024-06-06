@@ -5,7 +5,7 @@
 
 namespace DrvAPI {
 
-void DrvAPINativeToAddress(void *native, DrvAPIAddress *address, std::size_t *size) {
+void DrvAPINativeToAddress(const void *native, DrvAPIAddress *address, std::size_t *size) {
     DrvAPIThread::current()->nativeToAddress(native, address, size);
 }
 

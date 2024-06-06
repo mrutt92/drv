@@ -297,6 +297,22 @@ void RISCVSimulator::visitAMOADDW_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
     visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
 }
 
+void RISCVSimulator::visitAMOORW(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
+void RISCVSimulator::visitAMOORW_RL(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
+void RISCVSimulator::visitAMOORW_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
+void RISCVSimulator::visitAMOORW_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
 void RISCVSimulator::visitAMOSWAPD(RISCVHart &hart, RISCVInstruction &i) {
     visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicSWAP);
 }
@@ -311,6 +327,22 @@ void RISCVSimulator::visitAMOSWAPD_AQ(RISCVHart &hart, RISCVInstruction &i) {
 
 void RISCVSimulator::visitAMOSWAPD_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
     visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicSWAP);
+}
+
+void RISCVSimulator::visitAMOORD(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
+}
+
+void RISCVSimulator::visitAMOORD_RL(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
+}
+
+void RISCVSimulator::visitAMOORD_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
+}
+
+void RISCVSimulator::visitAMOORD_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
 }
 
 void RISCVSimulator::visitAMOADDD(RISCVHart &hart, RISCVInstruction &i) {
@@ -407,6 +439,14 @@ uint64_t RISCVSimulator::visitCSRRWUnderMask(RISCVHart &hart, uint64_t csr, uint
         break;
     case CSR_MPXNDRAMSIZE: // read-only
         rval = core_->sys().pxnDRAMSize();
+        break;
+    case CSR_MWAIT: // write-only
+        core_->issueWaitRequest(wval & mask, core_->getHartId(shart));
+        break;
+    case CSR_FFLAGS: // read-write
+        rval = shart.fflags();
+        shart.fflags() &= ~mask;
+        shart.fflags() |= wval & mask;
         break;
     case CSR_FRM: // read-write
         rval = shart.rm();
@@ -558,15 +598,14 @@ void RISCVSimulator::sysFSTAT(RISCVSimHart &shart, RISCVInstruction &i) {
     // set the return value
     shart.a(0) = r;
     // issue a write request
+
+    std::function<void(void)> completion
+        ([&shart](void) {
+            shart.stalledMemory() = false;
+        });
+
     shart.stalledMemory() = true;
-    RISCVCore::ICompletionHandler ch([&shart, sim_stat_s](StandardMem::Request *req) {
-        // handle the write response
-        shart.stalledMemory() = false;
-        delete req;
-    });
-    auto wr = new StandardMem::Write(stat_buf, sim_stat_s.size(), sim_stat_s);
-    wr->tid = core_->getHartId(shart);
-    core_->issueMemoryRequest(wr, wr->tid, ch);
+    sysWriteBuffer(shart, stat_buf, sim_stat_s, std::move(completion));
 }
 
 void RISCVSimulator::sysOPEN(RISCVSimHart &shart, RISCVInstruction &i) {
@@ -601,21 +640,49 @@ void RISCVSimulator::sysOPEN(RISCVSimHart &shart, RISCVInstruction &i) {
 void RISCVSimulator::sysWriteBuffer(RISCVSimHart &shart, StandardMem::Addr paddr, std::vector<uint8_t> &data, std::function<void(void)> && cont) {
     // create a large request handler
     size_t reqSz = core_->getMaxReqSize();
-    size_t nReqs = (data.size() + reqSz - 1)/ reqSz;
-    std::shared_ptr<LargeWriteHandler> handler(new LargeWriteHandler(nReqs, std::move(cont)));
+    size_t off = 0;
+    size_t n = data.size();
+    std::shared_ptr<LargeWriteHandler> handler(new LargeWriteHandler(0, std::move(cont)));
+
+    bool noncacheable = (DrvAPI::DrvAPIPAddress{paddr}.type() != DrvAPI::DrvAPIPAddress::TYPE_DRAM);
 
     // create a completion handler for when small requests return
     RISCVCore::ICompletionHandler ch([handler](StandardMem::Request *req) {
         handler->recvRsp(req);
     });
 
-    for (size_t i = 0; i < nReqs; ++i) {
-        size_t sz = std::min(data.size() - i * reqSz, reqSz);
-        std::vector<uint8_t> wdata(data.begin() + i * reqSz, data.begin() + i * reqSz + sz);
-        auto wr = new StandardMem::Write(paddr + i * reqSz, sz, wdata);
+    size_t nReqs = 0;
+    core_->output_.verbose(CALL_INFO, 10, RISCVCore::DEBUG_SYSCALLS, "paddr=%" PRIx64 ", size=%zu\n", paddr, n);
+
+    if (paddr % reqSz != 0) {
+        size_t sz = std::min(reqSz - (paddr % reqSz), n);
+        std::vector<uint8_t> wdata(data.begin()+off, data.begin()+off+sz);
+        auto wr = new StandardMem::Write(paddr, sz, wdata);
         wr->tid = core_->getHartId(shart);
+        if (noncacheable) wr->setNoncacheable();
+        core_->output_.verbose(CALL_INFO, 10, RISCVCore::DEBUG_SYSCALLS, "partial: paddr=%" PRIx64 ", size=%zu\n", paddr, sz);
         core_->issueMemoryRequest(wr, wr->tid, ch);
+        off += sz;
+        paddr += sz;
+        n -= sz;
+        nReqs++;
     }
+
+    while (n > 0) {
+        size_t sz = std::min(n, reqSz);
+        std::vector<uint8_t> wdata(data.begin()+off, data.begin()+off+sz);
+        auto wr = new StandardMem::Write(paddr, sz, wdata);
+        wr->tid = core_->getHartId(shart);
+        if (noncacheable) wr->setNoncacheable();
+        core_->output_.verbose(CALL_INFO, 10, RISCVCore::DEBUG_SYSCALLS, "partial: paddr=%" PRIx64 ", size=%zu\n", paddr, sz);
+        core_->issueMemoryRequest(wr, wr->tid, ch);
+        off += sz;
+        paddr += sz;
+        n -= sz;
+        nReqs++;
+    }
+
+    handler->setNRequests(nReqs);
 }
 
 /**
@@ -623,21 +690,53 @@ void RISCVSimulator::sysWriteBuffer(RISCVSimHart &shart, StandardMem::Addr paddr
  */
 void RISCVSimulator::sysReadBuffer(RISCVSimHart &shart, StandardMem::Addr paddr, size_t n, std::function<void(std::vector<uint8_t>&)> && cont) {
     // create a large request handler
+    std::shared_ptr<LargeReadHandler> handler(new LargeReadHandler(0, std::move(cont)));
     size_t reqSz = core_->getMaxReqSize();
-    size_t nReqs = (n + reqSz - 1)/ reqSz;
-    std::shared_ptr<LargeReadHandler> handler(new LargeReadHandler(nReqs, std::move(cont)));
 
     // create a completion handler for when small requests return
     RISCVCore::ICompletionHandler ch([handler](StandardMem::Request *req) {
         handler->recvRsp(req);
     });
 
-    for (size_t i = 0; i < nReqs; ++i) {
-        size_t sz = std::min(n - i * reqSz, reqSz);
-        auto rd = new StandardMem::Read(paddr + i * reqSz, sz);
+    size_t nReqs = 0;
+    bool noncacheable = (DrvAPI::DrvAPIPAddress{paddr}.type() != DrvAPI::DrvAPIPAddress::TYPE_DRAM);
+
+    // if paddr not aligned
+    //     issue up to alignment
+    core_->output_.verbose(CALL_INFO, 10, RISCVCore::DEBUG_SYSCALLS
+                             ,"paddr=%" PRIx64 ", size=%zu\n"
+                             ,paddr, n);
+    if (paddr % reqSz != 0) {
+        size_t sz = std::min(n, reqSz - (paddr % reqSz));
+        auto rd = new StandardMem::Read(paddr, sz);
         rd->tid = core_->getHartId(shart);
+        if (noncacheable) rd->setNoncacheable();
+        core_->output_.verbose(CALL_INFO, 10, RISCVCore::DEBUG_SYSCALLS
+                                 ,"partial: paddr=%" PRIx64 ", size=%zu\n"
+                                 ,paddr, sz);
         core_->issueMemoryRequest(rd, rd->tid, ch);
+        nReqs++;
+        paddr += sz;
+        n -= sz;
     }
+
+    // while n > 0;
+    //     align up to min(max, reqSz)
+    while (n > 0) {
+        size_t sz = std::min(n, reqSz);
+        auto rd = new StandardMem::Read(paddr, sz);
+        rd->tid = core_->getHartId(shart);
+        if (noncacheable) rd->setNoncacheable();
+        core_->output_.verbose(CALL_INFO, 10, RISCVCore::DEBUG_SYSCALLS
+                               ,"partial: paddr=%" PRIx64 ", size=%zu\n"
+                               ,paddr, sz);
+        core_->issueMemoryRequest(rd, rd->tid, ch);
+        nReqs++;
+        paddr += sz;
+        n -= sz;
+    }
+
+    handler->setNRequests(nReqs);
 }
 
 void RISCVSimulator::sysCLOSE(RISCVSimHart &shart, RISCVInstruction &i) {

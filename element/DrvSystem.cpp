@@ -35,3 +35,7 @@ double DrvSystem::getSeconds() {
 void DrvSystem::outputStatistics(const std::string &tagname) {
     core().outputStatistics(tagname);
 }
+
+void DrvSystem::registerUserClockHandler(const std::string &clock_rate, DrvAPI::DrvAPIUserClockHandler handler) {
+    core().registerUserClockHandler(clock_rate, handler);
+}

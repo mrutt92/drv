@@ -16,32 +16,49 @@
 struct foo {
     int   baz;
     float bar;
+    static void copy(foo &dst, const DrvAPI::value_handle<foo>&src);
+    static void copy(DrvAPI::value_handle<foo>&dst, const foo&src);
 };
 
 struct bar {
     int   obaz;
     float obar;
     float sum() const { return obaz + obar; }
+    static void copy(bar &dst, const DrvAPI::value_handle<bar>& src);
+    static void copy(DrvAPI::value_handle<bar> &dst, const bar &src);
 };
 
-DRV_API_REF_CLASS_BEGIN(bar)
-DRV_API_REF_CLASS_DATA_MEMBER(bar,obaz)
-DRV_API_REF_CLASS_DATA_MEMBER(bar,obar)
+DRV_API_VALUE_HANDLE_BEGIN(bar)
+DRV_API_VALUE_HANDLE_FIELD(bar,obaz,int,obaz)
+DRV_API_VALUE_HANDLE_FIELD(bar,obar,float,obar)
 float sum() const { return obar() + obaz(); }
-DRV_API_REF_CLASS_END(bar)
+DRV_API_VALUE_HANDLE_END(bar)
+using bar_ref = DrvAPI::value_handle<bar>;
 
-struct foo_ref {
-public:
-    foo_ref(uint64_t vaddr) : _fooptr(vaddr) {}
+DRV_API_VALUE_HANDLE_BEGIN(foo)
+DRV_API_VALUE_HANDLE_FIELD(foo,baz,int,baz)
+DRV_API_VALUE_HANDLE_FIELD(foo,bar,float,bar)
+DRV_API_VALUE_HANDLE_END(foo)
+using foo_ref = DrvAPI::value_handle<foo>;
 
-    DrvAPI::DrvAPIPointer<decltype(std::declval<foo>().baz)>::value_handle
-    baz() { return *DrvAPI::DrvAPIPointer<int>(_fooptr.vaddr_ + offsetof(foo, baz)); }
+void foo::copy(foo &dst, const DrvAPI::value_handle<foo>&src) {
+  dst.baz = src.baz();
+  dst.bar = src.bar();
+}
+void foo::copy(DrvAPI::value_handle<foo>&dst, const foo&src) {
+  dst.baz() = src.baz;
+  dst.bar() = src.bar;
+}
 
-    DrvAPI::DrvAPIPointer<decltype(std::declval<foo>().bar)>::value_handle
-    bar() { return *DrvAPI::DrvAPIPointer<float>(_fooptr.vaddr_ + offsetof(foo, bar)); }
-    
-    DrvAPI::DrvAPIPointer<foo> _fooptr;
-};
+void bar::copy(bar &dst, const DrvAPI::value_handle<bar>& src) {
+  dst.obaz = src.obaz();
+  dst.obar = src.obar();
+}
+
+void bar::copy(DrvAPI::value_handle<bar> &dst, const bar &src) {
+  dst.obaz() = src.obaz;
+  dst.obar() = src.obar;
+}
 
 int PointerMain(int argc, char* argv[])
 {
@@ -60,12 +77,19 @@ int PointerMain(int argc, char* argv[])
         // pr("fptr.baz() = %d\n", static_cast<int>(fptr.baz()));
         // pr("fptr.bar() = %f\n", static_cast<float>(fptr.bar()));
         DrvAPIPointer<bar> bptr(0x80000000ull);
-        bar_ref bref = &bptr[0];
+        bar_ref bref = bptr[0];
         bref.obaz() = 7;
         bref.obar() = 3.14159f;
         pr("bref.obaz() = %d\n", static_cast<int>(bref.obaz()));
         pr("bref.obar() = %f\n", static_cast<float>(bref.obar()));
         pr("bref.sum()  = %f\n", bref.sum());
+
+        bptr->obaz() = 42;
+        bptr->obar() = 2.71828f;
+        pr("bptr->obaz() = %d\n", static_cast<int>(bptr->obaz()));
+        pr("bptr->obar() = %f\n", static_cast<float>(bptr->obar()));
+        pr("bptr->sum()  = %f\n", bptr->sum());
+
         // void pointer
         DrvAPIPointer<void> voidptr = DrvAPI::DrvAPIVAddress::MyL2Base().encode();
         pr("voidptr = 0x%016" PRIx64 "\n", static_cast<uint64_t>(voidptr));

@@ -1,0 +1,58 @@
+
+PANDOHammerDrvX: program = /mnt/users/ssd3/homes/mrutt/work/AGILE/drv/examples/pointer_v2/pointer_v2.so
+
+i = 71, j = 71
+*kp = 71
+foo.b().x() = 32, foo.b().y() = 3.141593
+foo.x() = 1, foo.y() = 2.000000
+bar.to_string() = x: 32, y: 3.14159
+foo.b().x() = 32, foo.b().y() = 3.141593
+foo.x() = 1, foo.y() = 2.000000
+bar.to_string() = x: 32, y: 3.14159
+a = 1, b = 2, c = 5
+native test
+v[0] = 0
+v[1] = 1
+v[2] = 2
+v[3] = 3
+v[4] = 4
+v[5] = 5
+v[6] = 6
+v[7] = 7
+v[8] = 8
+v[9] = 9
+handle test
+v[0] = 0
+v[1] = 1
+v[2] = 2
+v[3] = 3
+v[4] = 4
+v[5] = 5
+v[6] = 6
+v[7] = 7
+v[8] = 8
+v[9] = 9
+static test
+v[0] = 0
+v[1] = 1
+v[2] = 2
+v[3] = 3
+v[4] = 4
+v[5] = 5
+v[6] = 6
+v[7] = 7
+v[8] = 8
+v[9] = 9
+l1sp_int = 1, l2sp_int = 2, dram_int = 3
+l1sp_int = 1
+l2sp_int = 2
+dram_int = 3
+l1sp_int + l2sp_int + dram_int = 12
+&bar_alias = 800000000018, &l1sp_bar = 800000000018
+bar.x() = 240, bar.y() = 0.000000
+bar.x() = 32, bar.y() = 3.141593
+bar.x() = 71, bar.y() = 6.283185
+&b = 8000000000f0
+x = 1, y = 2
+&x = 8000000000f8, &y = 800000000100
+Simulation is complete, simulated time: 3.29 us

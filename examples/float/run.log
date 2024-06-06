@@ -1,0 +1,7 @@
+
+PANDOHammerDrvX: program = /mnt/users/ssd3/homes/mrutt/work/AGILE/drv/examples/float/float.so
+
+c   = 2.000000
+g_c = 4.000000
+float_type::stats = num_mul: 2 num_div: 0 num_add: 0 num_sub: 0 num_muladd: 1
+Simulation is complete, simulated time: 188 ns

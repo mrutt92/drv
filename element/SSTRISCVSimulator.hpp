@@ -63,6 +63,11 @@ private:
     template <typename T>
     void visitAMO(RISCVHart &hart, RISCVInstruction &i, DrvAPI::DrvAPIMemAtomicType op);
 
+    void visitAMOORW(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORW_RL(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORW_AQ(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORW_RL_AQ(RISCVHart &hart, RISCVInstruction &i) override;
+
     void visitAMOSWAPW(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOSWAPW_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOSWAPW_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
@@ -82,6 +87,11 @@ private:
     void visitAMOADDD_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOADDD_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOADDD_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+
+    void visitAMOORD(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORD_RL(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORD_AQ(RISCVHart &hart, RISCVInstruction &i) override;
+    void visitAMOORD_RL_AQ(RISCVHart &hart, RISCVInstruction &i) override;
 
     template <typename T>
     void visitAMOCAS(RISCVHart &hart, RISCVInstruction &i);
@@ -115,12 +125,14 @@ private:
     static constexpr uint64_t CSR_MCOREHARTS = 0xF18;
     static constexpr uint64_t CSR_MPODCORES  = 0xF19;
     static constexpr uint64_t CSR_MPXNPODS   = 0xF1A;
-    static constexpr uint64_t CSR_MNUMPXN    = 0xF1B;
+    static constexpr uint64_t CSR_MNUMPXN    = 0xF1B;    
     static constexpr uint64_t CSR_MCOREL1SPSIZE = 0xF1C;
     static constexpr uint64_t CSR_MPODL2SPSIZE  = 0xF1D;
     static constexpr uint64_t CSR_MPXNDRAMSIZE  = 0xF1E;
+    static constexpr uint64_t CSR_MWAIT = 0xF1F;
     static constexpr uint64_t CSR_MSTATUS = 0x300;
-    
+
+    static constexpr uint64_t CSR_FFLAGS  = 0x001;
     static constexpr uint64_t CSR_FRM     = 0x002;
     static constexpr uint64_t CSR_MIE     = 0x304; // interrupt enable
     static constexpr uint64_t CSR_MTVEC   = 0x305; // where to jump on trap
@@ -163,6 +175,9 @@ private:
                 completion(data);
             }
         }
+        void setNRequests(size_t n) {
+            n_requests = n;
+        }
         size_t n_requests;
         std::vector<ResponseType *> responses;
         std::function<void(std::vector<uint8_t>&)> completion;
@@ -184,6 +199,9 @@ private:
             for (ResponseType *rsp : responses) {
                 delete rsp;
             }
+        }
+        void setNRequests(size_t n) {
+            n_requests = n;
         }
         void recvRsp(SST::Interfaces::StandardMem::Request *req) {
             ResponseType *rsp = dynamic_cast<ResponseType*>(req);

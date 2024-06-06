@@ -4,19 +4,10 @@
 #ifndef PANDOHAMMER_CPUINFO_H
 #define PANDOHAMMER_CPUINFO_H
 #include <stdint.h>
+#include <pandohammer/mcsr.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
-#define MCSR_MCOREID    0xF15
-#define MCSR_MPODID     0xF16
-#define MCSR_MPXNID     0xF17
-#define MCSR_MCOREHARTS 0xF18
-#define MCSR_MPODCORES  0xF19
-#define MCSR_MPXNPODS   0xF1A
-#define MCSR_MNUMPXN    0xF1B
-#define MCSR_MCOREL1SPSIZE 0xF1C
-#define MCSR_MPODL2SPSIZE  0xF1D
-#define MCSR_MPXNDRAMSIZE  0xF1E
 
 #ifndef __stringify
 #define __stringify_1(x) #x
@@ -43,6 +34,47 @@ inline int myCoreId()
     return (int)cid;
 }
 
+
+/**
+ * return a core's x  w.r.t my pod
+ */
+inline int coreXFromId(int core)
+{
+    return core & 7;
+}
+
+/**
+ * return a core's y  w.r.t my pod
+ */
+inline int coreYFromId(int core)
+{
+    return (core >> 3) & 7;
+}
+
+/**
+ * return a core's id from its x y
+ */
+inline int coreIdFromXY(int x, int y)
+{
+    return x + (y << 3);
+}
+
+/**
+ * return a core's x w.r.t my pod
+ */
+inline int myCoreX()
+{
+    return coreXFromId(myCoreId());
+}
+
+/**
+ * return a core's y w.r.t my pod
+ */
+inline int myCoreY()
+{
+    return coreYFromId(myCoreId());
+}
+    
 /**
  * pod id wrt my pxn
  */
@@ -74,6 +106,14 @@ inline int myCoreThreads()
 }
 
 /**
+ * number of hardware threads in a core
+ */
+inline int numCoreThreads()
+{
+    return myCoreThreads();
+}
+
+/**
  * number of pxns in system
  */
 inline int numPXN()
@@ -83,6 +123,14 @@ inline int numPXN()
     return (int)num;
 }
 
+/**
+ * an alias for numPXN (makes copy-pasting easier)
+ */
+inline int numPXNs()
+{
+    return numPXN();
+}
+    
 /**
  * number of cores in a pod
  */
@@ -137,6 +185,14 @@ inline uint64_t cycle() {
     uint64_t cycle;
     asm volatile ("rdcycle %0" : "=r"(cycle));
     return cycle;
+}
+
+/**
+ * wait for a number of cycles
+ */
+inline void wait_cycles(uint64_t cycles) {
+    asm volatile ("csrw " __stringify(MCSR_MWAIT) ", %0" : : "r"(cycles));
+    return;
 }
 
 #ifdef __cplusplus

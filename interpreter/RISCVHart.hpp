@@ -29,6 +29,7 @@ public:
     uint64_t        _x[32];
     InternalFPType  _f[32];
     int             _rm;
+    int         _fflags;
     uint64_t        _pc;
 
     /**
@@ -227,6 +228,10 @@ public:
 
     int &rm() {
         return _rm;
+    }
+
+    int &fflags() {
+        return _fflags;
     }
     
     std::string to_string() const {

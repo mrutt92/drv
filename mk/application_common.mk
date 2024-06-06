@@ -53,6 +53,29 @@ SCRIPT ?= PANDOHammerDrvX.py
 SIM_THREADS ?= 1
 
 .PHONY: run
-run: $(APP_NAME).so
-	$(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS)
+.PRECIOUS: run.log sim_args.log sim_options.log
 
+run run-valgrind run-time: sim_args.log
+run run-valgrind run-time: sim_options.log
+
+sim_args.log:
+	@echo $(SIM_ARGS) > $@
+
+sim_options.log:
+	@echo $(SIM_OPTIONS) > $@
+
+run.log: $(APP_NAME).so
+	$(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS) | tee run.log
+
+run: run.log
+
+run-valgrind: $(APP_NAME).so
+	valgrind --trace-children=yes $(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS) | tee run.log
+
+run-time: $(APP_NAME).so
+	time $(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS) | tee run.log
+
+TAG_BREAKDOWN_OPTIONS ?=
+.PHONY: show_tag_breakdown
+show_tag_breakdown:
+	python3 $(DRV_DIR)/py/tag_breakdown.py $(dir $(APP_EXE))/stats.csv $(dir $(APP_EXE))/tags.csv $(TAG_BREAKDOWN_OPTIONS)

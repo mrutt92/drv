@@ -21,6 +21,6 @@ namespace DrvAPI
  * @param address the simulator address returned from translation
  * @param the number of valid bytes starting at the native pointer
  */
-void DrvAPINativeToAddress(void *native, DrvAPIAddress *address, std::size_t *size);
+void DrvAPINativeToAddress(const void *native, DrvAPIAddress *address, std::size_t *size);
 }
 #endif

@@ -402,6 +402,18 @@ void RISCVCore::issueMemoryRequest(Request *req, int tid, ICompletionHandler &ha
 }
 
 /**
+ * issue a wait request
+ */
+void RISCVCore::issueWaitRequest(Cycle_t cycles, int tid)
+{
+    output_.verbose(CALL_INFO, 0, DEBUG_REQ, "Issuing wait request\n");
+    auto *wait = new Wait;
+    wait->tid = tid;
+    harts_[wait->tid].stalledWait() = true;
+    loopback_->send(cycles, clocktc_, wait);
+}
+
+/**
  * handle loopback event
  */
 void RISCVCore::handleLoopback(Event *evt) {
@@ -411,6 +423,11 @@ void RISCVCore::handleLoopback(Event *evt) {
         for (auto &hart : harts_) {
             hart.reset() = false;
         }
+    }
+    Wait *wait = dynamic_cast<Wait*>(evt);
+    if (wait) {
+        output_.verbose(CALL_INFO, 1, 0, "Received wait event\n");
+        harts_[wait->tid].stalledWait() = false;
     }
     delete evt;
 }

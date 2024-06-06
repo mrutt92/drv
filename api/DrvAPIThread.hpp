@@ -11,6 +11,9 @@
 #include <memory>
 namespace DrvAPI
 {
+
+static constexpr int DEFAULT_TAG = 0; //!< default tag
+
 class DrvAPIThread
 {
 public:
@@ -184,7 +187,29 @@ public:
   /**
    * @brief Convert a DrvAPIAddress to a native pointer
    */
-  void nativeToAddress(void *native, DrvAPIAddress *address, std::size_t *size);
+  void nativeToAddress(const void *native, DrvAPIAddress *address, std::size_t *size);
+
+  /**
+   * @brief check for stack overflow
+   */
+  void checkStackOverflow();
+
+  /**
+   * @brief Get the stack remaining
+   *
+   * @return the remaining stack size
+   * 
+   * should only be called inside of the thread's context
+   */
+  size_t getStackRemaining() const {
+      if (stack_in_modeled_memory_) {
+          char *sp;
+          asm volatile("movq %%rsp, %0" : "=r"(sp));
+          return sp-(char*)stack_bottom_;
+      } else {
+          return std::numeric_limits<size_t>::max();
+      }
+  }
 
   /**
    * @brief Get the current active thread
@@ -208,8 +233,12 @@ private:
   int core_threads_; //!< Number of threads on this core
   int pod_id_; //!< Pod id in PXN
   int pxn_id_; //!< Pxn id
-  int tag_ = 0; //!< Execution tag
   bool stack_in_modeled_memory_ = false; //!< Stack is in modeled memory
+  // for profiling
+  int tag_ = DEFAULT_TAG; //!< Execution tag
+public:
+    void *stack_top_ = nullptr;
+    void *stack_bottom_ = nullptr;
 };
 
 /**
