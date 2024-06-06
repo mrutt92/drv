@@ -10,6 +10,8 @@
 */
 // Copyright (c) 2023 University of Washington
 #include "newlib.h"
+#include "pandohammer/mcsr.h"
+#include "pandohammer/mmio_reg.h"
 
 #=========================================================================
 # crt0.S : Entry point for RISC-V user programs
@@ -24,7 +26,20 @@ _start:
 .option norelax
 1:la    gp, __global_pointer$
 .option pop
-
+# Set up the stack pointer
+.option push
+.option norelax
+  li   a0, PH_PRINT_HEX
+  la t0, __dmem_end
+  csrr t1, mhartid
+  csrr t2, MCSR_MCOREL1SPSIZE
+  csrr t4, MCSR_MCOREHARTS
+  sub  t3, t2, t0
+  div  t5, t3, t4
+  mul  t6, t5, t1
+  sub  sp, t2, t6
+#  sd   sp, 0(a0)
+.option pop
   # Clear the bss segment
   la      a0, _edata
   la      a2, _end

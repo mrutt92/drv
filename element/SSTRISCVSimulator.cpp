@@ -297,6 +297,22 @@ void RISCVSimulator::visitAMOADDW_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
     visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
 }
 
+void RISCVSimulator::visitAMOORW(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
+void RISCVSimulator::visitAMOORW_RL(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
+void RISCVSimulator::visitAMOORW_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
+void RISCVSimulator::visitAMOORW_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int32_t>(hart, i, DrvAPI::DrvAPIMemAtomicOR);
+}
+
 void RISCVSimulator::visitAMOSWAPD(RISCVHart &hart, RISCVInstruction &i) {
     visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicSWAP);
 }
@@ -311,6 +327,22 @@ void RISCVSimulator::visitAMOSWAPD_AQ(RISCVHart &hart, RISCVInstruction &i) {
 
 void RISCVSimulator::visitAMOSWAPD_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
     visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicSWAP);
+}
+
+void RISCVSimulator::visitAMOORD(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
+}
+
+void RISCVSimulator::visitAMOORD_RL(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
+}
+
+void RISCVSimulator::visitAMOORD_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
+}
+
+void RISCVSimulator::visitAMOORD_RL_AQ(RISCVHart &hart, RISCVInstruction &i) {
+    visitAMO<int64_t>(hart, i, DrvAPI::DrvAPIMemAtomicADD);
 }
 
 void RISCVSimulator::visitAMOADDD(RISCVHart &hart, RISCVInstruction &i) {
@@ -407,6 +439,14 @@ uint64_t RISCVSimulator::visitCSRRWUnderMask(RISCVHart &hart, uint64_t csr, uint
         break;
     case CSR_MPXNDRAMSIZE: // read-only
         rval = core_->sys().pxnDRAMSize();
+        break;
+    case CSR_MWAIT: // write-only
+        core_->issueWaitRequest(wval & mask, core_->getHartId(shart));
+        break;
+    case CSR_FFLAGS: // read-write
+        rval = shart.fflags();
+        shart.fflags() &= ~mask;
+        shart.fflags() |= wval & mask;
         break;
     case CSR_FRM: // read-write
         rval = shart.rm();
@@ -564,6 +604,12 @@ void RISCVSimulator::sysFSTAT(RISCVSimHart &shart, RISCVInstruction &i) {
         });
 
     // issue a write request
+
+    std::function<void(void)> completion
+        ([&shart](void) {
+            shart.stalledMemory() = false;
+        });
+
     shart.stalledMemory() = true;
     sysWriteBuffer(shart, stat_buf, sim_stat_s, std::move(completion));
 }
@@ -622,7 +668,10 @@ void RISCVSimulator::sysWriteBuffer(RISCVSimHart &shart, StandardMem::Addr paddr
         auto wr = new StandardMem::Write(paddr, sz, wdata);
         if (noncacheable) wr->setNoncacheable();
         wr->tid = core_->getHartId(shart);
+        if (noncacheable) wr->setNoncacheable();
+        core_->output_.verbose(CALL_INFO, 10, RISCVCore::DEBUG_SYSCALLS, "partial: paddr=%" PRIx64 ", size=%zu\n", paddr, sz);
         core_->issueMemoryRequest(wr, wr->tid, ch);
+
         // increment bookkeeping
         nReqs++;
         paddr += sz;
@@ -638,7 +687,9 @@ void RISCVSimulator::sysWriteBuffer(RISCVSimHart &shart, StandardMem::Addr paddr
  */
 void RISCVSimulator::sysReadBuffer(RISCVSimHart &shart, StandardMem::Addr paddr, size_t n, std::function<void(std::vector<uint8_t>&)> && cont) {
     // create a large request handler
+    std::shared_ptr<LargeReadHandler> handler(new LargeReadHandler(0, std::move(cont)));
     size_t reqSz = core_->getMaxReqSize();
+
     size_t nReqs = 0;
     size_t payloadSz = n;
     size_t payloadOff = 0;
@@ -659,7 +710,12 @@ void RISCVSimulator::sysReadBuffer(RISCVSimHart &shart, StandardMem::Addr paddr,
         auto rd = new StandardMem::Read(paddr, sz);
         if (noncacheable) rd->setNoncacheable();
         rd->tid = core_->getHartId(shart);
+        if (noncacheable) rd->setNoncacheable();
+        core_->output_.verbose(CALL_INFO, 10, RISCVCore::DEBUG_SYSCALLS
+                                 ,"partial: paddr=%" PRIx64 ", size=%zu\n"
+                                 ,paddr, sz);
         core_->issueMemoryRequest(rd, rd->tid, ch);
+
         // increment bookkeeping
         nReqs++;
         paddr += sz;

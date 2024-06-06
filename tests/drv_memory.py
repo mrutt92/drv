@@ -126,7 +126,7 @@ class DRAMBankBase(MemoryBank):
                 "mem_size" : self.address_range.bank_size,
             })
         elif (arguments.dram_backend == "dramsim3"):
-            backend = self.memory.setSubComponent("backend", "memHierarchy.dramsim3")
+            backend = self.memory.setSubComponent("backend", "Drv.DrvDRAMSim3MemBackend")
             backend.addParams({
                 "config_ini" : arguments.dram_backend_config,
                 "mem_size" : self.address_range.bank_size,

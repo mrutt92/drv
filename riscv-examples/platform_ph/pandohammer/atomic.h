@@ -7,27 +7,28 @@
 inline int32_t atomic_fetch_add_i32(volatile int32_t *ptr, int32_t val)
 {
     int32_t ret;
-    asm volatile("amoadd.w %0, %2, 0(%1)" : "=r"(ret): "r"(ptr) , "r"(val));
+    asm volatile("amoadd.w %0, %2, 0(%1)" : "=r"(ret): "r"(ptr) , "r"(val) : "memory");
     return ret;
 }
 
 inline int64_t atomic_fetch_add_i64(volatile int64_t *ptr, int64_t val)
 {
     int64_t ret;
-    asm volatile("amoadd.d %0, %2, 0(%1)" : "=r"(ret): "r"(ptr) , "r"(val));
+    asm volatile("amoadd.d %0, %2, 0(%1)" : "=r"(ret): "r"(ptr) , "r"(val) : "memory");
     return ret;
 }
+
 inline int32_t atomic_swap_i32(volatile int32_t *ptr, int32_t val)
 {
     int32_t ret;
-    asm volatile("amoswap.w %0, %2, 0(%1)" : "=r"(ret): "r"(ptr) , "r"(val));
+    asm volatile("amoswap.w %0, %2, 0(%1)" : "=r"(ret): "r"(ptr) , "r"(val) : "memory");
     return ret;
 }
 
 inline int64_t atomic_swap_i64(volatile int64_t *ptr, int64_t val)
 {
     int64_t ret;
-    asm volatile("amoswap.d %0, %2, 0(%1)" : "=r"(ret): "r"(ptr) , "r"(val));
+    asm volatile("amoswap.d %0, %2, 0(%1)" : "=r"(ret): "r"(ptr) , "r"(val) : "memory");
     return ret;
 }
 
@@ -80,4 +81,10 @@ inline int64_t atomic_load_i64(volatile int64_t *ptr)
 {
     return *ptr;
 }
+
+inline void atomic_fence()
+{
+    asm volatile("fence");
+}
+
 #endif

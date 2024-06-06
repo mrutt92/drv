@@ -111,7 +111,7 @@ RUN apt update -y \
         && git clone git@github.com:AMDResearch/pando-riscv-gnu-toolchain /riscv-gnu-toolchain \
         && cd /riscv-gnu-toolchain \
 	&& git checkout pandodrvsim \
-        && ./configure --enable-multilib --with-arch=rv64imafd --disable-linux --prefix=${DRV_ROOT} \
+        && ./configure --enable-multilib --with-arch=rv64imaf --disable-linux --prefix=${DRV_ROOT} \
         && make -j `nproc` \
         && make install \
         && rm -rf /riscv-gnu-toolchain \

@@ -1,0 +1,6 @@
+#ifndef PANDOHAMMMER_PROFILE_H
+#define PANDOHAMMMER_PROFILE_H
+
+#define DEFAULT_TAG 0
+
+#endif

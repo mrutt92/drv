@@ -166,6 +166,20 @@ public:
         }
         ImplementSerializable(SST::Drv::RISCVCore::DeassertReset);
     };
+
+    /**
+     * wait event
+     */
+    class Wait : public SST::Event {
+    public:
+        Wait() : SST::Event() {}
+        void serialize_order(SST::Core::Serialization::serializer &ser) override {
+            ser & tid;
+            Event::serialize_order(ser);
+        }
+        int tid;
+        ImplementSerializable(SST::Drv::RISCVCore::Wait);
+    };
     
     /**
      * Constructor for RISCVCore
@@ -306,6 +320,11 @@ public:
      * issue a memory request
      */
     void issueMemoryRequest(Request *req, int tid, ICompletionHandler &handler);
+
+    /**
+     * issue a wait request
+     */
+    void issueWaitRequest(Cycle_t cycles, int tid);
 
     /**
      * return true if we should exit

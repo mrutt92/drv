@@ -53,6 +53,8 @@ SCRIPT ?= PANDOHammerDrvX.py
 SIM_THREADS ?= 1
 
 .PHONY: run
+.PRECIOUS: run.log sim_args.log sim_options.log
+
 run run-valgrind run-time: sim_args.log
 run run-valgrind run-time: sim_options.log
 

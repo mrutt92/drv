@@ -5,28 +5,29 @@
 #ifndef PANDOHAMMER_MMIO_H
 #define PANDOHAMMER_MMIO_H
 #include <string.h>
+#include <pandohammer/mmio_reg.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 static inline void ph_print_float(float x)
 {
-    *(volatile float*)0xFFFFFFFFFFFF0000 = x;
+    *(volatile float*)PH_PRINT_FLOAT = x;
 }
 
 static inline void ph_print_int(long x)
 {
-    *(volatile long*)0xFFFFFFFFFFFF0000 = x;
+    *(volatile long*)PH_PRINT_INT = x;
 }
 
 static inline void ph_print_hex(unsigned long x)
 {
-    *(volatile unsigned long*)0xFFFFFFFFFFFF0008 = x;
+    *(volatile unsigned long*)PH_PRINT_HEX = x;
 }
 
 static inline void ph_print_char(char x)
 {
-    *(volatile char*)0xFFFFFFFFFFFF0010 = x;
+    *(volatile char*)PH_PRINT_CHAR = x;
 }
 
 static inline void ph_puts(char *cstr)
@@ -38,7 +39,7 @@ static inline void ph_puts(char *cstr)
 
 static inline void ph_print_time()
 {
-    *(volatile char*)0xFFFFFFFFFFFF0018 = 0;
+    *(volatile char*)PH_PRINT_TIME = 0;
 }
 
 #ifdef __cplusplus
