@@ -175,6 +175,9 @@ private:
                 completion(data);
             }
         }
+        void setNRequests(size_t n) {
+            n_requests = n;
+        }
         size_t n_requests;
         std::vector<ResponseType *> responses;
         std::function<void(std::vector<uint8_t>&)> completion;
@@ -196,6 +199,9 @@ private:
             for (ResponseType *rsp : responses) {
                 delete rsp;
             }
+        }
+        void setNRequests(size_t n) {
+            n_requests = n;
         }
         void recvRsp(SST::Interfaces::StandardMem::Request *req) {
             ResponseType *rsp = dynamic_cast<ResponseType*>(req);
