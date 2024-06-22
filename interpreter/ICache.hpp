@@ -4,19 +4,22 @@
 #include <sstream>
 #include "ICacheBacking.hpp"
 
-static inline std::string fmt_addr(uint64_t addr) {
+namespace interp
+{
+inline std::string fmt_addr(uint64_t addr) {
     std::stringstream ss;
     ss << "0x" << std::hex << std::setw(16) << std::setfill('0') << addr;
     return ss.str();
 }
 
-static inline std::string fmt_bool(bool b) {
+inline std::string fmt_bool(bool b) {
     return b ? "true" : "false";
 }
 
 template <typename INT>
-static inline INT clog2(INT x) {
+inline INT clog2(INT x) {
     return std::ceil(std::log2(x));
+}
 }
 
 class ICache
@@ -202,7 +205,7 @@ public:
         : icache_backing_(icache_backing)
         , instructions_(instructions)
         , associativity_(associativity) {
-        auto idx_bits = clog2(instructions / associativity);
+        auto idx_bits = interp::clog2(instructions / associativity);
         index_ = bitrange<Elf64_Addr>(idx_bits+02-1, 02);
         tag_   = bitrange<Elf64_Addr>(63,   idx_bits+02);
         cache_ = std::vector<Set>(sets(), Set(associativity));
