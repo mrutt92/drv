@@ -66,7 +66,7 @@ void pagerank_app::output_application_data() {
     float sum = 0.0;
     the_graph.foreach_vertex([this,&sum](vertex v) mutable {
         sum += cfg->new_rank()[v];
-    }, false);
+    });
     std::cout << "sum of ranks = " << sum << std::endl;
 }
 
