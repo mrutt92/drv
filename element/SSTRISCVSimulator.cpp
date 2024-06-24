@@ -603,13 +603,6 @@ void RISCVSimulator::sysFSTAT(RISCVSimHart &shart, RISCVInstruction &i) {
             shart.stalledMemory() = false;
         });
 
-    // issue a write request
-
-    std::function<void(void)> completion
-        ([&shart](void) {
-            shart.stalledMemory() = false;
-        });
-
     shart.stalledMemory() = true;
     sysWriteBuffer(shart, stat_buf, sim_stat_s, std::move(completion));
 }
@@ -687,13 +680,11 @@ void RISCVSimulator::sysWriteBuffer(RISCVSimHart &shart, StandardMem::Addr paddr
  */
 void RISCVSimulator::sysReadBuffer(RISCVSimHart &shart, StandardMem::Addr paddr, size_t n, std::function<void(std::vector<uint8_t>&)> && cont) {
     // create a large request handler
-    std::shared_ptr<LargeReadHandler> handler(new LargeReadHandler(0, std::move(cont)));
+    std::shared_ptr<LargeReadHandler> handler(new LargeReadHandler(std::move(cont)));
     size_t reqSz = core_->getMaxReqSize();
-
     size_t nReqs = 0;
     size_t payloadSz = n;
     size_t payloadOff = 0;
-    std::shared_ptr<LargeReadHandler> handler(new LargeReadHandler(std::move(cont)));
 
     // create a completion handler for when small requests return
     RISCVCore::ICompletionHandler ch([handler](StandardMem::Request *req) {
