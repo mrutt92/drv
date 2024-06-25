@@ -23,9 +23,9 @@ SIM_OPTIONS += --core-threads=$(THREADS) --pod-cores=$(CORES)
 include $(DRV_DIR)/mk/riscv_common.mk
 include $(DRV_DIR)/mk/dramsim3_config.mk
 
-SIM_OPTIONS += --pxn-dram-banks=1 --pod-l2sp-banks=2
-SIM_OPTIONS += --dram-backend=dramsim3
-SIM_OPTIONS += --dram-backend-config=$(DRAMSIM3_DIR)/configs/HBM2_1Gb_x64.ini
+memsys := HBM2-1Gb-x64
+include $(DRV_DIR)/mk/$(memsys).mk
+
 
 #SIM_OPTIONS += --debug-memory --verbose=2
 
