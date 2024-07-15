@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <DrvAPIAddress.hpp>
 #include <DrvAPIInfo.hpp>
+#include <DrvAPICoreXY.hpp>
 namespace DrvAPI
 {
 
