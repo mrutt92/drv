@@ -81,6 +81,7 @@ DrvAPIThread::DrvAPIThread()
 }
 
 void DrvAPIThread::start() {
+    decoder_ = DrvAPIAddressDecoder(pxnId(), podId(), coreId());
     auto coro_function = [this](coro_t::push_type &sink) {
         this->main_context_ = &sink;
         this->yield();

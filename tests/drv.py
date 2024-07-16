@@ -2,6 +2,7 @@
 # Copyright (c) 2023 University of Washington
 import sst
 import argparse
+import addressmap
 
 # common functions
 ADDR_TYPE_HI,ADDR_TYPE_LO     = (63, 58)

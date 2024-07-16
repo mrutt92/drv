@@ -6,6 +6,7 @@ _RISCV_COMMON_MK_ := 1
 
 DRV_DIR ?= $(shell git rev-parse --show-toplevel)
 export PYTHONPATH := $(DRV_DIR)/tests:$(PYTHONPATH)
+export PYTHONPATH := $(DRV_DIR)/py:$(PYTHONPATH)
 
 include $(DRV_DIR)/mk/config.mk
 

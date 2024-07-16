@@ -286,10 +286,10 @@ DrvCore::DrvCore(SST::ComponentId_t id, SST::Params& params)
   configureMemory(params);
   configureOtherLinks(params);
   configureExecutable(params);
+  setSysConfigApp();
   configureStatistics(params);
   parseArgv(params);
   configureThreads(params);
-  setSysConfigApp();
 }
 
 DrvCore::~DrvCore() {
