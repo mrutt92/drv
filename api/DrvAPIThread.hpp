@@ -187,6 +187,14 @@ public:
    */
   void nativeToAddress(void *native, DrvAPIAddress *address, std::size_t *size);
 
+
+  /**
+   * @brief Get the decoder for this thread
+   */
+  const DrvAPIAddressDecoder & getDecoder() const {
+      return decoder_;
+  }
+
   /**
    * @brief Get the current active thread
    * 

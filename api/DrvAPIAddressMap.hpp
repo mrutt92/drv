@@ -167,8 +167,6 @@ public:
 
 }
 
-struct DrvAPIAbsoluteAddressInfo; //!< forward declaration
-struct DrvAPIRelativeAddressInfo; //!< forward declaration
 struct DrvAPIAddressInfo; //!< forward declaration
 
 
@@ -183,6 +181,36 @@ public:
     DrvAPIAddressInfo(DrvAPIAddressInfo &&o) = default;
     DrvAPIAddressInfo &operator=(DrvAPIAddressInfo &&o) = default;
     ~DrvAPIAddressInfo() = default;
+
+    /**
+     * Shorthand for base address of local core's l1 scratchpad
+     */
+    static DrvAPIAddressInfo RelativeL1SPBase() {
+        return DrvAPIAddressInfo()
+            .set_relative(true)
+            .set_l1sp()
+            .set_offset(0);
+    }
+
+    /**
+     * Shorthand for base address of local pod's l2 scratchpad
+     */
+    static DrvAPIAddressInfo RelativeL2SPBase() {
+        return DrvAPIAddressInfo()
+            .set_relative(true)
+            .set_l2sp()
+            .set_offset(0);
+    }
+
+    /**
+     * Shorthand for base address of local pod's dram
+     */
+    static DrvAPIAddressInfo RelativeDRAMBase() {
+        return DrvAPIAddressInfo()
+            .set_relative(true)
+            .set_dram()
+            .set_offset(0);
+    }
 
     /**
      * @return true if this address is in l1 scratchpad
@@ -453,6 +481,80 @@ public:
         }
     }
 
+
+    /**
+     * get the absolute base address of the local core's l1sp
+     */
+    DrvAPIAddress this_cores_absolute_l1sp_base() const {
+        DrvAPIAddressInfo info;
+        info.set_absolute(true)
+            .set_l1sp()
+            .set_pxn(my_pxn_)
+            .set_pod(my_pod_)
+            .set_core(my_core_);
+        return encode(info);
+    }
+
+    /**
+     * get the absolute base address of the local pod's l2sp
+     */
+    DrvAPIAddress this_pods_absolute_l2sp_base() const {
+        DrvAPIAddressInfo info;
+        info.set_absolute(true)
+            .set_l2sp()
+            .set_pxn(my_pxn_)
+            .set_pod(my_pod_);
+        return encode(info);
+    }
+
+    /**
+     * get the absolute base address of the local pod's dram
+     */
+    DrvAPIAddress this_pxns_absolute_dram_base() const {
+        DrvAPIAddressInfo info;
+        info.set_absolute(true)
+            .set_dram()
+            .set_pxn(my_pxn_);
+        return encode(info);
+    }
+
+
+    /**
+     * get the absolute base address of the local core's mmio control registers
+     */
+    DrvAPIAddress this_cores_absolute_ctrl_base() const {
+        DrvAPIAddressInfo info;
+        info.set_absolute(true)
+            .set_core_ctrl()
+            .set_pxn(my_pxn_)
+            .set_pod(my_pod_)
+            .set_core(my_core_);
+        return encode(info);
+    }
+
+    /**
+     * get the relative address of the local core's l1sp
+     */
+    DrvAPIAddress this_cores_relative_l1sp_base() const {
+        DrvAPIAddressInfo info = DrvAPIAddressInfo::RelativeL1SPBase();
+        return encode(info);
+    }
+
+    /**
+     * get the relative address of the local pod's l2sp
+     */
+    DrvAPIAddress this_pods_relative_l2sp_base() const {
+        DrvAPIAddressInfo info = DrvAPIAddressInfo::RelativeL2SPBase();
+        return encode(info);
+    }
+
+    /**
+     * get the relative address of the local pod's dram
+     */
+    DrvAPIAddress this_pxns_relative_dram_base() const {
+        DrvAPIAddressInfo info = DrvAPIAddressInfo::RelativeDRAMBase();
+        return encode(info);
+    }
 private:
     void decode_absolute(DrvAPIAddress addr, DrvAPIAddressInfo &info) const {
         if (absolute_is_dram_(addr)) {
@@ -560,278 +662,65 @@ public:
     int64_t my_core_ = 0;
 };
 
-
-struct DrvAPIPAddress; //!< forward declaration
-struct DrvAPIVAddress; //!< forward declaration
-
+/**
+ * offsets of control registers
+ */
+static constexpr DrvAPIAddress CTRL_CORE_RESET = 0x000; //!< Control register for core reset
 
 /**
- * This is a decoded software address
+ * Returns the relative address of the local core's L1 scratchpad
  */
-struct DrvAPIVAddress
-{
-    static constexpr unsigned TAG = 0;
-    typedef bits::bitrange_handle<DrvAPIAddress, 63, 63> CtrlRegisterHandle; //!< handle for the CtrlRegister bit
-    typedef bits::bitrange_handle<DrvAPIAddress, 47, 47> NotScratchpadHandle; //!< handle for the NotScratchpad bit
-    typedef bits::bitrange_handle<DrvAPIAddress, 46, 33> PXNHandle; //!< handle for the PXN bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 32, 32> GlobalHandle; //!< handle for the global bit
-    typedef bits::bitrange_handle<DrvAPIAddress, 31, 26> PodHandle; //!< handle for the Pod bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 25, 25> L2NotL1Handle; //!< handle for the L2NotL1 bit
-    typedef bits::bitrange_handle<DrvAPIAddress, 22, 20> CoreYHandle; //!< handle for the CoreY bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 19, 17> CoreXHandle; //!< handle for the CoreX bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 16,  0, TAG>  L1OffsetHandle; //!< handle for the L1Offset bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 24,  0, TAG>  L2OffsetHandle; //!< handle for the L2Offset bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 57, 48> DRAMOffsetHi10Handle; //!< handle for the DRAMOffsetHi bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 32,  0> DRAMOffsetLo33Handle; //!< handle for the DRAMOffsetLo bits
-
-    static DrvAPIPAddress to_physical(DrvAPIAddress addr
-                                      ,uint32_t this_pxn
-                                      ,uint32_t this_pod
-                                      ,uint32_t this_core_y
-                                      ,uint32_t this_core_x);
-
-    static  DrvAPIVAddress MyL2Base() {
-        DrvAPIVAddress addr = 0;
-        addr.ctrl_register() = false;
-        addr.l2_not_l1() = true;
-        addr.global() = false;
-        addr.not_scratchpad() = false;
-        return addr;
-    }
-
-    static DrvAPIVAddress MyL1Base() {
-        DrvAPIVAddress addr = 0;
-        addr.ctrl_register() = false;
-        addr.l2_not_l1() = false;
-        addr.global() = false;
-        addr.not_scratchpad() = false;
-        return addr;
-    }
-
-    static DrvAPIVAddress MainMemBase(uint32_t pxn) {
-        DrvAPIVAddress addr = 0;
-        addr.ctrl_register() = false;
-        addr.not_scratchpad() = true;
-        addr.pxn() = pxn;
-        addr.global() = false;
-        addr.dram_offset_hi10() = 0;
-        addr.dram_offset_lo33() = 0;
-        return addr;
-    }
-
-    static DrvAPIVAddress
-    CoreCtrlBase (uint32_t pxn, uint32_t pod, uint32_t core_y, uint32_t core_x) {
-        DrvAPIVAddress addr = 0;
-        addr.ctrl_register() = true;
-        addr.not_scratchpad() = true;
-        addr.pxn() = pxn;
-        addr.global() = false;
-        addr.pod() = pod;
-        addr.core_y() = core_y;
-        addr.core_x() = core_x;
-        return addr;
-    }
-    DrvAPIVAddress() : addr(0) {}
-    DrvAPIVAddress(const DrvAPIVAddress &o) = default;
-    DrvAPIVAddress &operator=(const DrvAPIVAddress &o) = default;
-    DrvAPIVAddress(DrvAPIVAddress &&o) = default;
-    DrvAPIVAddress &operator=(DrvAPIVAddress &&o) = default;
-    ~DrvAPIVAddress() = default;
-
-    DrvAPIVAddress(DrvAPIAddress addr) : addr(addr) {}
-
-    CtrlRegisterHandle ctrl_register() {
-        return CtrlRegisterHandle(addr);
-    }
-    
-    PXNHandle pxn() {
-        return PXNHandle(addr);
-    }
-
-    GlobalHandle global() {
-        return GlobalHandle(addr);
-    }
-
-    PodHandle pod() {
-        return PodHandle(addr);
-    }
-
-    L2NotL1Handle l2_not_l1() {
-        return L2NotL1Handle(addr);
-    }
-
-    CoreYHandle core_y() {
-        return CoreYHandle(addr);
-    }
-
-    CoreXHandle core_x() {
-        return CoreXHandle(addr);
-    }
-
-    L1OffsetHandle l1_offset() {
-        return L1OffsetHandle(addr);
-    }
-
-    L1OffsetHandle ctrl_offset() {
-        return L1OffsetHandle(addr);
-    }
-
-    L2OffsetHandle l2_offset() {
-        return L2OffsetHandle(addr);
-    }
-
-    NotScratchpadHandle not_scratchpad() {
-        return NotScratchpadHandle(addr);
-    }
-
-    DRAMOffsetHi10Handle dram_offset_hi10() {
-        return DRAMOffsetHi10Handle(addr);
-    }
-
-    DRAMOffsetLo33Handle dram_offset_lo33() {
-        return DRAMOffsetLo33Handle(addr);
-    }
-
-    DrvAPIAddress dram_offset() {
-        return (dram_offset_hi10() << 33) | dram_offset_lo33();
-    }
-
-    bool is_ctrl_register() {
-        return ctrl_register();
-    }
-    
-    bool is_dram() {
-        return !is_ctrl_register() && not_scratchpad();
-    }
-
-    bool is_l2() {
-        return !is_ctrl_register() && !is_dram() && l2_not_l1();
-    }
-
-    bool is_l1() {
-        return !is_ctrl_register() && !is_dram() && !l2_not_l1();
-    }
-    
-    DrvAPIPAddress to_physical(uint32_t this_pxn
-                               ,uint32_t this_pod
-                               ,uint32_t core_y
-                               ,uint32_t core_x);
-
-    DrvAPIAddress encode() const { return addr; }
-
-    std::string to_string();
-
-    DrvAPIAddress addr;
-};
+DrvAPIAddress myRelativeL1SPBase();
 
 /**
- * make a global address from a local address
+ * Returns the relative address of the local core's L2 scratchpad
  */
-static inline DrvAPIAddress toGlobalAddress(DrvAPIAddress local, uint32_t pxn, uint32_t pod, uint32_t core_y, uint32_t core_x) {
-    DrvAPIVAddress vaddr(local);
-    if (vaddr.not_scratchpad()){
-        return local;
-    } else if (vaddr.global()) {
-        return local;
-    } else if (vaddr.is_l2()) {
-        vaddr.pxn() = pxn;
-        vaddr.pod() = pod;
-        vaddr.global() = true;
-        return vaddr.encode();
-    } else if (vaddr.is_l1()) {
-        vaddr.pxn() = pxn;
-        vaddr.pod() = pod;
-        vaddr.global() = true;
-        vaddr.core_y() = core_y;
-        vaddr.core_x() = core_x;
-        return vaddr.encode();
-    }
-    throw std::runtime_error("toGlobalAddress: Unknown address type");
-}
-
-static inline DrvAPIAddress toGlobalAddress(DrvAPIAddress local, uint32_t pxn, uint32_t pod, uint32_t core) {
-    return toGlobalAddress(local, pxn, pod, coreYFromId(core), coreXFromId(core));
-}
+DrvAPIAddress myRelativeL2SPBase();
 
 /**
- * This is a decoded physical address
+ * Returns the relative address of the local core's DRAM
  */
-struct DrvAPIPAddress
-{
-    static constexpr unsigned TAG = 1;
-    typedef bits::bitrange_handle<DrvAPIAddress, 63, 58> TypeHandle; //!< handle for the Type bits
-    static constexpr uint32_t TYPE_L1SP = 0b000000; //!< L1 scratchpad
-    static constexpr uint32_t TYPE_L2SP = 0b000001; //!< L2 scratchpad
-    static constexpr uint32_t TYPE_DRAM = 0b000100; //!< Main memory
-    static constexpr uint32_t TYPE_CTRL = 0b001000; //!< Control Register
-    typedef bits::bitrange_handle<DrvAPIAddress, 57, 44> PXNHandle; //!< handle for the PXN bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 39, 34> PodHandle; //!< handle for the Pod bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 30, 28> CoreYHandle; //!< handle for the CoreY bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 24, 22> CoreXHandle; //!< handle for the CoreX bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 16,  0, TAG> L1OffsetHandle; //!< handle for the L1Offset bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 24,  0, TAG> L2OffsetHandle; //!< handle for the L2Offset bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 43,  0, TAG> DRAMOffsetHandle; //!< handle for the DRAMOffset bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 18, 18> CtrlIsCoreHandle; //!< handle for the CtrlIsCore bits
-    typedef bits::bitrange_handle<DrvAPIAddress, 17,  0> CtrlOffsetHandle; //!< handle for the CtrlOffset bits
+DrvAPIAddress myRelativeDRAMBase();
 
-    /* core control registers */
-    static constexpr uint64_t CTRL_CORE_RESET = 0x000; //!< core reset register
-    
-    DrvAPIPAddress() : addr(0) {}
-    DrvAPIPAddress(const DrvAPIPAddress &o) = default;
-    DrvAPIPAddress &operator=(const DrvAPIPAddress &o) = default;
-    DrvAPIPAddress(DrvAPIPAddress &&o) = default;
-    DrvAPIPAddress &operator=(DrvAPIPAddress &&o) = default;
-    ~DrvAPIPAddress() = default;
+/**
+ * Returns the absolute address of the local core's L1 scratchpad
+ */
+DrvAPIAddress myAbsoluteL1SPBase();
 
-    DrvAPIPAddress(DrvAPIAddress addr) : addr(addr) {}
+/**
+ * Returns the absolute address of the local core's L2 scratchpad
+ */
+DrvAPIAddress myAbsoluteL2SPBase();
 
-    TypeHandle type() {
-        return TypeHandle(addr);
-    }
+/**
+ * Returns the absolute address of the local core's DRAM
+ */
+DrvAPIAddress myAbsoluteDRAMBase();
 
-    PXNHandle pxn() {
-        return PXNHandle(addr);
-    }
+/**
+ * Returns the absolute address of a core's control register
+ */
+DrvAPIAddress absoluteCoreCtrlBase(int64_t pxn, int64_t pod, int64_t core);
 
-    PodHandle pod() {
-        return PodHandle(addr);
-    }
+/**
+ * Returns the absolute address of a pxn's dram
+ */
+DrvAPIAddress absolutePXNDRAMBase(int64_t pxn);
 
-    CoreYHandle core_y() {
-        return CoreYHandle(addr);
-    }
+/**
+ * Returns decoded information about the given address
+ */
+DrvAPIAddressInfo decodeAddress(DrvAPIAddress addr);
 
-    CoreXHandle core_x() {
-        return CoreXHandle(addr);
-    }
+/**
+ * Encode the address info into an address
+ */
+DrvAPIAddress encodeAddressInfo(const DrvAPIAddressInfo &info);
 
-    L1OffsetHandle l1_offset() {
-        return L1OffsetHandle(addr);
-    }
-
-    L2OffsetHandle l2_offset() {
-        return L2OffsetHandle(addr);
-    }
-
-    DRAMOffsetHandle dram_offset() {
-        return DRAMOffsetHandle(addr);
-    }
-
-    CtrlIsCoreHandle ctrl_is_core() {
-        return CtrlIsCoreHandle(addr);
-    }
-
-    CtrlOffsetHandle ctrl_offset() {
-        return CtrlOffsetHandle(addr);
-    }
-
-    DrvAPIAddress encode() const { return addr; }
-
-    std::string to_string();
-
-    DrvAPIAddress addr;
-};
+/**
+ * Converts an address that may be relative to an absolute address
+ */
+DrvAPIAddress toAbsoluteAddress(DrvAPIAddress addr);
 
 }
 
