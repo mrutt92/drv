@@ -644,7 +644,7 @@ public:
     // absolute decoding
     bitfield absolute_is_dram_ = bitfield(62,62);
     bitfield absolute_is_l2sp_ = bitfield(61,61);
-    bitfield absolute_is_ctrl_ = bitfield(30,30);
+    bitfield absolute_is_ctrl_ = bitfield(29,29);
     bitfield absolute_pxn_;
     bitfield absolute_pod_;
     bitfield absolute_core_;
@@ -652,11 +652,11 @@ public:
     bitfield absolute_l2sp_offset_;
     bitfield absolute_dram_offset_;
     // relative decoding
-    bitfield relative_is_dram_     = bitfield(31,31);
-    bitfield relative_is_l2sp_     = bitfield(30,30);
-    bitfield relative_l1sp_offset_ = bitfield(29,00);
-    bitfield relative_l2sp_offset_ = bitfield(29,00);
-    bitfield relative_dram_offset_ = bitfield(30,00);
+    bitfield relative_is_dram_     = bitfield(30,30);
+    bitfield relative_is_l2sp_     = bitfield(29,29);
+    bitfield relative_l1sp_offset_ = bitfield(28,00);
+    bitfield relative_l2sp_offset_ = bitfield(28,00);
+    bitfield relative_dram_offset_ = bitfield(29,00);
     int64_t my_pxn_ = 0;
     int64_t my_pod_ = 0;
     int64_t my_core_ = 0;

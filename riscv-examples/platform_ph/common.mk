@@ -11,7 +11,8 @@ RISCV_COMPILE_FLAGS += -I$(DRV_DIR)/riscv-examples/platform_ph
 RISCV_CFLAGS   += $(RISCV_COMPILE_FLAGS)
 RISCV_CXXFLAGS += $(RISCV_COMPILE_FLAGS)
 
-RISCV_LDFLAGS += -Wl,-T$(DRV_DIR)/riscv-examples/platform_ph/bsg_link.ld
+LDSCRIPT ?= $(DRV_DIR)/riscv-examples/platform_ph/bsg_link.ld
+RISCV_LDFLAGS += -Wl,-T$(LDSCRIPT)
 RISCV_LDFLAGS += -L$(DRV_DIR)/riscv-examples/platform_ph/pandohammer
 
 # include platform crt by default

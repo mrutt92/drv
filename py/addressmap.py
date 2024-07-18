@@ -270,7 +270,7 @@ class AddressMap(object):
         # absolute encoding
         self._absolute_is_dram = Bitfield(62, 62)
         self._absolute_is_l2sp = Bitfield(61, 61)
-        self._absolute_is_ctrl = Bitfield(30, 30)
+        self._absolute_is_ctrl = Bitfield(29, 29)
         pxn_bits = int.bit_length(sysconfig.pxns()-1)
         pod_bits = int.bit_length(sysconfig.pods()-1)
         core_bits = int.bit_length(sysconfig.cores()-1)
@@ -285,11 +285,11 @@ class AddressMap(object):
         self._absolute_l1sp_offset = Bitfield(self._absolute_is_ctrl.lo()-1, 0)
 
         # relative encoding
-        self._relative_is_dram = Bitfield(31, 31)
-        self._relative_is_l2sp = Bitfield(30, 30)
-        self._relative_l1sp_offset = Bitfield(29, 0)
-        self._relative_l2sp_offset = Bitfield(29, 0)
-        self._relative_dram_offset = Bitfield(30, 0)
+        self._relative_is_dram = Bitfield(30, 30)
+        self._relative_is_l2sp = Bitfield(29, 29)
+        self._relative_l1sp_offset = Bitfield(28, 0)
+        self._relative_l2sp_offset = Bitfield(28, 0)
+        self._relative_dram_offset = Bitfield(29, 0)
 
     def decode(self, address, my_pxn, my_pod, my_core):
         """
@@ -597,6 +597,144 @@ class CHeaderBuilder(object):
             macro, bitfield.hi(),
             macro, bitfield.lo())
 
+class LdSciptBuilder(object):
+    def __init__(self, address_map):
+        self._address_map = address_map
+
+    def encode(self, address_info):
+        return self._address_map.encode(address_info)
+
+    def l1sp_start(self):
+        return self.encode(AddressInfo().set_relative().set_l1sp().set_offset(0))
+
+    def l1sp_size(self):
+        return 1 << self._address_map._relative_l1sp_offset.bits()
+
+    def l2sp_start(self):
+        return self.encode(AddressInfo().set_relative().set_l2sp().set_offset(0))
+
+    def l2sp_size(self):
+        return 1 << self._address_map._relative_l2sp_offset.bits()
+
+    def dram_start(self):
+        return self.encode(AddressInfo().set_relative().set_dram().set_offset(0))
+
+    def dram_size(self):
+        return 1 << self._address_map._relative_dram_offset.bits()
+
+    def memory(self):
+        body = """
+        L1SP_VMA (rw)  : ORIGIN = 0x{L1SP_START:08x}, LENGTH = 0x{L1SP_SIZE:08x}
+        L2SP_VMA (rw)  : ORIGIN = 0x{L2SP_START:08x}, LENGTH = 0x{L2SP_SIZE:08x}
+        DRAM_VMA (rwx) : ORIGIN = 0x{DRAM_START:08x}, LENGTH = 0x{DRAM_SIZE:08x}"""\
+            .format(
+                L1SP_START = self.l1sp_start(),
+                L1SP_SIZE  = self.l1sp_size(),
+                L2SP_START = self.l2sp_start(),
+                L2SP_SIZE  = self.l2sp_size(),
+                DRAM_START = self.dram_start(),
+                DRAM_SIZE  = self.dram_size()
+            )
+        return "MEMORY\n{" + body + "\n}\n"
+
+    def l1sp_sections(self):
+        return """
+.l1sp :
+{
+        *(.l1sp.interrupt)
+        *(.l1sp)
+        *(.l1sp.*)
+        . = ALIGN(16);
+} > L1SP_VMA"""
+
+    def l2sp_sections(self):
+        return """
+.l2sp :
+{
+        *(.l2sp.interrupt)
+        *(.l2sp)
+        *(.l2sp.*)
+        . = ALIGN(16);
+}> L2SP_VMA"""
+
+    def dram_sections(self):
+        return """
+.text.dram :
+{
+*(.text.interrupt)
+*(.crtbegin)
+*(.text)
+*(.text.startup)
+*(.text.*)
+. = ALIGN(16);
+} > DRAM_VMA
+
+.eh_frame.dram :
+{
+*(.eh_frame)
+*(.eh_frame*)
+. = ALIGN(16);
+} > DRAM_VMA
+
+.rodata.dram :
+{
+*(.rodata)
+*(.rodata.*)
+*(.srodata.cst16)
+*(.srodata.cst8)
+*(.srodata.cst4)
+*(.srodata.cst2)
+*(.srodata)
+. = ALIGN(16);
+} > DRAM_VMA
+
+.data.dram :
+{
+*(.dram)
+*(.dram.*)
+*(.data)
+*(.data*)
+. = ALIGN(16);
+} > DRAM_VMA
+
+.sdata.dram :
+{
+*(.sdata)
+*(.sdata.*)
+*(.sdata*)
+*(.sdata*.gnu.linkonce.s.*)
+*(.sbss)
+*(.sbss*)
+*(.gnu.linkonce.sb.*)
+*(.scommon)
+. = ALIGN(16);
+} > DRAM_VMA
+
+.bss.dram :
+{
+*(.bss)
+*(.bss*)
+. = ALIGN(16);
+} > DRAM_VMA
+"""
+
+    def sections(self):
+        body =  '\n\n'.join([self.l1sp_sections(), self.l2sp_sections(), self.dram_sections(), self.symbols()])
+        return "SECTIONS\n{" + body + "\n}\n"
+
+    def symbols(self):
+        return '\n'.join([
+            "__global_pointer$ = 0x{:08x};".format(self.dram_start()),
+            "_end = .;",
+            "end = .;",
+            "_edata = .;",
+            "ENTRY(_start)"
+        ])
+
+    def __call__(self):
+        return self.memory() + "\n" + self.sections()
+
+
 if __name__ == '__main__':
     class sysconfig(object):
         def pxns(self):
@@ -611,25 +749,28 @@ if __name__ == '__main__':
         .set_dram()\
         .set_offset(0x1234)
     amap = AddressMap(sysconfig())
-    print("address_info: {}: {:08x}".format(address_info, amap.encode(address_info)))
+    # print("address_info: {}: {:08x}".format(address_info, amap.encode(address_info)))
 
     builder = L1SPAddressBuilder(amap, 0x1000)
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,0)))
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,1)))
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,2)))
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,3)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,0)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,1)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,2)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,3)))
 
     builder = L2SPAddressBuilder(amap, 0x1000, 0x100, 0x400)
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,0)))
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,1)))
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,2)))
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,3)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,0)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,1)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,2)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,3)))
 
     builder = DRAMAddressBuilder(amap, 0x1000, 0x100, 0x400)
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0)))
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,1)))
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,2)))
-    print("[{:x},{:x},{:x},{:x}]".format(*builder(0,3)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,1)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,2)))
+    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,3)))
 
     builder = CHeaderBuilder(amap)
+    #print(builder())
+    
+    builder = LdSciptBuilder(amap)
     print(builder())
