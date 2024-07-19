@@ -597,7 +597,7 @@ class CHeaderBuilder(object):
             macro, bitfield.hi(),
             macro, bitfield.lo())
 
-class LdSciptBuilder(object):
+class LdScriptBuilder(object):
     def __init__(self, address_map):
         self._address_map = address_map
 
@@ -736,41 +736,29 @@ class LdSciptBuilder(object):
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("output", choices=["ldscript","cheader"])
+    parser.add_argument("--core-threads", type=int, default=1)
+    parser.add_argument("--pod-cores", type=int, default=1)
+    parser.add_argument("--pxn-pods", type=int, default=1)
+    parser.add_argument("--num-pxn", type=int, default=1)
+    arguments = parser.parse_args()
+
     class sysconfig(object):
         def pxns(self):
-            return 4
+            return arguments.num_pxn
         def pods(self):
-            return 4
+            return arguments.pxn_pods
         def cores(self):
-            return 4
+            return arguments.pod_cores
 
-    address_info = AddressInfo()\
-        .set_absolute()\
-        .set_dram()\
-        .set_offset(0x1234)
-    amap = AddressMap(sysconfig())
-    # print("address_info: {}: {:08x}".format(address_info, amap.encode(address_info)))
+    adressmap = AddressMap(sysconfig())
 
-    builder = L1SPAddressBuilder(amap, 0x1000)
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,0)))
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,1)))
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,2)))
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,3)))
+    if arguments.output == "ldscript":
+        builder = LdScriptBuilder(adressmap)
+        print(builder())
 
-    builder = L2SPAddressBuilder(amap, 0x1000, 0x100, 0x400)
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,0)))
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,1)))
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,2)))
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0,3)))
-
-    builder = DRAMAddressBuilder(amap, 0x1000, 0x100, 0x400)
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,0)))
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,1)))
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,2)))
-    # print("[{:x},{:x},{:x},{:x}]".format(*builder(0,3)))
-
-    builder = CHeaderBuilder(amap)
-    #print(builder())
-    
-    builder = LdSciptBuilder(amap)
-    print(builder())
+    elif arguments.output == "cheader":
+        builder = CHeaderBuilder(adressmap)
+        print(builder())

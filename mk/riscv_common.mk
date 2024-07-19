@@ -20,10 +20,10 @@ vpath %.S $(DRV_DIR)/riscv-examples/platform_$(RISCV_PLATFORM)
 vpath %.c $(DRV_DIR)/riscv-examples/platform_$(RISCV_PLATFORM)
 vpath %.cpp $(DRV_DIR)/riscv-examples/platform_$(RISCV_PLATFORM)
 
-RISCV_ARCH:=rv64imafd
-RISCV_ABI:=lp64d
+RISCV_ARCH:=rv64imaf
+RISCV_ABI:=lp64f
 
-RISCV_COMPILE_FLAGS += -O2 -march=$(RISCV_ARCH)
+RISCV_COMPILE_FLAGS += -O3 -march=$(RISCV_ARCH)
 RISCV_COMPILE_FLAGS += -mabi=$(RISCV_ABI)
 
 RISCV_CXXFLAGS += $(RISCV_COMPILE_FLAGS)
@@ -47,6 +47,9 @@ RISCV_CXXOBJECT := $(patsubst %.cpp,%.o,$(RISCV_CXXSOURCE))
 # to RISCV executable
 RISCV_ASMSOURCE ?=
 RISCV_ASMOBJECT := $(patsubst %.S,%.o,$(RISCV_ASMSOURCE))
+
+
+$(RISCV_ASMOBJECT) $(RISCV_COBJECT) $(RISCV_CXXOBJECT): $(PLATFORM_HEADERS)
 
 $(RISCV_ASMOBJECT): %.o: %.S
 	$(RISCV_CC) $(RISCV_CFLAGS) -c -o $@ $<
