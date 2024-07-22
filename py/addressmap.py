@@ -622,18 +622,33 @@ class LdScriptBuilder(object):
     def dram_size(self):
         return 1 << self._address_map._relative_dram_offset.bits()
 
+    def dram_text_start(self):
+        return self.dram_start()
+
+    def dram_text_size(self):
+        return 8 * (2**20)
+
+    def dram_data_start(self):
+        return self.dram_text_start() + self.dram_text_size()
+
+    def dram_data_size(self):
+        return self.dram_size() - self.dram_text_size()
+
     def memory(self):
         body = """
-        L1SP_VMA (rw)  : ORIGIN = 0x{L1SP_START:08x}, LENGTH = 0x{L1SP_SIZE:08x}
-        L2SP_VMA (rw)  : ORIGIN = 0x{L2SP_START:08x}, LENGTH = 0x{L2SP_SIZE:08x}
-        DRAM_VMA (rwx) : ORIGIN = 0x{DRAM_START:08x}, LENGTH = 0x{DRAM_SIZE:08x}"""\
+L1SP_VMA (rw)    : ORIGIN = 0x{L1SP_START:08x}, LENGTH = 0x{L1SP_SIZE:08x}
+L2SP_VMA (rw)    : ORIGIN = 0x{L2SP_START:08x}, LENGTH = 0x{L2SP_SIZE:08x}
+DRAM_T_VMA (rwx) : ORIGIN = 0x{DRAM_T_START:08x}, LENGTH = 0x{DRAM_T_SIZE:08x}
+DRAM_D_VMA (rwx) : ORIGIN = 0x{DRAM_D_START:08x}, LENGTH = 0x{DRAM_D_SIZE:08x}"""\
             .format(
                 L1SP_START = self.l1sp_start(),
                 L1SP_SIZE  = self.l1sp_size(),
                 L2SP_START = self.l2sp_start(),
                 L2SP_SIZE  = self.l2sp_size(),
-                DRAM_START = self.dram_start(),
-                DRAM_SIZE  = self.dram_size()
+                DRAM_T_START = self.dram_text_start(),
+                DRAM_T_SIZE  = self.dram_text_size(),
+                DRAM_D_START = self.dram_data_start(),
+                DRAM_D_SIZE  = self.dram_data_size()
             )
         return "MEMORY\n{" + body + "\n}\n"
 
@@ -641,20 +656,20 @@ class LdScriptBuilder(object):
         return """
 .l1sp :
 {
-        *(.l1sp.interrupt)
-        *(.l1sp)
-        *(.l1sp.*)
-        . = ALIGN(16);
+*(.l1sp.interrupt)
+*(.l1sp)
+*(.l1sp.*)
+. = ALIGN(16);
 } > L1SP_VMA"""
 
     def l2sp_sections(self):
         return """
 .l2sp :
 {
-        *(.l2sp.interrupt)
-        *(.l2sp)
-        *(.l2sp.*)
-        . = ALIGN(16);
+*(.l2sp.interrupt)
+*(.l2sp)
+*(.l2sp.*)
+. = ALIGN(16);
 }> L2SP_VMA"""
 
     def dram_sections(self):
@@ -667,14 +682,14 @@ class LdScriptBuilder(object):
 *(.text.startup)
 *(.text.*)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_T_VMA
 
 .eh_frame.dram :
 {
 *(.eh_frame)
 *(.eh_frame*)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 
 .rodata.dram :
 {
@@ -686,7 +701,7 @@ class LdScriptBuilder(object):
 *(.srodata.cst2)
 *(.srodata)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 
 .data.dram :
 {
@@ -695,7 +710,7 @@ class LdScriptBuilder(object):
 *(.data)
 *(.data*)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 
 .sdata.dram :
 {
@@ -708,14 +723,14 @@ class LdScriptBuilder(object):
 *(.gnu.linkonce.sb.*)
 *(.scommon)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 
 .bss.dram :
 {
 *(.bss)
 *(.bss*)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 """
 
     def sections(self):

@@ -1,27 +1,28 @@
 MEMORY
 {
-        L1SP_VMA (rw)  : ORIGIN = 0x00000000, LENGTH = 0x20000000
-        L2SP_VMA (rw)  : ORIGIN = 0x20000000, LENGTH = 0x20000000
-        DRAM_VMA (rwx) : ORIGIN = 0x40000000, LENGTH = 0x40000000
+L1SP_VMA (rw)    : ORIGIN = 0x00000000, LENGTH = 0x20000000
+L2SP_VMA (rw)    : ORIGIN = 0x20000000, LENGTH = 0x20000000
+DRAM_T_VMA (rwx) : ORIGIN = 0x40000000, LENGTH = 0x00800000
+DRAM_D_VMA (rwx) : ORIGIN = 0x40800000, LENGTH = 0x3f800000
 }
 
 SECTIONS
 {
 .l1sp :
 {
-        *(.l1sp.interrupt)
-        *(.l1sp)
-        *(.l1sp.*)
-        . = ALIGN(16);
+*(.l1sp.interrupt)
+*(.l1sp)
+*(.l1sp.*)
+. = ALIGN(16);
 } > L1SP_VMA
 
 
 .l2sp :
 {
-        *(.l2sp.interrupt)
-        *(.l2sp)
-        *(.l2sp.*)
-        . = ALIGN(16);
+*(.l2sp.interrupt)
+*(.l2sp)
+*(.l2sp.*)
+. = ALIGN(16);
 }> L2SP_VMA
 
 
@@ -33,14 +34,14 @@ SECTIONS
 *(.text.startup)
 *(.text.*)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_T_VMA
 
 .eh_frame.dram :
 {
 *(.eh_frame)
 *(.eh_frame*)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 
 .rodata.dram :
 {
@@ -52,7 +53,7 @@ SECTIONS
 *(.srodata.cst2)
 *(.srodata)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 
 .data.dram :
 {
@@ -61,7 +62,7 @@ SECTIONS
 *(.data)
 *(.data*)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 
 .sdata.dram :
 {
@@ -74,14 +75,14 @@ SECTIONS
 *(.gnu.linkonce.sb.*)
 *(.scommon)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 
 .bss.dram :
 {
 *(.bss)
 *(.bss*)
 . = ALIGN(16);
-} > DRAM_VMA
+} > DRAM_D_VMA
 
 
 __global_pointer$ = 0x40000000;
