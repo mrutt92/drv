@@ -65,7 +65,7 @@ public:
         decode.set_absolute(true)
             .set_pxn(place.pxn)
             .set_pod(place.pod)
-            .set_core(DrvAPI::coreIdFromXY(place.core_x, place.core_y));
+            .set_core(place.core);
 
         return DrvAPI::DrvAPIPointer<T>(encodeAddressInfo(decode));
     }

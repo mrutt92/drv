@@ -10,20 +10,18 @@
 #include <pandohammer/cpuinfo.h>
 #include <pandohammer/mmio.h>
 #include <pandohammer/address.h>
-
-#define decl_l1sp(type) __attribute__((section(".l1sp"))) type
-#define decl_l2sp(type) __attribute__((section(".l2sp"))) type
-#define decl_dram(type) __attribute__((section(".dram"))) type
+#include <pandohammer/staticdecl.h>
 
 
-decl_l1sp (long) l1sp_var;
-decl_l2sp (long) l2sp_var;
-decl_dram (long) dram_var;
+
+__l1sp__ long l1sp_var;
+__l2sp__ long l2sp_var;
+__dram__ long dram_var;
 
 int main()
 {
     long stack;
-    uintptr_t addr = (uintptr_t)&l1sp_var;
+    uintptr_t addr = (uintptr_t)&dram_var;
     ph_print_hex(addr);
     ph_print_int(ph_address_is_absolute(addr));
     if (ph_address_is_absolute(addr) && ph_address_absolute_is_l1sp(addr))
