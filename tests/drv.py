@@ -9,23 +9,6 @@ import addressmap
 ##################
 POD_L2SP_SIZE = (1<<25)
 CORE_L1SP_SIZE = (1<<17)
-
-# common functions
-ADDR_TYPE_HI,ADDR_TYPE_LO     = (63, 58)
-ADDR_PXN_HI, ADDR_PXN_LO      = (57, 44)
-ADDR_POD_HI,ADDR_POD_LO       = (39, 34)
-ADDR_CORE_Y_HI,ADDR_CORE_Y_LO = (30, 28)
-ADDR_CORE_X_HI,ADDR_CORE_X_LO = (24, 22)
-
-ADDR_TYPE_L1SP    = 0b000000
-ADDR_TYPE_L2SP    = 0b000001
-ADDR_TYPE_MAINMEM = 0b000100
-
-def set_bits(word, hi, lo, value):
-    mask = (1 << (hi - lo + 1)) - 1
-    word &= ~(mask << lo)
-    word |= (value & mask) << lo
-    return word
         
 ################################
 # parse command line arguments #
