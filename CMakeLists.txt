@@ -25,7 +25,10 @@ set(CXX_STD "-std=c++17")
 
 find_package(Boost REQUIRED COMPONENTS coroutine)
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 add_subdirectory(interpreter)
 add_subdirectory(api)
 add_subdirectory(element)
 add_subdirectory(cmake-drvx-example)
+

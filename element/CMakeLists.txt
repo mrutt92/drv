@@ -31,16 +31,17 @@ set(DRV_X_SOURCES
 
 list(APPEND DRV_SOURCES ${DRV_X_SOURCES})
 
+# add the ramulator simulation sources
 set(DRV_RAMULATOR_SOURCES
   DrvCustomRamulatorMem.cpp
   DrvCustomRamulatorMem.hpp
   )
 
-# add the ramulator simulation sources
 if (SST_ENABLE_RAMULATOR)
   list(APPEND DRV_SOURCES ${DRV_RAMULATOR_SOURCES})
 endif()
 
+# add the riscv simulation sources
 set(DRV_R_SOURCES
   SSTRISCVCore.cpp
   SSTRISCVCore.hpp
@@ -51,15 +52,11 @@ set(DRV_R_SOURCES
   DrvNativeSimulationTranslator.hpp
   )
 
-# add the riscv simulation sources
 if (SST_ENABLE_RISCV)
   list(APPEND DRV_SOURCES ${DRV_R_SOURCES})
 endif()
 
-add_sst_library(
-  Drv
-  ${DRV_SOURCES}
-  )
+add_sst_library(Drv ${DRV_SOURCES})
 
 target_link_libraries(Drv LINK_PUBLIC drvapi memHierarchy)
 target_include_directories(Drv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -71,9 +68,17 @@ if (SST_ENABLE_RISCV)
   target_include_directories(Drv PUBLIC ${GNU_RISCV_TOOLCHAIN_PREFIX})
 endif()
 
-install(TARGETS Drv DESTINATION lib)
 add_custom_command(
   TARGET Drv
   POST_BUILD
-  COMMAND SST::SSTRegister Drv Drv_LIBDIR=${CMAKE_INSTALL_PREFIX}/lib
+  COMMAND SST::SSTRegister Drv Drv_LIBDIR=${CMAKE_CURRENT_BINARY_DIR}
   )
+
+install(TARGETS Drv DESTINATION lib)
+# run with install to register the Drv element
+add_custom_target(install-drv-element
+  COMMAND SST::SSTRegister Drv Drv_LIBDIR=${CMAKE_INSTALL_PREFIX}/lib
+  DEPENDS Drv
+  )
+
+
