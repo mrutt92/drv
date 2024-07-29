@@ -1,6 +1,7 @@
 set(
   DRV_API_SOURCES
   DrvAPIAddressToNative.cpp
+  DrvAPIAddressMap.cpp
   DrvAPIAllocator.cpp
   DrvAPIGlobal.cpp
   DrvAPINativeToAddress.cpp
@@ -12,6 +13,7 @@ set(
 set(
   DRV_API_HEADERS
   DrvAPIAddress.hpp
+  DrvAPIAddressMap.hpp
   DrvAPIAddressToNative.hpp
   DrvAPIAllocator.hpp
   DrvAPICoreXY.hpp
