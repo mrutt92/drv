@@ -54,6 +54,13 @@ function (add_drvx_executable name)
   endif()
 endfunction()
 
+# set link libraries for a drvx target
+function (drvx_target_link_libraries)
+  if (NOT DEFINED ARCH_RV64)
+    target_link_libraries(${ARGV})
+  endif()
+endfunction()
+
 # creates a drvx run target
 # ${name} should be a target created with add_drvx_executable
 # "ARGV" will be passed as the command line arguments to the drvx
