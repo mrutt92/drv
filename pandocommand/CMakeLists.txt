@@ -18,7 +18,7 @@ target_link_libraries(
   drvapi
   )
 
-add_drvx_executable(
+drvx_add_executable(
   pandocommand_loader
   default.cpp
   )

@@ -45,7 +45,7 @@ define_property(TARGET PROPERTY SST_RUN_DIR
 
 # creates a drvx "executable" (really a shared library)
 # will create a target "name"
-function (add_drvx_executable name)
+function (drvx_add_executable name)
   if (NOT DEFINED ARCH_RV64)
     set(SOURCES ${ARGV})
     list(POP_FRONT SOURCES)
@@ -65,7 +65,7 @@ endfunction()
 # ${name} should be a target created with add_drvx_executable
 # "ARGV" will be passed as the command line arguments to the drvx
 # program at runtime
-function (add_drvx_run_target run_target executable)
+function (drvx_add_run_target run_target executable)
   if (NOT DEFINED ARCH_RV64)
     add_custom_target(
       ${run_target}
@@ -118,7 +118,7 @@ endfunction()
 # ${cpexecutable} should be a target created with add_drvx_executable
 # "ARGV" will be passed as the command line arguments to the drvr
 # program at runtime
-function (add_drvr_run_target_with_command_processor run_target rvexecutable cpexecutable)
+function (drvr_add_run_target_with_command_processor run_target rvexecutable cpexecutable)
   if (NOT DEFINED ARCH_RV64)
     add_custom_target(
       ${run_target}
@@ -170,7 +170,7 @@ function (add_drvr_run_target_with_command_processor run_target rvexecutable cpe
 endfunction()
 
 # set a property on a drvr target
-function (set_drvr_run_target_properties target)
+function (drvr_set_run_target_properties target)
 if (NOT DEFINED ARCH_RV64)
   set_target_properties(${target} ${ARGV})
 endif()
@@ -181,12 +181,12 @@ endfunction()
 # ${rvexecutable} should be a target created with add_drvr_executable
 # "ARGV" will be passed as the command line arguments to the drvr
 # program at runtime
-function (add_drvr_run_target run_target rvexecutable)
-  add_drvr_run_target_with_command_processor(${run_target} ${rvexecutable} pandocommand_loader)
+function (drvr_add_run_target run_target rvexecutable)
+  drvr_add_run_target_with_command_processor(${run_target} ${rvexecutable} pandocommand_loader)
 endfunction()
 
 
-function (add_drvr_executable name)
+function (drvr_add_executable name)
   if (NOT DEFINED ARCH_RV64)
     ExternalProject_Add(${name}
       SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}
