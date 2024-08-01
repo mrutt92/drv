@@ -30,6 +30,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(DRV_SOURCE_DIR ${PROJECT_SOURCE_DIR})
 set(DRV_BINARY_DIR ${PROJECT_BINARY_DIR})
 
+find_package(DRV REQUIRED)
+
 ExternalProject_Add(
   pandohammer_project
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pandohammer
