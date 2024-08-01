@@ -12,10 +12,32 @@ target_include_directories(
   ${PROJECT_SOURCE_DIR}
   )
 
+install(
+  TARGETS pandocommand
+  DESTINATION lib
+  PUBLIC_HEADER DESTINATION include/pandocommand
+  )
+
 target_link_libraries(
   pandocommand
   PUBLIC
   drvapi
+  )
+
+set(
+  PANDOCOMMAND_HEADERS
+  control.hpp
+  debug.hpp
+  executable.hpp
+  loader.hpp
+  place.hpp
+  )
+
+set_target_properties(
+  pandocommand
+  PROPERTIES
+  PUBLIC_HEADERS
+  "${PANDOCOMMAND_HEADERS}"
   )
 
 drvx_add_executable(
@@ -27,4 +49,15 @@ target_link_libraries(
   pandocommand_loader
   PUBLIC
   pandocommand
+  )
+
+set_target_properties(
+  pandocommand_loader
+  PROPERTIES
+  INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib"
+  )
+
+install(
+  TARGETS pandocommand_loader
+  RUNTIME DESTINATION lib
   )
