@@ -12,12 +12,6 @@ target_include_directories(
   ${PROJECT_SOURCE_DIR}
   )
 
-install(
-  TARGETS pandocommand
-  DESTINATION lib
-  PUBLIC_HEADER DESTINATION include/pandocommand
-  )
-
 target_link_libraries(
   pandocommand
   PUBLIC
@@ -36,8 +30,14 @@ set(
 set_target_properties(
   pandocommand
   PROPERTIES
-  PUBLIC_HEADERS
+  PUBLIC_HEADER
   "${PANDOCOMMAND_HEADERS}"
+  )
+
+install(
+  TARGETS pandocommand
+  DESTINATION lib
+  PUBLIC_HEADER DESTINATION include/pandocommand
   )
 
 drvx_add_executable(
