@@ -45,6 +45,16 @@ define_property(TARGET PROPERTY SST_RUN_DIR
   FULL_DOCS "Directory in which to run the simulation"
   )
 
+define_property(TARGET PROPERTY DRV_MODEL_WITH_COMMANDPROCESSOR
+  BRIEF_DOCS "The command processor will be used with the model"
+  FULL_DOCS "The command processor will be used with the model"
+  )
+
+define_property(TARGET PROPERTY DRV_MODEL_COMMANDPROCESSOR
+  BRIEF_DOCS "The command processor to use with the model"
+  FULL_DOCS "The command processor to use with the model"
+  )
+
 # creates a drvx "executable" (really a shared library)
 # will create a target "name"
 function (drvx_add_executable name)
@@ -79,6 +89,7 @@ function (drvx_add_run_target run_target executable)
       $<TARGET_PROPERTY:${run_target},SST_SIM_OPTIONS> # options for the simulator
       $<TARGET_PROPERTY:${run_target},DRV_MODEL> # the model to simulate
       --
+      $<IF:$<STREQUAL:$<TARGET_PROPERTY:${run_target},DRV_MODEL_WITH_COMMANDPROCESSOR>,yes>,--with-command-processor=$<TARGET_FILE:$<TARGET_PROPERTY:${run_target},DRV_MODEL_COMMANDPROCESSOR>>,>
       $<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTIONS> # options for the model
       --num-pxn=$<TARGET_PROPERTY:${run_target},DRV_MODEL_NUM_PXN>
       --pxn-pods=$<TARGET_PROPERTY:${run_target},DRV_MODEL_PXN_PODS>
@@ -106,6 +117,8 @@ function (drvx_add_run_target run_target executable)
       DRV_MODEL_PXN_PODS 1
       DRV_MODEL_POD_CORES 1
       DRV_MODEL_CORE_THREADS 1
+      DRV_MODEL_WITH_COMMANDPROCESSOR no
+      DRV_MODEL_COMMANDPROCESSOR ""
       )
     add_dependencies(
       ${run_target}
@@ -171,11 +184,21 @@ function (drvr_add_run_target_with_command_processor run_target rvexecutable cpe
   endif()
 endfunction()
 
-# set a property on a drvr target
-function (drvr_set_run_target_properties target)
+# set a property on a drv run target
+function (drv_set_run_target_properties target)
 if (NOT DEFINED ARCH_RV64)
   set_target_properties(${target} ${ARGV})
 endif()
+endfunction()
+
+# set a property on a drvr target
+function (drvr_set_run_target_properties target)
+  drv_set_run_target_properties(${target} ${ARGV})
+endfunction()
+
+# set a property on a drvx target
+function (drvx_set_run_target_properties target)
+  drv_set_run_target_properties(${target} ${ARGV})
 endfunction()
 
 
