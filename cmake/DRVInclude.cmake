@@ -84,12 +84,69 @@ function (drvx_add_run_target run_target executable)
       COMMAND
       mkdir -p $<TARGET_PROPERTY:${run_target},SST_RUN_DIR> &&
       cd $<TARGET_PROPERTY:${run_target},SST_RUN_DIR> &&
+      DRV_MODEL_COMMANDPROCESSOR=$<TARGET_PROPERTY:${run_target},DRV_MODEL_COMMANDPROCESSOR>
       PYTHONPATH=${DRV_SOURCE_DIR}/py:${DRV_SOURCE_DIR}/tests
       $<TARGET_FILE:SST::SST> # the simulator
       $<TARGET_PROPERTY:${run_target},SST_SIM_OPTIONS> # options for the simulator
       $<TARGET_PROPERTY:${run_target},DRV_MODEL> # the model to simulate
       --
-      $<IF:$<STREQUAL:$<TARGET_PROPERTY:${run_target},DRV_MODEL_WITH_COMMANDPROCESSOR>,yes>,--with-command-processor=$<TARGET_FILE:$<TARGET_PROPERTY:${run_target},DRV_MODEL_COMMANDPROCESSOR>>,>
+      $<GENEX_EVAL:$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTIONS>> # options for the model
+      --num-pxn=$<TARGET_PROPERTY:${run_target},DRV_MODEL_NUM_PXN>
+      --pxn-pods=$<TARGET_PROPERTY:${run_target},DRV_MODEL_PXN_PODS>
+      --pod-cores=$<TARGET_PROPERTY:${run_target},DRV_MODEL_POD_CORES>
+      --core-threads=$<TARGET_PROPERTY:${run_target},DRV_MODEL_CORE_THREADS>
+      $<TARGET_FILE:${executable}> # the application to run
+      $<TARGET_PROPERTY:${run_target},DRV_APPLICATION_ARGV> # arguments for the application
+      2>&1 | tee $<TARGET_PROPERTY:${run_target},SST_RUN_DIR>/log.txt # log the output
+      DEPENDS ${executable} Drv
+      )
+    set_target_properties(
+      ${run_target}
+      PROPERTIES
+      SST_RUN_DIR ${CMAKE_CURRENT_BINARY_DIR}/${run_target}
+      )
+    set_target_properties(
+      ${run_target}
+      PROPERTIES
+      DRV_MODEL ${DRV_SOURCE_DIR}/tests/PANDOHammerDrvX.py
+      )
+    set_target_properties(
+      ${run_target}
+      PROPERTIES
+      DRV_MODEL_NUM_PXN 1
+      DRV_MODEL_PXN_PODS 1
+      DRV_MODEL_POD_CORES 1
+      DRV_MODEL_CORE_THREADS 1
+      DRV_MODEL_WITH_COMMANDPROCESSOR no
+      DRV_MODEL_COMMANDPROCESSOR ""
+      )
+    add_dependencies(
+      ${run_target}
+      ${executable}
+      Drv
+      )
+  endif()
+endfunction()
+
+
+# creates a drvx run target
+# ${name} should be a target created with add_drvx_executable
+# "ARGV" will be passed as the command line arguments to the drvx
+# program at runtime
+function (drvx_add_run_target_with_command_processor run_target executable command_processor)
+  if (NOT DEFINED ARCH_RV64)
+    add_custom_target(
+      ${run_target}
+      COMMAND
+      mkdir -p $<TARGET_PROPERTY:${run_target},SST_RUN_DIR> &&
+      cd $<TARGET_PROPERTY:${run_target},SST_RUN_DIR> &&
+      DRV_MODEL_COMMANDPROCESSOR=$<TARGET_PROPERTY:${run_target},DRV_MODEL_COMMANDPROCESSOR>
+      PYTHONPATH=${DRV_SOURCE_DIR}/py:${DRV_SOURCE_DIR}/tests
+      $<TARGET_FILE:SST::SST> # the simulator
+      $<TARGET_PROPERTY:${run_target},SST_SIM_OPTIONS> # options for the simulator
+      $<TARGET_PROPERTY:${run_target},DRV_MODEL> # the model to simulate
+      --
+      --with-command-processor=$<TARGET_FILE:${command_processor}>
       $<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTIONS> # options for the model
       --num-pxn=$<TARGET_PROPERTY:${run_target},DRV_MODEL_NUM_PXN>
       --pxn-pods=$<TARGET_PROPERTY:${run_target},DRV_MODEL_PXN_PODS>

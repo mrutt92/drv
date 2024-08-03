@@ -27,6 +27,20 @@ function (drvx_test_complex name)
   set(DRVX_TESTS ${DRVX_TESTS} run-${name} PARENT_SCOPE)
 endfunction()
 
+function (drvx_test_complex_with_cp name cp_name)
+  drvx_add_executable(${name} ${ARGN})
+  drvx_add_run_target_with_command_processor(run-${name} ${name} ${cp_name})
+  drvx_set_run_target_properties(
+    run-${name}
+    PROPERTIES
+    DRV_MODEL_NUM_PXN 1
+    DRV_MODEL_PXN_PODS 1
+    DRV_MODEL_PODS_CORES 1
+    DRV_MODEL_CORE_THREADS 1
+    )
+  set(DRVX_TESTS ${DRVX_TESTS} run-${name} PARENT_SCOPE)
+endfunction()
+
 drvx_test(simple) # google test candidate
 drvx_test(allocator) # google test candidate
 drvx_test(atomic_read_back) # google test candidate
@@ -83,14 +97,12 @@ drvx_test(addrmap) # tough test with google test
 drvx_test(nop) # google test candidate
 drvx_test(pointer) # google test candidate
 
-drvx_test_complex(super_simple_task_runtime runtime.cpp runtime_main.cpp) # google test candidate
+drvx_test_complex_with_cp(super_simple_task_runtime super_simple_task_runtime runtime.cpp runtime_main.cpp) # google test candidate
 drvx_set_run_target_properties(
   run-super_simple_task_runtime
   PROPERTIES
   DRV_MODEL_NUM_PXN 2
   DRV_MODEL_POD_CORES 2
-  DRV_MODEL_WITH_COMMANDPROCESSOR yes
-  DRV_MODEL_COMMANDPROCESSOR super_simple_task_runtime
   )
 
 drvx_test(to_address) # google test candidate
