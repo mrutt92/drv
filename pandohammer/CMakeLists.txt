@@ -1,5 +1,5 @@
 project(pandohammer_project)
-cmake_minimum_required(VERSION 3.25.0)
+cmake_minimum_required(VERSION 3.30.0)
 
 set(PANDOHAMMER_HEADERS
   pandohammer/address.h
