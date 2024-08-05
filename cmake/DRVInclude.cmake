@@ -30,6 +30,26 @@ define_property(TARGET PROPERTY DRV_MODEL_CORE_THREADS
   FULL_DOCS "Number of threads per core"
   )
 
+define_property(TARGET PROPERTY DRV_BUILD_NUM_PXN
+  BRIEF_DOCS "Number of PXNs (used for building)"
+  FULL_DOCS "Number of PXNs (used for building)"
+  )
+
+define_property(TARGET PROPERTY DRV_BUILD_PXN_PODS
+  BRIEF_DOCS "Number of pods per PXN (used for building)"
+  FULL_DOCS "Number of pods per PXN (used for building)"
+  )
+
+define_property(TARGET PROPERTY DRV_BUILD_POD_CORES
+  BRIEF_DOCS "Number of cores per pod (used for building)"
+  FULL_DOCS "Number of cores per pod (used for building)"
+  )
+
+define_property(TARGET PROPERTY DRV_BUILD_CORE_THREADS
+  BRIEF_DOCS "Number of threads per core (used for building)"
+  FULL_DOCS "Number of threads per core (used for building)"
+  )
+
 define_property(TARGET PROPERTY DRV_APPLICATION_ARGV
   BRIEF_DOCS "Arguments to pass to the application"
   FULL_DOCS "Arguments to pass to the application"
@@ -85,6 +105,26 @@ function (drv_add_run_target run_target executable cpexecutable)
     set(NO_CP "$<STREQUAL:${cpexecutable},>")
     set(CP "$<TARGET_FILE:${cpexecutable}>")
     set(CP_OPT "$<IF:${NO_CP},,--with-command-processor=${CP}>")
+
+    # prefer the build properties if they are set, but fall back to the model properties
+    set(BUILD_NUM_PXN_SET "$<BOOL:$<TARGET_PROPERTY:${run_target},DRV_BUILD_NUM_PXN>>")
+    set(BUILD_NUM_PXN "$<TARGET_PROPERTY:${run_target},DRV_BUILD_NUM_PXN>")
+    set(MODEL_NUM_PXN "$<IF:${BUILD_NUM_PXN_SET},${BUILD_NUM_PXN},$<TARGET_PROPERTY:${run_target},DRV_MODEL_NUM_PXN>>")
+
+    set(BUILD_PXN_PODS_SET "$<BOOL:$<TARGET_PROPERTY:${run_target},DRV_BUILD_PXN_PODS>>")
+    set(BUILD_PXN_PODS "$<TARGET_PROPERTY:${run_target},DRV_BUILD_PXN_PODS>")
+    set(MODEL_PXN_PODS "$<IF:${BUILD_PXN_PODS_SET},${BUILD_PXN_PODS},$<TARGET_PROPERTY:${run_target},DRV_MODEL_PXN_PODS>>")
+
+    set(BUILD_POD_CORES "$<TARGET_PROPERTY:${executable},DRV_BUILD_POD_CORES>")
+    set(BUILD_POD_CORES_SET "$<BOOL:${BUILD_POD_CORES}>")
+    set(MODEL_POD_CORES "$<IF:${BUILD_POD_CORES_SET},${BUILD_POD_CORES},$<TARGET_PROPERTY:${run_target},DRV_MODEL_POD_CORES>>")
+    #set(MODEL_POD_CORES "$<IF:${BUILD_POD_CORES_SET},${BUILD_POD_CORES},${BUILD_POD_CORES}>")
+    #set(MODEL_POD_CORES "$<IF:${BUILD_POD_CORES_SET},yes,no>")
+
+    set(BUILD_CORE_THREADS "$<TARGET_PROPERTY:${executable},DRV_BUILD_CORE_THREADS>")
+    set(BUILD_CORE_THREADS_SET "$<BOOL:${BUILD_CORE_THREADS}>")
+    set(MODEL_CORE_THREADS "$<IF:${BUILD_CORE_THREADS_SET},${BUILD_CORE_THREADS},$<TARGET_PROPERTY:${run_target},DRV_MODEL_CORE_THREADS>>")
+
     add_custom_target(
       ${run_target}
       COMMAND
@@ -97,10 +137,10 @@ function (drv_add_run_target run_target executable cpexecutable)
       --
       ${CP_OPT} # the command processor
       $<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTIONS> # options for the model
-      --num-pxn=$<TARGET_PROPERTY:${run_target},DRV_MODEL_NUM_PXN>
-      --pxn-pods=$<TARGET_PROPERTY:${run_target},DRV_MODEL_PXN_PODS>
-      --pod-cores=$<TARGET_PROPERTY:${run_target},DRV_MODEL_POD_CORES>
-      --core-threads=$<TARGET_PROPERTY:${run_target},DRV_MODEL_CORE_THREADS>
+      --num-pxn=${MODEL_NUM_PXN}
+      --pxn-pods=${MODEL_PXN_PODS}
+      --pod-cores=${MODEL_POD_CORES}
+      --core-threads=${MODEL_CORE_THREADS}
       $<TARGET_FILE:${executable}> # the application to run
       $<TARGET_PROPERTY:${run_target},DRV_APPLICATION_ARGV> # arguments for the application
       2>&1 | tee $<TARGET_PROPERTY:${run_target},SST_RUN_DIR>/log.txt # log the output
@@ -219,6 +259,13 @@ function (drvr_add_executable name)
       )
     add_executable(RV64::${name} IMPORTED DEPENDS ${name}_project)
     set_target_properties(RV64::${name} PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${name})
+    set_target_properties(RV64::${name}
+      PROPERTIES
+      DRV_BUILD_CORE_THREADS 1
+      DRV_BUILD_POD_CORES 1
+      DRV_BUILD_PXN_PODS 1
+      DRV_BUILD_NUM_PXN 1
+      )
   else()
     message(STATUS "Adding drvr executable ${name}")
     set(SOURCES ${ARGV})
@@ -226,6 +273,13 @@ function (drvr_add_executable name)
     add_executable(${name} ${SOURCES})
     target_link_libraries(${name} pandohammer)
     install(TARGETS ${name} DESTINATION .)
+    set_target_properties(${name}
+      PROPERTIES
+      DRV_BUILD_CORE_THREADS 1
+      DRV_BUILD_POD_CORES 1
+      DRV_BUILD_PXN_PODS 1
+      DRV_BUILD_NUM_PXN 1
+      )
   endif()
 endfunction()
 
