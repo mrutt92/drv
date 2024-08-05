@@ -282,8 +282,23 @@ function (drvr_add_executable name)
     message(STATUS "Adding drvr executable ${name}")
     set(SOURCES ${ARGV})
     list(POP_FRONT SOURCES)
+    set(include_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}_include)
     add_executable(${name} ${SOURCES})
+    add_custom_target(
+      ${name}-generate-address-map
+      ALL
+      COMMAND
+      mkdir -p ${include_dir} &&
+      python3 ${DRV_SOURCE_DIR}/py/addressmap.py
+      --core-threads $<TARGET_PROPERTY:${name},DRV_BUILD_CORE_THREADS>
+      --pod-cores $<TARGET_PROPERTY:${name},DRV_BUILD_POD_CORES>
+      --pxn-pods $<TARGET_PROPERTY:${name},DRV_BUILD_PXN_PODS>
+      --num-pxn $<TARGET_PROPERTY:${name},DRV_BUILD_NUM_PXN>
+      cheader > ${include_dir}/address_map.h
+      )
+    add_dependencies(${name} ${name}-generate-address-map)
     target_link_libraries(${name} pandohammer)
+    target_include_directories(${name} PRIVATE ${include_dir})
     install(TARGETS ${name} DESTINATION .)
     set_target_properties(${name}
       PROPERTIES
