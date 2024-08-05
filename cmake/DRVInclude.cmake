@@ -233,6 +233,18 @@ function (drvx_set_run_target_properties target)
   drv_set_run_target_properties(${target} ${ARGV})
 endfunction()
 
+function (drvr_set_build_target_properties target)
+  set_target_properties(${target} ${ARGV})
+endfunction()
+
+function (drvr_set_build_target_properties target)
+  if (NOT DEFINED ARCH_RV64)
+    set_target_properties(RV64::${target} ${ARGV})
+  else()
+    set_target_properties(${target} ${ARGV})
+  endif()
+endfunction()
+
 # creates a drvr executable target
 function (drvr_add_executable name)
   if (NOT DEFINED ARCH_RV64)
