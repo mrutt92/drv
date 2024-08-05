@@ -73,6 +73,13 @@ function (drvx_target_link_libraries)
   endif()
 endfunction()
 
+# creates a drv run target
+# ${run_target} should be the name of the target to create
+# ${executable} should be a target created with drv(x|r)_add_executable
+# ${cpexecutable} should be a target created with drvx_add_executable
+#
+# it is left to the caller to set the properties of the run target
+# particularly DRV_MODEL, DRV_MODEL_OPTIONS, DRV_APPLICATION_ARGV
 function (drv_add_run_target run_target executable cpexecutable)
   if (NOT DEFINED ARCH_RV64)
     set(NO_CP "$<STREQUAL:${cpexecutable},>")
