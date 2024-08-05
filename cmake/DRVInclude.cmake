@@ -283,10 +283,9 @@ function (drvr_add_executable name)
     set(SOURCES ${ARGV})
     list(POP_FRONT SOURCES)
     set(include_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}_include)
-    add_executable(${name} ${SOURCES})
-    add_custom_target(
-      ${name}-generate-address-map
-      ALL
+    add_executable(${name} ${SOURCES} ${include_dir}/address_map.h)
+    add_custom_command(
+      OUTPUT ${include_dir}/address_map.h
       COMMAND
       mkdir -p ${include_dir} &&
       python3 ${DRV_SOURCE_DIR}/py/addressmap.py
@@ -296,7 +295,6 @@ function (drvr_add_executable name)
       --num-pxn $<TARGET_PROPERTY:${name},DRV_BUILD_NUM_PXN>
       cheader > ${include_dir}/address_map.h
       )
-    add_dependencies(${name} ${name}-generate-address-map)
     target_link_libraries(${name} pandohammer)
     target_include_directories(${name} PRIVATE ${include_dir})
     install(TARGETS ${name} DESTINATION .)
