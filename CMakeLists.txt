@@ -1,6 +1,5 @@
+cmake_minimum_required(VERSION 3.30.0)
 project(drv)
-
-cmake_minimum_required(VERSION 3.25.0)
 
 include(ExternalProject)
 

@@ -13,20 +13,6 @@ function (drvx_test name)
   set(DRVX_TESTS ${DRVX_TESTS} run-${name} PARENT_SCOPE)
 endfunction()
 
-function (drvx_test_complex name)
-  drvx_add_executable(${name} ${ARGN})
-  drvx_add_run_target(run-${name} ${name})
-  drvx_set_run_target_properties(
-    run-${name}
-    PROPERTIES
-    DRV_MODEL_NUM_PXN 1
-    DRV_MODEL_PXN_PODS 1
-    DRV_MODEL_PODS_CORES 1
-    DRV_MODEL_CORE_THREADS 1
-    )
-  set(DRVX_TESTS ${DRVX_TESTS} run-${name} PARENT_SCOPE)
-endfunction()
-
 function (drvx_test_complex_with_cp name cp_name)
   drvx_add_executable(${name} ${ARGN})
   drvx_add_run_target_with_command_processor(run-${name} ${name} ${cp_name})
@@ -39,6 +25,10 @@ function (drvx_test_complex_with_cp name cp_name)
     DRV_MODEL_CORE_THREADS 1
     )
   set(DRVX_TESTS ${DRVX_TESTS} run-${name} PARENT_SCOPE)
+endfunction()
+
+function (drvx_test_complex name)
+  drvx_test_complex_with_cp(${name} "" ${ARGN})
 endfunction()
 
 drvx_test(simple) # google test candidate
