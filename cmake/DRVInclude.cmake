@@ -164,6 +164,7 @@ function (drvr_add_run_target_with_command_processor run_target rvexecutable cpe
       PROPERTIES
       DRV_MODEL ${DRV_SOURCE_DIR}/tests/PANDOHammerDrvR.py
       )
+    add_dependencies(${run_target} ${rvexecutable})
   endif()
 endfunction()
 
@@ -214,6 +215,7 @@ function (drvr_add_executable name)
       make ${name}
       INSTALL_COMMAND
       make install
+      BUILD_ALWAYS 1
       )
     add_executable(RV64::${name} IMPORTED DEPENDS ${name}_project)
     set_target_properties(RV64::${name} PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${name})
