@@ -245,6 +245,18 @@ function (drvr_set_build_target_properties target)
   endif()
 endfunction()
 
+function (drvr_target_compile_options target)
+  if ( DEFINED ARCH_RV64 )
+    target_compile_options(${target} ${ARGN})
+  endif()
+endfunction()
+
+function (drvr_target_link_libraries target)
+  if ( DEFINED ARCH_RV64 )
+    target_link_libraries(${target} ${ARGN})
+  endif()
+endfunction()
+
 # creates a drvr executable target
 function (drvr_add_executable name)
   if (NOT DEFINED ARCH_RV64)

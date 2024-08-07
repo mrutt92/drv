@@ -53,6 +53,7 @@ else()
     set_property(TARGET pandohammer PROPERTY IMPORTED_LOCATION ${DRV_INSTALL_PREFIX}/pandohammer/lib/libpandohammer.a)
     set_property(TARGET pandohammer PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${DRV_INSTALL_PREFIX}/pandohammer/include)
     set_property(TARGET pandohammer PROPERTY INTERFACE_LINK_OPTIONS -T ${DRV_INSTALL_PREFIX}/pandohammer/lib/bsg_link.ld)
+    set_property(TARGET pandohammer PROPERTY INTERFACE_COMPILE_OPTIONS -nostartfiles)
   endif()
 endif()
 
