@@ -311,3 +311,29 @@ function (drvr_add_executable name)
   endif()
 endfunction()
 
+macro (drvr_rv64_build)
+  if (NOT DEFINED ARCH_RV64)
+    ExternalProject_Add(
+      rv64
+      SOURCE_DIR ${PROJECT_SOURCE_DIR}
+      BINARY_DIR ${PROJECT_RV64_BINARY_DIR}
+      INSTALL_DIR ${PROJECT_RV64_BINARY_DIR}
+      CONFIGURE_COMMAND
+      ${CMAKE_COMMAND}
+      -DARCH_RV64=1
+      -DCMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}
+      -DCMAKE_C_COMPILER=${GNU_RISCV_TOOLCHAIN_PREFIX}/bin/riscv64-unknown-elfpandodrvsim-gcc
+      -DCMAKE_CXX_COMPILER=${GNU_RISCV_TOOLCHAIN_PREFIX}/bin/riscv64-unknown-elfpandodrvsim-g++
+      -DCMAKE_SYSTEM_NAME=Generic
+      -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}/rv64
+      -DSST_CORE_PREFIX=${SST_CORE_PREFIX}
+      -DSST_ELEMENTS_PREFIX=${SST_ELEMENTS_PREFIX}
+      -DGNU_RISCV_TOOLCHAIN_PREFIX=${GNU_RISCV_TOOLCHAIN_PREFIX}
+      ${PROJECT_SOURCE_DIR}
+      INSTALL_COMMAND
+      echo "Install command not needed"
+      BUILD_ALWAYS 1
+      )
+  endif()
+endmacro()
+

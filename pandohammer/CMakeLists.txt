@@ -39,10 +39,17 @@ if (DEFINED ARCH_RV64)
     "${PANDOHAMMER_HEADERS}"
     )
 
-  # install(TARGETS pandohammer
-  #   LIBRARY DESTINATION lib
-  #   PUBLIC_HEADER DESTINATION include/pandohammer)
-
-  # install(FILES bsg_link.ld DESTINATION lib)
+  install(FILES
+    ${PANDOHAMMER_SOURCES}
+    DESTINATION lib
+    )
+  install(FILES
+    ${PANDOHAMMER_HEADERS}
+    DESTINATION include/pandohammer
+    )
+  install(FILES
+    bsg_link.ld
+    DESTINATION lib
+    )
   
 endif()
