@@ -1,4 +1,8 @@
 include(ExternalProject)
+set(PROJECT_RV64_BINARY_DIR ${PROJECT_BINARY_DIR}/rv64)
+if (NOT DEFINED RV64_PROJECT_NAME)
+  set(RV64_PROJECT_NAME "rv64")
+endif()
 
 define_property(TARGET PROPERTY DRV_MODEL
   BRIEF_DOCS "The model to simulate"
@@ -198,7 +202,7 @@ endfunction()
 # program at runtime
 function (drvr_add_run_target_with_command_processor run_target rvexecutable cpexecutable)
   if (NOT DEFINED ARCH_RV64)
-    drv_add_run_target(${run_target} RV64::${rvexecutable} ${cpexecutable})
+    drv_add_run_target(${run_target} ${rvexecutable} ${cpexecutable})
     set_target_properties(
       ${run_target}
       PROPERTIES
@@ -239,7 +243,7 @@ endfunction()
 
 function (drvr_set_build_target_properties target)
   if (NOT DEFINED ARCH_RV64)
-    set_target_properties(RV64::${target} ${ARGV})
+    set_target_properties(${target} ${ARGV})
   else()
     set_target_properties(${target} ${ARGV})
   endif()
@@ -254,48 +258,37 @@ endfunction()
 function (drvr_target_link_libraries target)
   if ( DEFINED ARCH_RV64 )
     target_link_libraries(${target} ${ARGN})
+  else()
+    add_dependencies(${target} ${ARGN})
+  endif()
+endfunction()
+
+function (drvr_target_link_options target)
+  if ( DEFINED ARCH_RV64 )
+    target_link_options(${target} ${ARGN})
   endif()
 endfunction()
 
 # creates a drvr executable target
 function (drvr_add_executable name)
+  set(sources ${ARGN})
   if (NOT DEFINED ARCH_RV64)
-    ExternalProject_Add(
+    set(path ${CMAKE_CURRENT_BINARY_DIR})
+    cmake_path(RELATIVE_PATH path BASE_DIRECTORY ${PROJECT_BINARY_DIR})
+    add_executable(${name} IMPORTED)
+    add_dependencies(${name} ${RV64_PROJECT_NAME})
+    set_target_properties(
       ${name}
-      SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}
-      BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/${name}-build
-      INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}
-      CONFIGURE_COMMAND
-      cmake
-      -DARCH_RV64=1
-      -DCMAKE_C_COMPILER=${GNU_RISCV_TOOLCHAIN_PREFIX}/bin/riscv64-unknown-elfpandodrvsim-gcc
-      -DCMAKE_SYSTEM_NAME=Generic
-      -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
-      -DCMAKE_MODULE_PATH=${DRV_SOURCE_DIR}/cmake
-      -DDRV_SOURCE_DIR=${DRV_SOURCE_DIR}
-      -DDRV_BINARY_DIR=${DRV_BINARY_DIR}
-      ${CMAKE_CURRENT_SOURCE_DIR}
-      BUILD_COMMAND
-      make ${name}
-      INSTALL_COMMAND
-      make install
-      BUILD_ALWAYS 1
-      )
-    add_executable(RV64::${name} IMPORTED DEPENDS ${name}_project)
-    set_target_properties(RV64::${name} PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${name})
-    set_target_properties(RV64::${name}
       PROPERTIES
+      IMPORTED_LOCATION ${PROJECT_RV64_BINARY_DIR}/${path}/${name}
       DRV_BUILD_CORE_THREADS 1
       DRV_BUILD_POD_CORES 1
       DRV_BUILD_PXN_PODS 1
       DRV_BUILD_NUM_PXN 1
       )
   else()
-    message(STATUS "Adding drvr executable ${name}")
-    set(SOURCES ${ARGV})
-    list(POP_FRONT SOURCES)
     set(include_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}_include)
-    add_executable(${name} ${SOURCES} ${include_dir}/address_map.h)
+    add_executable(${name} ${sources} ${include_dir}/address_map.h)
     add_custom_command(
       OUTPUT ${include_dir}/address_map.h
       COMMAND
@@ -307,9 +300,7 @@ function (drvr_add_executable name)
       --num-pxn $<TARGET_PROPERTY:${name},DRV_BUILD_NUM_PXN>
       cheader > ${include_dir}/address_map.h
       )
-    target_link_libraries(${name} pandohammer)
     target_include_directories(${name} PRIVATE ${include_dir})
-    install(TARGETS ${name} DESTINATION .)
     set_target_properties(${name}
       PROPERTIES
       DRV_BUILD_CORE_THREADS 1
