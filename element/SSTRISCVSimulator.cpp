@@ -61,7 +61,8 @@ void RISCVSimulator::visitStoreMMIO(RISCVHart &hart, RISCVInstruction &i) {
         ss << "POD: " << std::setw(2) << core_->getPodId() << " ";
         ss << "CORE: " << std::setw(3) << core_->getCoreId() << " ";
         ss << "THREAD: " << std::setw(2) << core_->getHartId(shart) << " ";
-        ss << core_->getElapsedSimTime() << " ";
+        ss << "TAG:" << std::setw(9) << shart.sx(i.rs2()) << " ";
+        ss << "TIME: " << core_->getElapsedSimTime() << " ";
         std::cout << ss.str() << std::endl;
         break;
     case MMIO_PRINT_CHAR:

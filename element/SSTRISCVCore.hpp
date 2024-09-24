@@ -210,6 +210,13 @@ public:
     static constexpr uint32_t DEBUG_MMIO     = (1<<28); //!< debug messages we expect to see when receiving mmio requests
 
     /**
+     * Output statistics
+     */
+    void outputStatistics() {
+        performGlobalStatisticOutput();
+    }
+
+    /**
      * configure output stream
      */
     void configureOuptut(Params& params);
