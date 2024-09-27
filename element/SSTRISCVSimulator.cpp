@@ -413,7 +413,7 @@ uint64_t RISCVSimulator::visitCSRRWUnderMask(RISCVHart &hart, uint64_t csr, uint
         rval = core_->sys().pxnDRAMSize();
         break;
     case CSR_SLEEP: // write-only
-        core_->output_.verbose(CALL_INFO, 1, 0, "Warning: CSR SLEEP not implemented\n");
+        core_->putHartToSleep(shart, wval);
         break;
     case CSR_FRM: // read-write
         rval = shart.rm();

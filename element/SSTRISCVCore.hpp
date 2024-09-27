@@ -166,7 +166,23 @@ public:
         }
         ImplementSerializable(SST::Drv::RISCVCore::DeassertReset);
     };
-    
+
+    /**
+     * wake thread event
+     */
+    class Wake : public SST::Event {
+    public:
+        Wake() : SST::Event() {}
+        int &hart() { return hart_; }
+        int hart() const { return hart_; }
+        void serialize_order(SST::Core::Serialization::serializer &ser) override {
+            ser & hart_;
+            Event::serialize_order(ser);
+        }
+        int hart_ = 0;
+        ImplementSerializable(SST::Drv::RISCVCore::Wake);
+    };
+
     /**
      * Constructor for RISCVCore
      */
@@ -313,6 +329,10 @@ public:
      * issue a memory request
      */
     void issueMemoryRequest(Request *req, int tid, ICompletionHandler &handler);
+
+    /**
+     * put a hart to sleep */
+    void putHartToSleep(RISCVSimHart &hart, uint64_t sleep_cycles);
 
     /**
      * return true if we should exit

@@ -415,6 +415,16 @@ void RISCVCore::issueMemoryRequest(Request *req, int tid, ICompletionHandler &ha
 }
 
 /**
+ * put a hart to sleep
+ */
+void RISCVCore::putHartToSleep(RISCVSimHart &hart, uint64_t sleep_cycles) {
+    auto *wake = new Wake();
+    wake->hart() = getHartId(hart);
+    loopback_->send(sleep_cycles, clocktc_, wake);
+    hart.stalledSleep() = true;
+}
+
+/**
  * handle loopback event
  */
 void RISCVCore::handleLoopback(Event *evt) {
@@ -424,6 +434,13 @@ void RISCVCore::handleLoopback(Event *evt) {
         for (auto &hart : harts_) {
             hart.reset() = false;
         }
+        assertCoreOn();
+    }
+    Wake *wake = dynamic_cast<Wake*>(evt);
+    if (wake) {
+        output_.verbose(CALL_INFO, 1, 0, "Received wake event for hart %d\n"
+                        ,wake->hart_);
+        harts_[wake->hart_].stalledSleep() = false;
         assertCoreOn();
     }
     delete evt;
