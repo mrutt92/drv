@@ -444,6 +444,32 @@ public:
     void configureStatistics(Params &params);
 
     /**
+     * get the current cycle
+     */
+    Cycle_t getCycleCount() const {
+        return clocktc_->convertFromCoreTime(getCurrentSimCycle());
+    }
+
+    /**
+     * return true if we should unregister the clock
+     */
+    bool shouldUnregisterClock() const {
+        return true;
+    }
+
+    /**
+     * turn the core on if it's off
+     */
+    void assertCoreOn() {
+        if (!core_on_) {
+            core_on_;
+            Cycle_t reregister_cycle = getCycleCount();
+            addStallCycleStat(reregister_cycle - unregister_cycle_);
+            reregisterClock(clocktc_, clock_handler_);
+        }
+    }
+
+    /**
      * test name
      */
     std::string testName() const { return test_name_; }
@@ -458,6 +484,7 @@ public:
     DrvAPI::DrvAPIAddressDecoder address_decoder_; //!< address decoder
     std::vector<RISCVSimHart> harts_; //!< harts
     std::map<int, ICompletionHandler> rsp_handlers_; //!< response handlers
+    Clock::Handler<RISCVCore> *clock_handler_ = nullptr; //!< clock handler
     SST::TimeConverter *clocktc_; //!< the clock time converter
     int last_hart_; //!< last hart to execute
     bool load_program_; //!< load program
@@ -475,6 +502,8 @@ public:
     DrvAPI::DrvAPIAddress mmio_start_; //!< mmio start address
     DrvAPI::DrvAPIAddress mmio_end_; //!< mmio end address
     SST::Link *loopback_; //!< loopback link
+    bool core_on_ = true; //!< core on
+    Cycle_t unregister_cycle_; //!< cycle clock was unregistered
 };
 
 
