@@ -111,6 +111,13 @@ function (drvx_target_compile_options)
   endif()
 endfunction()
 
+# target compile options for a drvx target
+function (drvx_target_compile_options)
+  if (NOT DEFINED ARCH_RV64)
+    target_compile_options(${ARGV})
+  endif()
+endfunction()
+
 # creates a drv run target
 # ${run_target} should be the name of the target to create
 # ${executable} should be a target created with drv(x|r)_add_executable
