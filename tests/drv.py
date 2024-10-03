@@ -88,7 +88,7 @@ def router_latency(router_name):
 # determine the latency of a memory
 MEMORY_LATENCIES = {
     'l1sp': "1ns",
-    'l2sp': "1ns",
+    'l2sp': "10ns",
     'dram': arguments.dram_access_time,
 }
 def memory_latency(memory_name):
