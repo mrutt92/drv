@@ -68,20 +68,20 @@ LINK_LATENCIES = {
 }
 def link_latency(link_name):
     if link_name not in LINK_LATENCIES:
-        return "1ps"
+        return "1ns"
 
     return LINK_LATENCIES[link_name]
 
 # determine the latency of a router
 ROUTER_LATENCIES = {
-    'tile_rtr': "250ps",
-    'mem_rtr': "250ps",
-    'chiprrtr': "250ps",
+    'tile_rtr': "1ns"
+    'mem_rtr': "1ns",
+    'chiprrtr': "1ns",
     'offchiprtr': "70ns",
 }
 def router_latency(router_name):
     if router_name not in ROUTER_LATENCIES:
-        return "1ps"
+        return "1ns"
 
     return ROUTER_LATENCIES[router_name]
 
@@ -93,7 +93,7 @@ MEMORY_LATENCIES = {
 }
 def memory_latency(memory_name):
     if memory_name not in MEMORY_LATENCIES:
-        return "1ps"
+        return "1ns"
 
     return MEMORY_LATENCIES[memory_name]
 
