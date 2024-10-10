@@ -10,7 +10,7 @@
 */
 // Copyright (c) 2023 University of Washington
 #include "newlib.h"
-
+#include "pandohammer/register.h"
 #=========================================================================
 # crt0.S : Entry point for RISC-V user programs
 #=========================================================================
