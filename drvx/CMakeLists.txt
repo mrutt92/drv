@@ -119,6 +119,8 @@ if (NOT DEFINED ARCH_RV64)
   drvx_set_run_target_properties(
     drvx-run-gups
     PROPERTIES
+    DRV_MODEL_POD_CORES 2
+    DRV_MODEL_PXN_PODS 4
     DRV_APPLICATION_ARGV "${gups_table_size} ${gups_thread_updates}"
     )
   drvx_set_run_target_properties(
