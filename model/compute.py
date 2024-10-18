@@ -64,7 +64,7 @@ class CoreBuilder(object):
     def __init__(self):
         self.id = 0
         self.debug = CoreDebug()
-        self.network_bw = "1GB/s"
+        self.network_bw = "24GB/s"
 
     @property
     def destinations(self):
@@ -187,6 +187,7 @@ class XCoreBuilder(CoreBuilder):
         Get the core parameters
         """
         return {
+            "clock" : self.clock,
             "threads" : self.threads,
             "executable" : self.executable,
             "argv" : self.argv,
@@ -234,6 +235,7 @@ class RCoreBuilder(CoreBuilder):
         Get the core parameters
         """
         p = {
+            "clock" : self.clock,
             "num_harts" : self.threads,
             "program" : self.executable,
             "core" : self.id,
@@ -295,12 +297,13 @@ class ComputeBuilder(object):
         self.argv = []
         self.l1sp = L1SPBuilder()
         self.core = CoreBuilder()
-        self.xbar_bw = "1GB/s"
-        self.link_bw = "1GB/s"
-        self.network_bw = "1GB/s"
-        self.input_buf_size = "1KB"
-        self.output_buf_size = "1KB"
-        self.router_latency = "1ns"
+        self.xbar_bw = "24GB/s"
+        self.link_bw = "24GB/s"
+        self.network_bw = "24GB/s"
+        self.flit_size = "8B"
+        self.input_buf_size = "1024B"
+        self.output_buf_size = "1024B"
+        self.router_latency = "0ns"
         return
 
     def router_name(self, name):
@@ -364,11 +367,12 @@ class ComputeBuilder(object):
             # configuration parameters
             "xbar_bw" : self.xbar_bw,
             "link_bw" : self.link_bw,
-            "flit_size" : "8B",
+            "flit_size" : self.flit_size,
             "input_buf_size" : self.input_buf_size,
             "output_buf_size" : self.output_buf_size,
             "input_latency" : self.router_latency,
             "output_latency" : self.router_latency,
+            "num_vns" : 1,
         })
         compute.router.setSubComponent("topology", "merlin.singlerouter")
 

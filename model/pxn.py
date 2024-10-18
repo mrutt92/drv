@@ -42,7 +42,7 @@ class PXNBuilder(object):
         self.pods = 1
         self.hostcore = XCoreBuilder()
         self.hostcore_present = True
-        self.dram = DRAMBuilder()
+        self.dram = CachedDRAMBuilder()
         self.dram_size = 2*1024*1024
         self.dram_banks = 1
         self._dram_interleave = 0
@@ -51,7 +51,7 @@ class PXNBuilder(object):
         self.network_bw = "1GB/s"
         self.input_buf_size = "1KB"
         self.output_buf_size = "1KB"
-        self.router_latency = "1ns"
+        self.router_latency = "0ns"
         return
 
     @property

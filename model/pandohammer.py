@@ -1,5 +1,5 @@
 from compute import XCoreBuilder, RCoreBuilder, ComputeBuilder
-from memory import L1SPBuilder, L2SPBuilder, DRAMBuilder
+from memory import L1SPBuilder, L2SPBuilder, DRAMBuilder, CachedDRAMBuilder
 from pod import PodBuilder
 from pxn import PXNBuilder
 from system import SystemBuilder
@@ -13,11 +13,16 @@ class PANDOHammer(object):
         Initialize the PANDOHammer Simulation
         arguments are parsed from the command line
         """
+        bandwidth_bytes_per_second_per_core = 24e9
+        bandwidth_bytes_per_second_per_pod = bandwidth_bytes_per_second_per_core*arguments.pod_cores
+        bandwidth_bytes_per_second_per_pxn = bandwidth_bytes_per_second_per_pod*arguments.pxn_pods
+
         # l1sp
         l1sp = L1SPBuilder()
         l1sp.clock = "1GHz"
         l1sp.access_time = "1ns"
         l1sp.size = arguments.core_l1sp_size
+        l1sp.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
         
         # core
         core = core_builder()
@@ -26,17 +31,22 @@ class PANDOHammer(object):
         core.executable = arguments.program
         core.argv = ' '.join(arguments.argv)
         core.threads = arguments.core_threads
+        core.network_bw = "24GB/s"
         
         # compute tile
         compute = ComputeBuilder()
         compute.l1sp = l1sp
         compute.core = core
+        compute.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
+        compute.xbar_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
+        compute.link_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
         
         # l2sp tile
         l2sp = L2SPBuilder()
         l2sp.clock = "1GHz"
-        l2sp.access_time = "10ns"
-        
+        l2sp.access_time = "1ns"
+        l2sp.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pod)
+
         # pod
         pod = PodBuilder()
         pod.compute = compute
@@ -45,7 +55,10 @@ class PANDOHammer(object):
         pod.l2sp_size = arguments.pod_l2sp_size
         pod.l2sp_banks = arguments.pod_l2sp_banks
         pod.l2sp_interleave = arguments.pod_l2sp_interleave
-    
+        pod.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pod)
+        pod.xbar_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pod)
+        pod.link_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pod)
+
         # host core
         hostcore = XCoreBuilder()
         hostcore.clock = "1GHz"
@@ -54,11 +67,16 @@ class PANDOHammer(object):
         hostcore.argv = ' '.join([arguments.program] + arguments.argv)
         
         # dram
-        dram = DRAMBuilder()
+        if arguments.without_pxn_dram_cache:
+            dram = NoCacheDRAMBuilder()
+        else:
+            dram = CachedDRAMBuilder()
+
         dram.backend = "simple"
         dram.clock = "1GHz"
-        dram.access_time = "100ns"
-        
+        dram.access_time = arguments.dram_access_time
+        dram.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pxn)
+
         # pxn
         pxn = PXNBuilder()
         pxn.pod = pod
@@ -69,7 +87,10 @@ class PANDOHammer(object):
         pxn.dram_size = arguments.pxn_dram_size
         pxn.dram_banks = arguments.pxn_dram_banks
         pxn.dram_interleave = arguments.pxn_dram_interleave
-        
+        pxn.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pxn)
+        pxn.xbar_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pxn)
+        pxn.link_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pxn)
+
         # system
         system = SystemBuilder()
         system.pxn = pxn

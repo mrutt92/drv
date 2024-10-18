@@ -11,7 +11,7 @@ class Pod(object):
         """
         Initialize the pod
         """
-        self.name = ""
+        self.name = name
         self.cores = []
         self.l2sp_banks = []
         self.bridge = None
@@ -42,7 +42,7 @@ class PodBuilder(object):
         self.link_bw = "1GB/s"
         self.input_buf_size = "1KB"
         self.output_buf_size = "1KB"
-        self.router_latency = "1ns"
+        self.router_latency = "0ns"
         self.network_bw = "1GB/s"
         return
 
