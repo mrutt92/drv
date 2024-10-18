@@ -31,7 +31,7 @@ class PANDOHammer(object):
         core.executable = arguments.program
         core.argv = ' '.join(arguments.argv)
         core.threads = arguments.core_threads
-        core.network_bw = "24GB/s"
+        core.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
         
         # compute tile
         compute = ComputeBuilder()
