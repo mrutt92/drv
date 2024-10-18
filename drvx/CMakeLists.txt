@@ -131,6 +131,14 @@ if (NOT DEFINED ARCH_RV64)
     )
   drvx_test(stream)
 
+  drvx_test(stride)
+  drvx_set_run_target_properties(
+    drvx-run-stride
+    PROPERTIES
+    DRV_MODEL_POD_CORES 1
+    DRV_MODEL_CORE_THREADS 1
+    DRV_APPLICATION_ARGV "1000 0"
+    )
 
   add_custom_target(drvx-run-all
     DEPENDS "${DRVX_TESTS}"
