@@ -65,7 +65,8 @@ class PANDOHammer(object):
         hostcore.threads = 1
         hostcore.executable = arguments.with_command_processor
         hostcore.argv = ' '.join([arguments.program] + arguments.argv)
-        
+        hostcore.group = "0"
+
         # dram
         if arguments.without_pxn_dram_cache:
             dram = NoCacheDRAMBuilder()

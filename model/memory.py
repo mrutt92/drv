@@ -12,7 +12,15 @@ class MemoryBuilder(object):
         """
         super().__init__()
         return
-    
+
+
+    @property
+    def group(self):
+        """
+        Return the routing group number
+        """
+        return 2
+
 class Memory(object):
     """
     A base class for a memory tile
@@ -70,13 +78,6 @@ class L1SPBuilder(MemoryBuilder):
         Return the name of the memory controller
         """
         return name + "_memctrl"
-
-    @property
-    def group(self):
-        """
-        Return the routing group number
-        """
-        return 1
     
     def build(self, system_builder, name):
         """
@@ -158,10 +159,6 @@ class L2SPBuilder(MemoryBuilder):
         Return the name of the memory controller
         """
         return name + "_memctrl"
-
-    @property
-    def group(self):
-        return 2
     
     def build(self, system_builder, name):
         l2sp = L2SP(name)
@@ -225,10 +222,6 @@ class DRAMBuilder(MemoryBuilder):
         Return the name of the memory controller
         """
         return name + "_memctrl"
-
-    @property
-    def group(self):
-        return 2
 
     def address_range(self, system_builder):
         """

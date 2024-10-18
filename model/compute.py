@@ -1,6 +1,6 @@
 import sst
 from memory import L1SPBuilder
-from addressmap import L1SPAddressBuilder
+from addressmap import L1SPAddressBuilder, CoreCtrlAddressBuilder
 #from tile import Tile, TileBuilder
 
 class CoreDebug(object):
@@ -65,20 +65,8 @@ class CoreBuilder(object):
         self.id = 0
         self.debug = CoreDebug()
         self.network_bw = "24GB/s"
-
-    @property
-    def destinations(self):
-        """
-        groups this core can talk to
-        """
-        return "0,1,2"
-
-    @property
-    def group(self):
-        """
-        network group
-        """
-        return "0"
+        self.destinations = "0,1,2"
+        self.group = "1"
 
     def build(self, system_builder, name):
         """
@@ -145,11 +133,19 @@ class XCoreBuilder(CoreBuilder):
     """
     def __init__(self):
         super().__init__()
+        self.is_host = False
 
     def build_core_network_interface(self, system_builder, core):
         """
         Build the network interface for the core
         """
+        addressmap = system_builder.addressmap()
+        rbldr = CoreCtrlAddressBuilder(addressmap, 0x1000)
+        if not self.is_host:
+            start, *_ = rbldr(system_builder.pxn.id,system_builder.pxn.pod.id,self.id)
+        else:
+            start = 0
+
         core.memory \
             = core.component.setSubComponent("memory", "Drv.DrvStdMemory")
         core.memory.addParams({
@@ -157,6 +153,8 @@ class XCoreBuilder(CoreBuilder):
             "verbose_init" : self.debug.debug_init,
             "verbose_requests" : self.debug.debug_requests,
             "verbose_responses" : self.debug.debug_responses,
+            "memory_region_start" : start,
+            "memory_region_size" : 0x1000,
         })
 
         core.memory_interface \
@@ -343,14 +341,6 @@ class ComputeBuilder(object):
     def ports(self):
         # core + l1sp + network
         return 3
-
-    @property
-    def group(self):
-        return "0"
-
-    @property
-    def destinations(self):
-        return "0,1,2"
 
     def build(self, system_builder, name):
         """

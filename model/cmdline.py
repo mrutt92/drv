@@ -24,15 +24,15 @@ def parse_args():
     parser.add_argument("--core-threads", type=int, default=16, help="number of threads per core")
     parser.add_argument("--core-clock", type=str, default="1GHz", help="clock frequency of cores")
     parser.add_argument("--core-max-idle", type=int, default=1, help="max idle time of cores")
-    parser.add_argument("--core-l1sp-size", type=int, default=4*1024, help="size of l1sp per core")
+    parser.add_argument("--core-l1sp-size", type=int, default=128*1024, help="size of l1sp per core")
 
     parser.add_argument("--pod-l2sp-banks", type=int, default=1, help="number of l2sp banks per pod")
-    parser.add_argument("--pod-l2sp-interleave", type=int, default=64, help="interleave size of l2sp addresses (defaults to no  interleaving)")
+    parser.add_argument("--pod-l2sp-interleave", type=int, default=0, help="interleave size of l2sp addresses (defaults to no  interleaving)")
     parser.add_argument("--pod-l2sp-size", type=int, default=1024*1024, help="size of l2sp per pod (max {} bytes)".format(1024*1024))
     
-    parser.add_argument("--pxn-dram-banks", type=int, default=4, help="number of dram banks per pxn")
+    parser.add_argument("--pxn-dram-banks", type=int, default=1, help="number of dram banks per pxn")
     parser.add_argument("--pxn-dram-size", type=int, default=2*(1024**3), help="size of main memory per pxn (max {} bytes)".format(8*1024*1024*1024))
-    parser.add_argument("--pxn-dram-interleave", type=int, default=64, help="interleave size of dram addresses (defaults to no  interleaving)")
+    parser.add_argument("--pxn-dram-interleave", type=int, default=0, help="interleave size of dram addresses (defaults to no  interleaving)")
 
     parser.add_argument("--without-pxn-dram-cache", action="store_true", help="disable dram cache")
     
