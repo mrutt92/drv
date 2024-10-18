@@ -1,5 +1,5 @@
 from compute import XCoreBuilder, RCoreBuilder, ComputeBuilder
-from memory import L1SPBuilder, L2SPBuilder, DRAMBuilder, CachedDRAMBuilder
+from memory import L1SPBuilder, L2SPBuilder, DRAMBuilder, CachedDRAMBuilder, NoCacheDRAMBuilder
 from pod import PodBuilder
 from pxn import PXNBuilder
 from system import SystemBuilder

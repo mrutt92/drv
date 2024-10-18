@@ -242,6 +242,17 @@ class DRAMBuilder(MemoryBuilder):
         return addrrangebuilder(system_builder.pxn.id, \
                                 system_builder.pxn.dram.id)
 
+    @property
+    def memory_controller_model(self):
+        if not self.is_coherent:
+            return "memHierarchy.MemController"
+
+        return "memHierarchy.CoherentMemController"
+
+    @property
+    def is_coherent(self):
+        raise NotImplementedError
+
     def build_dram(self, system_builder, name):
         """
         Build the DRAM memory tile
@@ -251,13 +262,14 @@ class DRAMBuilder(MemoryBuilder):
             = self.address_range(system_builder)
 
         dram.memctrl = sst.Component(self.memctrl_name(name),\
-                                     "memHierarchy.MemController")
+                                     self.memory_controller_model)
         dram.memctrl.addParams({
             "clock" : self.clock,
             "addr_range_start" : addr_start,
             "addr_range_end" : addr_stop,
             "interleave_size" : '{}B'.format(addr_interleave_size),
             "interleave_step" : '{}B'.format(addr_interleave_step),
+            "max_requests_per_cycle" : 1,
         })
 
         dram.backend = dram.memctrl.setSubComponent("backend", "Drv.DrvSimpleMemBackend")
@@ -269,6 +281,10 @@ class DRAMBuilder(MemoryBuilder):
 
         dram.cmdhandler = \
             dram.memctrl.setSubComponent("customCmdHandler", "Drv.DrvCmdMemHandler")
+        dram.cmdhandler.addParams({
+            "cache_line_size" : self.cache_line_size if self.is_coherent else 0,
+            "shootdowns" : "true" if self.is_coherent else "false",
+        })
 
         return dram
 
@@ -316,6 +332,10 @@ class NoCacheDRAMBuilder(DRAMBuilder):
         Create the DRAM memory tile
         """
         return NoCacheDRAM(name)
+
+    @property
+    def is_coherent(self):
+        return False
 
     def build(self, system_builder, name):
         dram = self.build_dram(system_builder, name)
@@ -378,6 +398,10 @@ class CachedDRAMBuilder(DRAMBuilder):
     @property
     def sources(self):
         return "0,1"
+
+    @property
+    def is_coherent(self):
+        return True
 
     def create_dram(self, name):
         """
