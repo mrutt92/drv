@@ -6,7 +6,7 @@ def parse_args():
     parser.add_argument("program", help="program to run")
     parser.add_argument("argv", nargs=argparse.REMAINDER, help="arguments to program")
     parser.add_argument("--verbose", type=int, default=0, help="verbosity of core")
-    parser.add_argument("--dram-access-time", type=str, default="100ns", help="latency of DRAM (only valid if using the latency based model)")
+    parser.add_argument("--dram-access-time", type=str, default="70ns", help="latency of DRAM (only valid if using the latency based model)")
     parser.add_argument("--dram-backend", type=str, default="simple", choices=['simple', 'ramulator','dramsim3'], help="backend timing model for DRAM")
     parser.add_argument("--dram-backend-config", type=str, default="/root/sst-ramulator-src/configs/hbm4-pando-config.cfg",
                         help="backend timing model configuration for DRAM")
@@ -27,10 +27,10 @@ def parse_args():
     parser.add_argument("--core-l1sp-size", type=int, default=4*1024, help="size of l1sp per core")
 
     parser.add_argument("--pod-l2sp-banks", type=int, default=1, help="number of l2sp banks per pod")
-    parser.add_argument("--pod-l2sp-interleave", type=int, default=0, help="interleave size of l2sp addresses (defaults to no  interleaving)")
+    parser.add_argument("--pod-l2sp-interleave", type=int, default=64, help="interleave size of l2sp addresses (defaults to no  interleaving)")
     parser.add_argument("--pod-l2sp-size", type=int, default=1024*1024, help="size of l2sp per pod (max {} bytes)".format(1024*1024))
     
-    parser.add_argument("--pxn-dram-banks", type=int, default=1, help="number of dram banks per pxn")
+    parser.add_argument("--pxn-dram-banks", type=int, default=4, help="number of dram banks per pxn")
     parser.add_argument("--pxn-dram-size", type=int, default=2*(1024**3), help="size of main memory per pxn (max {} bytes)".format(8*1024*1024*1024))
     parser.add_argument("--pxn-dram-interleave", type=int, default=64, help="interleave size of dram addresses (defaults to no  interleaving)")
 

@@ -188,6 +188,7 @@ class XCoreBuilder(CoreBuilder):
         """
         return {
             "clock" : self.clock,
+            "max_idle" : 2,
             "threads" : self.threads,
             "executable" : self.executable,
             "argv" : self.argv,

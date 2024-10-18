@@ -64,7 +64,11 @@ class PXNBuilder(object):
     def dram_interleave(self, value):
         self._dram_interleave = value
         return
-    
+
+    @property
+    def dram_interleave_step(self):
+        return self.dram_interleave * self.dram_banks
+
     def router_name(self, name):
         """
         Get the router name
@@ -143,6 +147,9 @@ class PXNBuilder(object):
             current_port += 1
 
         # build the dram banks
+        self.dram.size = self.dram_size
+        self.dram.interleave_size = self.dram_interleave
+        self.dram.interleave_step = self.dram_interleave_step
         for dram_bank_id in range(self.dram_banks):
             self.dram.id = dram_bank_id
             dram = self.dram.build(system_builder, self.dram_bank_name(name, dram_bank_id))
