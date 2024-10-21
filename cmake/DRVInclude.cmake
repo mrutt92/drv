@@ -148,7 +148,7 @@ function (drv_add_run_target run_target executable cpexecutable)
       COMMAND
       mkdir -p $<TARGET_PROPERTY:${run_target},SST_RUN_DIR> &&
       cd $<TARGET_PROPERTY:${run_target},SST_RUN_DIR> &&
-      PYTHONPATH=${DRV_SOURCE_DIR}/py:${DRV_SOURCE_DIR}/tests
+      PYTHONPATH=${DRV_SOURCE_DIR}/py::${DRV_SOURCE_DIR}/model
       $<TARGET_FILE:SST::SST> # the simulator
       $<TARGET_PROPERTY:${run_target},SST_SIM_OPTIONS> # options for the simulator
       $<TARGET_PROPERTY:${run_target},DRV_MODEL> # the model to simulate
@@ -196,7 +196,7 @@ function (drvx_add_run_target_with_command_processor run_target executable cpexe
     set_target_properties(
       ${run_target}
       PROPERTIES
-      DRV_MODEL ${DRV_SOURCE_DIR}/tests/PANDOHammerDrvX.py 
+      DRV_MODEL ${DRV_SOURCE_DIR}/model/drvx.py
       )
   endif()
 endfunction()
@@ -220,7 +220,7 @@ function (drvr_add_run_target_with_command_processor run_target rvexecutable cpe
     set_target_properties(
       ${run_target}
       PROPERTIES
-      DRV_MODEL ${DRV_SOURCE_DIR}/tests/PANDOHammerDrvR.py
+      DRV_MODEL ${DRV_SOURCE_DIR}/model/drvr.py
       )
     add_dependencies(${run_target} ${rvexecutable})
   endif()

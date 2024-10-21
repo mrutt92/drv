@@ -143,8 +143,10 @@ class XCoreBuilder(CoreBuilder):
         rbldr = CoreCtrlAddressBuilder(addressmap, 0x1000)
         if not self.is_host:
             start, *_ = rbldr(system_builder.pxn.id,system_builder.pxn.pod.id,self.id)
+            size = 0x1000
         else:
             start = 0
+            size = 0
 
         core.memory \
             = core.component.setSubComponent("memory", "Drv.DrvStdMemory")
@@ -154,7 +156,7 @@ class XCoreBuilder(CoreBuilder):
             "verbose_requests" : self.debug.debug_requests,
             "verbose_responses" : self.debug.debug_responses,
             "memory_region_start" : start,
-            "memory_region_size" : 0x1000,
+            "memory_region_size" : 0,
         })
 
         core.memory_interface \

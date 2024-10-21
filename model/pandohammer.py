@@ -66,6 +66,7 @@ class PANDOHammer(object):
         hostcore.executable = arguments.with_command_processor
         hostcore.argv = ' '.join([arguments.program] + arguments.argv)
         hostcore.group = "0"
+        hostcore.is_host = True
 
         # dram
         if arguments.without_pxn_dram_cache:

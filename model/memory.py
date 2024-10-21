@@ -1,6 +1,5 @@
 import sst
 from addressmap import *
-from constants import *
 
 class MemoryBuilder(object):
     """
