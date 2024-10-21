@@ -370,13 +370,19 @@ class ComputeBuilder(object):
         compute.router.setSubComponent("topology", "merlin.singlerouter")
 
         # build the core
+        # we're modeling a direct link from the core to it's memory
+        # the scratchpad latency is in its 'access_time' parameter
+        local_latency = "0ps"
+        # 1 cycle latency from the network into the tile
+        network_latency = "1ns"
+
         self.core.id = self.id
         compute.core = self.core.build(system_builder, self.core_name(name))
         nwif, port  = compute.core.network_interface()
         link = sst.Link("{}_to_{}".format(self.router_name(name), self.core_name(name)))
         link.connect(
-            (nwif, port, "1ns"),
-            (compute.router, self.core_port(), "1ns")
+            (nwif, port, local_latency),
+            (compute.router, self.core_port(), local_latency)
         )
 
         # build the l1sp
@@ -384,8 +390,8 @@ class ComputeBuilder(object):
         nwif, port = compute.l1sp.network_interface()
         link = sst.Link("{}_to_{}".format(self.router_name(name), self.l1sp_name(name)))
         link.connect(
-            (compute.router, self.l1sp_port(), "1ns"),
-            (nwif, port, "1ns")
+            (compute.router, self.l1sp_port(), local_latency),
+            (nwif, port, local_latency)
         )
 
         # build the network bridge
@@ -396,8 +402,8 @@ class ComputeBuilder(object):
         })
         link = sst.Link("{}_to_{}".format(self.router_name(name), self.bridge_name(name)))
         link.connect(
-            (compute.router, self.network_port(), "1ns"),
-            (compute.bridge, "network0", "1ns"),
+            (compute.router, self.network_port(), network_latency),
+            (compute.bridge, "network0", network_latency)
         )
         return compute
 
