@@ -3,17 +3,21 @@ from sst.merlin import *
 import sst
 import enum
 
-X = 2
-Y = 2
+X = 4
+Y = 3
 
-NORTH = (0, 0)
-SOUTH = (0, 1)
-EAST =  (1, 0)
-WEST =  (1, 1)
+# x direction
+EAST =  (0, 0)
+WEST =  (0, 1)
+
+# y direction
+NORTH = (1, 0)
+SOUTH = (1, 1)
 
 class Identifiable(object):
     def id(self, x, y):
-        return x * Y + y
+        # dimension order x than y
+        return y*X + x
 
 CPU_VERBOSE_LEVEL = 1
 NETWORK_DEBUG_LEVEL = 0
@@ -23,6 +27,8 @@ def portof(direction):
     return 2*dim + neg
 
 DIRECTIONS = [NORTH, SOUTH, EAST, WEST]
+
+UPDATES_PER_CORE = 100
 
 class Memory(Identifiable):
     size = 1024
@@ -74,7 +80,7 @@ class Core(Identifiable):
         generator.addParams({
             "verbose" : 4,            
             "max_address" : Memory.size * X * Y - 8,
-            "count" : 100,
+            "count" : UPDATES_PER_CORE,
             "clock" : "1GHz",
             "seed_a" : self.id(x, y),
             "seed_b" : 7*self.id(x, y)+1,
@@ -149,13 +155,13 @@ nodes = {}
 for (x,y) in itertools.product(range(X), range(Y)):
     nodes[(x,y)] = tile.build(x, y)
 
-link_00_10 = sst.Link("link_00_10")
-link_00_01 = sst.Link("link_00_01")
-link_01_11 = sst.Link("link_01_11")
-link_10_11 = sst.Link("link_10_11")
-
-link_00_01.connect(nodes[(0,0)][NORTH], nodes[(0,1)][SOUTH])
-link_00_10.connect(nodes[(0,0)][EAST],  nodes[(1,0)][WEST])
-link_01_11.connect(nodes[(0,1)][EAST],  nodes[(1,1)][WEST])
-link_10_11.connect(nodes[(1,0)][NORTH], nodes[(1,1)][SOUTH])
-
+for (x,y) in itertools.product(range(X), range(Y)):
+    # connect to north neighbor
+    if y < Y-1:
+        link = sst.Link(f"link_{x}x{y}_to_{x}x{y+1}")
+        link.connect(nodes[(x,y)][NORTH], nodes[(x,y+1)][SOUTH])
+    # connect to east neighbor
+    if x < X-1:
+        link = sst.Link(f"link_{x}x{y}_to_{x+1}x{y}")
+        link.connect(nodes[(x,y)][EAST], nodes[(x+1,y)][WEST])
+    
