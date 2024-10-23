@@ -69,25 +69,25 @@ class PodBuilder(object):
         """
         Returns the router name
         """
-        return "{}_router".format(name)
+        return f"{name}_router"
 
     def core_name(self, name, core_id):
         """
         Returns the core name
         """
-        return "{}_core{}".format(name, core_id)
+        return f"{name}_core{core_id}"
 
     def l2sp_name(self, name, bank_id):
         """
         Returns the L2SP name
         """
-        return "{}_l2sp{}".format(name, bank_id)
+        return f"{name}_l2sp{bank_id}"
 
     def bridge_name(self, name):
         """
         Returns the bridge name
         """
-        return "{}_bridge".format(name)
+        return f"{name}_bridge"
 
     def ports(self):
         """
@@ -123,10 +123,10 @@ class PodBuilder(object):
             # core is a full compute tile in this context
             core = self.compute.build(system_builder, self.core_name(name, core_id))
             nwif, port = core.network_interface()
-            link = sst.Link("link_{}_{}".format(core.name, self.router_name(name)))
+            link = sst.Link(f"link_{core.name}_{self.router_name(name)}")
             link.connect(
                 (nwif, port, "1ns"),
-                (pod.network, "port{}".format(current_port), "1ns")
+                (pod.network, f"port{current_port}", "1ns")
             )
             current_port += 1        
             pod.cores.append(core)
@@ -139,10 +139,10 @@ class PodBuilder(object):
             self.l2sp.id = bank_id
             l2sp = self.l2sp.build(system_builder, self.l2sp_name(name, bank_id))
             nwif, port = l2sp.network_interface()
-            link = sst.Link("link_{}_{}".format(l2sp.name, self.router_name(name)))
+            link = sst.Link(f"link_{l2sp.name}_{self.router_name(name)}")
             link.connect(
                 (nwif, port, "1ns"),
-                (pod.network, "port{}".format(current_port), "1ns")
+                (pod.network, f"port{current_port}", "1ns")
             )
             pod.l2sp_banks.append(l2sp)
             current_port += 1
@@ -154,9 +154,9 @@ class PodBuilder(object):
             "network_bw" : self.network_bw
         })
         
-        link = sst.Link("link_{}_{}".format(self.router_name(name), self.bridge_name(name)))
+        link = sst.Link(f"link_{self.router_name(name)}_{self.bridge_name(name)}")
         link.connect(
-            (pod.network, "port{}".format(current_port), "1ns"),
+            (pod.network, f"port{current_port}", "1ns"),
             (pod.bridge, "network0", "1ns")
         )
 

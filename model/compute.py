@@ -255,7 +255,7 @@ class RCoreBuilder(CoreBuilder):
         thread_stack_bytes = thread_stack_words * 8
         # build a string of stack pointers
         # to pass a parameter to the core
-        sp_v = ["{} {}".format(i, stack_base + ((i+1)*thread_stack_bytes) - 8) for i in range(self.threads)]
+        sp_v = [f"{i} {stack_base + ((i+1)*thread_stack_bytes) - 8}" for i in range(self.threads)]
         sp_str = "[" + ", ".join(sp_v) + "]"
         p["sp"] = sp_str
         return p
@@ -311,25 +311,25 @@ class ComputeBuilder(object):
         """
         Returns the router name
         """
-        return "{}_router".format(name)
+        return f"{name}_router"
 
     def core_name(self, name):
         """
         Returns the core name
         """
-        return "{}_core".format(name)
+        return f"{name}_core"
 
     def l1sp_name(self, name):
         """
         Returns the l1sp name
         """
-        return "{}_l1sp".format(name)
+        return f"{name}_l1sp"
 
     def bridge_name(self, name):
         """
         Returns the bridge name
         """
-        return "{}_bridge".format(name)
+        return f"{name}_bridge"
 
     def core_port(self):
         return "port0"
@@ -379,7 +379,7 @@ class ComputeBuilder(object):
         self.core.id = self.id
         compute.core = self.core.build(system_builder, self.core_name(name))
         nwif, port  = compute.core.network_interface()
-        link = sst.Link("{}_to_{}".format(self.router_name(name), self.core_name(name)))
+        link = sst.Link(f"{self.router_name(name)}_to_{self.core_name(name)}")
         link.connect(
             (nwif, port, local_latency),
             (compute.router, self.core_port(), local_latency)
@@ -388,7 +388,7 @@ class ComputeBuilder(object):
         # build the l1sp
         compute.l1sp = self.l1sp.build(system_builder, self.l1sp_name(name))
         nwif, port = compute.l1sp.network_interface()
-        link = sst.Link("{}_to_{}".format(self.router_name(name), self.l1sp_name(name)))
+        link = sst.Link(f"{self.router_name(name)}_to_{self.l1sp_name(name)}")
         link.connect(
             (compute.router, self.l1sp_port(), local_latency),
             (nwif, port, local_latency)
@@ -400,7 +400,7 @@ class ComputeBuilder(object):
             "translator" : "memHierarchy.MemNetBridge",
             "network_bw" : self.network_bw,
         })
-        link = sst.Link("{}_to_{}".format(self.router_name(name), self.bridge_name(name)))
+        link = sst.Link(f"{self.router_name(name)}_to_{self.bridge_name(name)}")
         link.connect(
             (compute.router, self.network_port(), network_latency),
             (compute.bridge, "network0", network_latency)

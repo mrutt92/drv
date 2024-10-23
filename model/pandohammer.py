@@ -22,7 +22,7 @@ class PANDOHammer(object):
         l1sp.clock = "1GHz"
         l1sp.access_time = "1ns"
         l1sp.size = arguments.core_l1sp_size
-        l1sp.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
+        l1sp.network_bw = f"{bandwidth_bytes_per_second_per_core}B/s"
         
         # core
         core = core_builder()
@@ -31,21 +31,21 @@ class PANDOHammer(object):
         core.executable = arguments.program
         core.argv = ' '.join(arguments.argv)
         core.threads = arguments.core_threads
-        core.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
+        core.network_bw = f"{bandwidth_bytes_per_second_per_core}B/s"
         
         # compute tile
         compute = ComputeBuilder()
         compute.l1sp = l1sp
         compute.core = core
-        compute.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
-        compute.xbar_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
-        compute.link_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
+        compute.network_bw = f"{bandwidth_bytes_per_second_per_core}B/s"
+        compute.xbar_bw = f"{bandwidth_bytes_per_second_per_core}B/s"
+        compute.link_bw = f"{bandwidth_bytes_per_second_per_core}B/s"
         
         # l2sp tile
         l2sp = L2SPBuilder()
         l2sp.clock = "1GHz"
         l2sp.access_time = "1ns"
-        l2sp.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_core)
+        l2sp.network_bw = f"{bandwidth_bytes_per_second_per_core}B/s"
 
         # pod
         pod = PodBuilder()
@@ -55,9 +55,9 @@ class PANDOHammer(object):
         pod.l2sp_size = arguments.pod_l2sp_size
         pod.l2sp_banks = arguments.pod_l2sp_banks
         pod.l2sp_interleave = arguments.pod_l2sp_interleave
-        pod.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pod)
-        pod.xbar_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pod)
-        pod.link_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pod)
+        pod.network_bw = f"{bandwidth_bytes_per_second_per_pod}B/s"
+        pod.xbar_bw = f"{bandwidth_bytes_per_second_per_pod}B/s"
+        pod.link_bw = f"{bandwidth_bytes_per_second_per_pod}B/s"
 
         # host core
         hostcore = XCoreBuilder()
@@ -77,7 +77,7 @@ class PANDOHammer(object):
         dram.backend = "simple"
         dram.clock = "1GHz"
         dram.access_time = arguments.dram_access_time
-        dram.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pxn)
+        dram.network_bw = f"{bandwidth_bytes_per_second_per_pxn}B/s"
 
         # pxn
         pxn = PXNBuilder()
@@ -89,9 +89,9 @@ class PANDOHammer(object):
         pxn.dram_size = arguments.pxn_dram_size
         pxn.dram_banks = arguments.pxn_dram_banks
         pxn.dram_interleave = arguments.pxn_dram_interleave
-        pxn.network_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pxn)
-        pxn.xbar_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pxn)
-        pxn.link_bw = "{}B/s".format(bandwidth_bytes_per_second_per_pxn)
+        pxn.network_bw = f"{bandwidth_bytes_per_second_per_pxn}B/s"
+        pxn.xbar_bw = f"{bandwidth_bytes_per_second_per_pxn}B/s"
+        pxn.link_bw = f"{bandwidth_bytes_per_second_per_pxn}B/s"
 
         # system
         system = SystemBuilder()

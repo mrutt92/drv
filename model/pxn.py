@@ -79,7 +79,7 @@ class PXNBuilder(object):
         """
         Get the pod name
         """
-        return name + "_pod{}".format(pod_id)
+        return name + f"_pod{pod_id}"
 
     def hostcore_name(self, name):
         """
@@ -91,7 +91,7 @@ class PXNBuilder(object):
         """
         Get the dram bank name
         """
-        return name + "_dram{}".format(bank_id)
+        return name + f"_dram{bank_id}"
 
     def bridge_name(self, name):
         """
@@ -138,10 +138,10 @@ class PXNBuilder(object):
             self.pod.id = pod_id
             pod = self.pod.build(system_builder, self.pod_name(name, pod_id))
             nwif, port = pod.network_interface()
-            link = sst.Link("{}_to_{}".format(pod.name, self.router_name(name)))
+            link = sst.Link(f"{pod.name}_to_{self.router_name(name)}")                            
             link.connect(
                 (nwif, port, "1ns"),
-                (pxn.network, "port{}".format(current_port), "1ns")
+                (pxn.network, f"port{current_port}", "1ns")
             )
             pxn.pods.append(pod)
             current_port += 1
@@ -154,10 +154,10 @@ class PXNBuilder(object):
             self.dram.id = dram_bank_id
             dram = self.dram.build(system_builder, self.dram_bank_name(name, dram_bank_id))
             nwif, port = dram.network_interface()
-            link = sst.Link("{}_to_{}".format(dram.name, self.router_name(name)))
+            link = sst.Link(f"{dram.name}_to_{self.router_name(name)}")
             link.connect(
                 (nwif, port, "1ns"),
-                (pxn.network, "port{}".format(current_port), "1ns")
+                (pxn.network, f"port{current_port}", "1ns")
             )
             pxn.dram_banks.append(dram)
             current_port += 1
@@ -167,10 +167,10 @@ class PXNBuilder(object):
             self.hostcore.id = -1
             hostcore = self.hostcore.build(system_builder, self.hostcore_name(name))
             nwif, port = hostcore.network_interface()
-            link = sst.Link("{}_to_{}".format(hostcore.name, self.router_name(name)))
+            link = sst.Link(f"{hostcore.name}_to_{self.router_name(name)}")
             link.connect(
                 (nwif, port, "1ns"),
-                (pxn.network, "port{}".format(current_port), "1ns")
+                (pxn.network, f"port{current_port}", "1ns")
             )
             pxn.hostcore = hostcore
             current_port += 1
@@ -181,9 +181,9 @@ class PXNBuilder(object):
             "translator" : "memHierarchy.MemNetBridge",
             "network_bw" : self.network_bw,
         })
-        link = sst.Link("{}_to_{}".format(self.router_name(name), self.bridge_name(name)))
+        link = sst.Link(f"{self.router_name(name)}_to_{self.bridge_name(name)}")
         link.connect(
-            (pxn.network, "port{}".format(current_port), "1ns"),
+            (pxn.network, f"port{current_port}", "1ns"),
             (bridge, "network0", "1ns")
         )        
         pxn.bridge = bridge

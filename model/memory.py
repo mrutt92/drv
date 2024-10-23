@@ -104,7 +104,7 @@ class L1SPBuilder(MemoryBuilder):
         l1sp.backend.addParams({
             "access_time" : self.access_time,
             "max_requests_per_cycle" : 1,
-            "mem_size" : '{}B'.format(self.size),
+            "mem_size" : f'{self.size}B',
         })
 
         # make the command handler
@@ -178,15 +178,15 @@ class L2SPBuilder(MemoryBuilder):
             "clock" : self.clock,
             "addr_range_start" : addr_start,
             "addr_range_end" : addr_stop,
-            "interleave_size" : '{}B'.format(addr_interleave_size),
-            "interleave_step" : '{}B'.format(addr_interleave_step),
+            "interleave_size" : f'{addr_interleave_size}B',
+            "interleave_step" : f'{addr_interleave_step}B'
         })
 
         l2sp.backend = l2sp.memctrl.setSubComponent("backend", "Drv.DrvSimpleMemBackend")
         l2sp.backend.addParams({
             "access_time" : self.access_time,
             "max_requests_per_cycle" : 1,
-            "mem_size" : '{}B'.format(self.size),
+            "mem_size" : f'{self.size}B',
         })
 
         l2sp.cmdhandler = \
@@ -259,15 +259,15 @@ class DRAMBuilder(MemoryBuilder):
             "clock" : self.clock,
             "addr_range_start" : addr_start,
             "addr_range_end" : addr_stop,
-            "interleave_size" : '{}B'.format(addr_interleave_size),
-            "interleave_step" : '{}B'.format(addr_interleave_step),
+            "interleave_size" : f'{addr_interleave_size}B',
+            "interleave_step" : f'{addr_interleave_step}B',
             "max_requests_per_cycle" : 1,
         })
 
         dram.backend = dram.memctrl.setSubComponent("backend", "Drv.DrvSimpleMemBackend")
         dram.backend.addParams({
             "access_time" : self.access_time,
-            "mem_size" : '{}B'.format(self.size),
+            "mem_size" : f'{self.size}B',
             "max_requests_per_cycle" : 1,            
         })
 
@@ -412,7 +412,7 @@ class CachedDRAMBuilder(DRAMBuilder):
         dram.cache.addParams({
             "cache_frequency" : self.clock,
             # cache size, associativity, replacement policy, etc.
-            "cache_size" : '{}B'.format(self.cache_size),
+            "cache_size" : f'{self.cache_size}B',
             "associativity" : self.cache_assoc,
             "cache_line_size" : self.cache_line_size,
             "mshr_num_entries" : self.mshr_num_entries,
@@ -421,8 +421,8 @@ class CachedDRAMBuilder(DRAMBuilder):
             # routing information
             "addr_range_start" : addr_start,
             "addr_range_end" : addr_stop,
-            "interleave_size" : '{}B'.format(addr_interleave_size),
-            "interleave_step" : '{}B'.format(addr_interleave_step),
+            "interleave_size" : f'{addr_interleave_size}B',
+            "interleave_step" : f'{addr_interleave_step}B',
             # required for this to work; don't change
             "L1" : "true",
             "coherence_protocol" : "mesi",
@@ -434,7 +434,7 @@ class CachedDRAMBuilder(DRAMBuilder):
                                                         "memHierarchy.MemLink")
         dram.cache_memlink = dram.cache.setSubComponent("memlink", \
                                                         "memHierarchy.MemLink")
-        link = sst.Link("link_{}_to_{}".format(self.cache_name(name), self.memctrl_name(name)))
+        link = sst.Link(f"link_{self.cache_name(name)}_to_{self.memctrl_name(name)}")
         link.connect((dram.cache_memlink, "port", "1ns"), \
                      (dram.mem_cpulink, "port", "1ns"))
 

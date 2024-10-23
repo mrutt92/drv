@@ -28,10 +28,10 @@ def parse_args():
 
     parser.add_argument("--pod-l2sp-banks", type=int, default=1, help="number of l2sp banks per pod")
     parser.add_argument("--pod-l2sp-interleave", type=int, default=0, help="interleave size of l2sp addresses (defaults to no  interleaving)")
-    parser.add_argument("--pod-l2sp-size", type=int, default=1024*1024, help="size of l2sp per pod (max {} bytes)".format(1024*1024))
+    parser.add_argument("--pod-l2sp-size", type=int, default=1024*1024, help=f"size of l2sp per pod (max {2**20} bytes)")
     
     parser.add_argument("--pxn-dram-banks", type=int, default=1, help="number of dram banks per pxn")
-    parser.add_argument("--pxn-dram-size", type=int, default=2*(1024**3), help="size of main memory per pxn (max {} bytes)".format(8*1024*1024*1024))
+    parser.add_argument("--pxn-dram-size", type=int, default=2*(1024**3), help=f"size of main memory per pxn (max {8*(2**30)} bytes)")
     parser.add_argument("--pxn-dram-interleave", type=int, default=0, help="interleave size of dram addresses (defaults to no  interleaving)")
 
     parser.add_argument("--without-pxn-dram-cache", action="store_true", help="disable dram cache")

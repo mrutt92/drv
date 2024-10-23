@@ -60,7 +60,7 @@ class SystemBuilder(object):
         """
         Get the PXN name
         """
-        return name + "_pxn{}".format(pxn_id)
+        return name + f"_pxn{pxn_id}"
     
     def build(self, name = "system"):
         """
@@ -91,10 +91,10 @@ class SystemBuilder(object):
             self.pxn.id = pxn_id
             pxn = self.pxn.build(self, self.pxn_name(name, pxn_id))
             nwif, port = pxn.network_interface()
-            link = sst.Link("{}_to_{}".format(pxn.name, self.network_name(name)))
+            link = sst.Link(f"{pxn.name}_to_{self.network_name(name)}")
             link.connect(
                 (nwif, port, "1ns"),
-                (system.network, "port{}".format(pxn_id), "1ns")
+                (system.network, f"port{pxn_id}", "1ns")
             )
             system.pxns.append(pxn)
 
