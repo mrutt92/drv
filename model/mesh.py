@@ -1,10 +1,13 @@
 import itertools
 import sst
 import enum
+import addressmap
 
-X = 1
-Y = 2
-
+CORES_X = 16
+CORES_Y = 8
+X = CORES_X
+Y = CORES_Y+2
+MEMSIZE = 2**30
 
 CPU_VERBOSE_LEVEL = 1
 NETWORK_DEBUG_LEVEL = 1
@@ -144,6 +147,8 @@ class Core(object):
         return (self.nic, "port", "1ns")
 
 class CoreBuilder(Identifiable):
+    max_address = 0
+    min_address = 0
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
 
@@ -158,8 +163,10 @@ class CoreBuilder(Identifiable):
         })
         core.generator = core.core.setSubComponent("generator", "miranda.GUPSGenerator")
         core.generator.addParams({
-            "verbose" : 4,            
-            "max_address" : MemoryBuilder.size * X * Y - 8,
+            "verbose" : 4,
+            # todo: modify this to access DRAM
+            "max_address" : CoreBuilder.max_address,
+            "min_address" : CoreBuilder.min_address,
             "count" : UPDATES_PER_CORE,
             "clock" : "1GHz",
             "seed_a" : self.id(x, y),
@@ -285,7 +292,100 @@ class ComputeTileBuilder(MeshTileBuilder):
         link = sst.Link(f"link_router_memory_{x}_{y}_mesh{self.meshid}")
         link.connect(tile.memory.network_interface, tile.local1)
 
+class VictimCache(object):
+    def __init__(self):
+        self.cache = None
+        self.cpulink = None
+        self.memlink = None
 
+    @property
+    def network_interface(self):
+        return (self.cpulink, "port", "1ns")
+
+    @property
+    def memory_interface(self):
+        return (self.memlink, "port", "1ns")
+
+class VictimCacheBuilder(Identifiable):
+    # use this to control all victim caches
+    sysconfig = None
+    banks = 0
+    bank_id = 0
+    memsize = 2**20
+    cache_line_size = 64
+    def __init__(self, xdim, ydim, meshid):
+        super().__init__(xdim, ydim, meshid)
+
+    def addressmap(self):
+        return addressmap.AddressMap(self.sysconfig)
+
+    @property
+    def bank_size(self):
+        return self.memsize // self.banks
+    
+    @classmethod
+    def new_bank_id(cls):
+        r = cls.bank_id
+        cls.bank_id += 1
+        return r
+
+    def address(self, bank_id):
+        addrmap = self.addressmap()
+        builder = addressmap.DRAMAddressBuilder(addrmap, self.bank_size, self.cache_line_size, self.banks * self.cache_line_size)
+        start, stop, interleave, stride = builder(0, bank_id)
+        start -= 0xc000_0000_0000_0000
+        start += 0x0000_0000_8000_0000
+        stop  -= 0xc000_0000_0000_0000
+        stop  += 0x0000_0000_8000_0000
+        return (start, stop, interleave, stride)
+        
+    def build(self, x, y):
+        bank_id = self.new_bank_id()
+        start, stop, interleave, stride = self.address(bank_id)
+        victim_cache = VictimCache()
+        victim_cache.cache = sst.Component(f"victim_cache_{x}_{y}_mesh{self.meshid}", "memHierarchy.Cache")
+        victim_cache.cache.addParams({
+            "cache_frequency" : "1GHz",
+            "cache_size" : "1KB",
+            "associativity" : "2",
+            "access_latency_cycles" : "1",
+            "replacement_policy" : "lru",
+            "mshr_num_entries" : "2",
+            "L1" : "true",
+            "cache_line_size" : self.cache_line_size,
+            "coherence_protocol" : "mesi",
+            "cache_type" : "inclusive",
+            "addr_range_start" : start,
+            "addr_range_end" : stop,
+            "interleave_size" : f'{interleave}B',
+            "interleave_step" : f'{stride}B',
+        })
+        victim_cache.cpulink = victim_cache.cache.setSubComponent("cpulink", "memHierarchy.MemNIC")
+        victim_cache.cpulink.addParams({
+            "group" : 1,
+            "network_bw" : "1024GB/s",
+        })
+        victim_cache.memlink = victim_cache.cache.setSubComponent("memlink", "memHierarchy.MemLink")
+        return victim_cache
+
+class VictimCacheTile(MeshTile):
+    def __init__(self):
+        super().__init__()
+        self.victim_cache = None
+
+class VictimCacheTileBuilder(MeshTileBuilder):
+    def __init__(self, xdim, ydim, meshid):
+        self.victim_cache_builder = VictimCacheBuilder(xdim, ydim, meshid)
+        super().__init__(xdim, ydim, meshid)
+
+    def make_mesh_tile(self):
+        return VictimCacheTile()
+
+    def build_local_endpoints(self, x, y, tile):
+        tile.victim_cache = self.victim_cache_builder.build(x, y)
+        link = sst.Link(f"link_router_memory_{x}_{y}_mesh{self.meshid}")
+        link.connect(tile.victim_cache.network_interface, tile.local0)
+        
 class EmptyTile(MeshTile):
     def __init__(self):
         super().__init__()
@@ -300,45 +400,77 @@ class EmptyTileBuilder(MeshTileBuilder):
     def build_local_endpoints(self, x, y, tile):
         pass
 
+class Sysconfig(object):
+    def __init__(self, num_cores):
+        self.num_cores = num_cores
 
-if 0:
-    # unclear if this would work
-    bidx = (0,1)
+    def cores(self):
+        return self.num_cores
 
-    mesh_builder0 = MeshBuilder(X, Y, 0)
-    mesh_builder0.tile_builder[bidx] = EmptyTileBuilder
-    mesh0 = mesh_builder0.build()
+    def pxns(self):
+        return 1
 
-    mesh_builder1 = MeshBuilder(X, Y, 1)
-    mesh_builder1.tile_builder[bidx] = EmptyTileBuilder
-    mesh1 = mesh_builder1.build()
+    def pods(self):
+        return 1
 
-    # router = sst.Component("router", "merlin.hr_router")
-    # router.addParams({
-    #     "id" : 0,
-    #     "num_vns" : 1,
-    #     "xbar_bw" : "1024GB/s",
-    #     "link_bw" : "1024GB/s",
-    #     "input_latency" : "1ns",
-    #     "output_latency" : "1ns",
-    #     "input_buf_size" : "1KB",
-    #     "output_buf_size" : "1KB",
-    #     "flit_size" : "8B",
-    #     "num_ports" : 2,
-    # })
-    # topo = router.setSubComponent("topology", "merlin.singlerouter")
+if __name__ == "__main__":
+    mesh_builder = MeshBuilder(X, Y, 0)
+    VictimCacheBuilder.sysconfig = Sysconfig(CORES_X*CORES_Y)
+    VictimCacheBuilder.memsize = MEMSIZE
+    VictimCacheBuilder.banks = 2*X
 
-    bridge = sst.Component("bridge", "merlin.Bridge")
-    bridge.addParams({
-        "translator" : "memHierarchy.MemNetBridge",
-        "network_bw" : "1024GB/s",
+    # create the memory address range
+    addrmap = addressmap.AddressMap(VictimCacheBuilder.sysconfig)
+    range_builder = addressmap.DRAMAddressBuilder(addrmap, VictimCacheBuilder.memsize, 0, 0)
+    start, stop, interleave, stride = range_builder(0, 0)
+    start -= 0xc000_0000_0000_0000
+    start += 0x0000_0000_8000_0000
+    stop  -= 0xc000_0000_0000_0000
+    stop  += 0x0000_0000_8000_0000
+    print(f"Memory range: {start:x} - {stop:x}")
+
+    for x in range(X):
+        mesh_builder.tile_builder[(x,0)]   = VictimCacheTileBuilder
+        mesh_builder.tile_builder[(x,Y-1)] = VictimCacheTileBuilder
+
+    CoreBuilder.max_address = stop-8
+    CoreBuilder.min_address = start
+
+    # create a memory
+    memory = sst.Component("memory", "memHierarchy.MemController")
+    memory.addParams({
+        "clock" : "1GHz",
+        "addr_range_start" : start,
+        "addr_range_end" : stop,
+        "interleave_size" : f'{interleave}B',
+        "interleave_step" : f'{stride}B',
+    })
+    backend = memory.setSubComponent("backend", "memHierarchy.simpleMem")
+    backend.addParams({
+        "mem_size" : f"{VictimCacheBuilder.memsize}B",
+        "access_time" : "1ns",
+    })
+    memlink = memory.setSubComponent("cpulink", "memHierarchy.MemLink")
+
+    # create a bus
+    bus = sst.Component("bus", "memHierarchy.Bus")
+    bus.addParams({
+        "bus_frequency" : "1GHz",
+        "bus_latency" : "1ns",
     })
 
-    link = sst.Link("link_router_mesh0")
-    link.connect(mesh0.tiles[bidx].local0, (bridge, "network0", "1ns"))
-    
-    link = sst.Link("link_router_mesh1")
-    link.connect(mesh1.tiles[bidx].local0, (bridge, "network1", "1ns"))
-else:
-    mesh_builder = MeshBuilder(X, Y, 0)
+    # connect memory to bus
+    link = sst.Link("link_memory_bus")
+    link.connect((memlink, "port", "1ns"), (bus, "low_network_0", "1ns"))
+
+    # build the mesh
     mesh = mesh_builder.build()
+
+    # connect bus to vcs
+    for (i, (x,y)) in enumerate(itertools.product(range(X), (0, Y-1))):
+        # connect vc to memory backend
+        vc_tile = mesh.tiles[(x,y)]
+        link = sst.Link(f"link_vc_memory_{x}_{y}_mesh0")
+        link.connect(vc_tile.victim_cache.memory_interface, (bus, f"high_network_{i}", "1ns"))
+
+
