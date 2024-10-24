@@ -7,7 +7,7 @@ CORES_X = 16
 CORES_Y = 8
 X = CORES_X
 Y = CORES_Y+2
-MEMSIZE = 2**30
+MEMSIZE = 2**31
 
 CPU_VERBOSE_LEVEL = 1
 NETWORK_DEBUG_LEVEL = 1
@@ -427,7 +427,7 @@ if __name__ == "__main__":
     start += 0x0000_0000_8000_0000
     stop  -= 0xc000_0000_0000_0000
     stop  += 0x0000_0000_8000_0000
-    print(f"Memory range: {start:x} - {stop:x}")
+    print(f"Memory range: {start:08x} - {stop:08x}")
 
     for x in range(X):
         mesh_builder.tile_builder[(x,0)]   = VictimCacheTileBuilder
@@ -444,6 +444,7 @@ if __name__ == "__main__":
         "addr_range_end" : stop,
         "interleave_size" : f'{interleave}B',
         "interleave_step" : f'{stride}B',
+        "max_requests_per_cycle" : 1,
     })
     backend = memory.setSubComponent("backend", "memHierarchy.simpleMem")
     backend.addParams({
