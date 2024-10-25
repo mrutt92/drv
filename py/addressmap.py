@@ -1,14 +1,17 @@
 import enum
 
 class Bitfield(object):
-    def __init__(self, hi, lo):
+    def __init__(self, hi, lo=-1):
         """
         @brief Constructor
         @param hi: the high bit
         @param lo: the low bit
         """
         self._hi = hi
-        self._lo = lo
+        if lo == -1:
+            self._lo = hi
+        else:
+            self._lo = lo
 
     def lo(self):
         """

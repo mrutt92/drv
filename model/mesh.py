@@ -2,16 +2,197 @@ import itertools
 import sst
 import enum
 import addressmap
+from addressmap import Bitfield
 
 CORES_X = 16
 CORES_Y = 8
 X = CORES_X
 Y = CORES_Y+2
 MEMSIZE = 2**31
+CACHE_LINE_SIZE = 64
 
 CPU_VERBOSE_LEVEL = 1
 NETWORK_DEBUG_LEVEL = 1
 UPDATES_PER_CORE = 100
+
+class AddressType(enum.Enum):
+    """
+    An address type.
+    """
+    L1SP = 0
+    DRAM = 1
+    CTRL = 2
+
+class AddressInfo(object):
+    """
+    A decoded address.
+    """
+    def __init__(self):
+        self.address_type = AddressType.DRAM
+        self._offset = 0
+        self.core_x = 0
+        self.core_y = 0
+        self.pod = 0
+        self.local = False
+
+    def __str__(self):
+        if self.address_type in (AddressType.L1SP, AddressType.CTRL):
+            return f"<{self.address_type.name} pod={self.pod} y={self.core_x} x={self.core_y} {self._offset:08x}>"
+        return f"<{self.address_type.name} pod={self.pod} {self._offset:08x}>"
+
+    def is_l1sp(self):
+        return self.address_type == AddressType.L1SP
+
+    def set_l1sp(self):
+        self.address_type = AddressType.L1SP
+        return self
+
+    def is_dram(self):
+        return self.address_type == AddressType.DRAM
+
+    def set_dram(self):
+        self.address_type = AddressType.DRAM
+        return self
+
+    def is_ctrl(self):
+        return self.address_type == AddressType.CTRL
+
+    def set_ctrl(self):
+        self.address_type = AddressType.CTRL
+        return self
+
+    def offset(self):
+        return self._offset
+
+    def set_offset(self, offset):
+        self._offset = offset
+        return self
+
+    def core_x(self):
+        return self.core_x
+
+    def set_core_x(self, core_x):
+        self.core_x = core_x
+        return self
+
+    def core_y(self):
+        return self.core_y
+
+    def set_core_y(self, core_y):
+        self.core_y = core_y
+
+    def pod(self):
+        return self.pod
+
+    def set_pod(self, pod):
+        self.pod = pod
+        return self
+
+    def is_local(self):
+        return self.local
+
+    def set_local(self):
+        self.local = True
+        return self
+
+    def is_global(self):
+        return not self.local
+
+    def set_global(self):
+        self.local = False
+        return self
+
+class AddressMap(object):
+    """
+    Decodes and encodes addresses.
+    """
+    def __init__(self):
+        self.is_dram = Bitfield(31)
+        self.is_remote_bit = Bitfield(29)
+        self.y = Bitfield(28, 24)
+        self.x = Bitfield(23, 18)
+        self.dram_offset = Bitfield(30, 0)
+        self.l1sp_offset = Bitfield(17, 0)
+
+    def is_remote(self, addr):
+        return not self.is_dram(addr) and self.is_remote_bit(addr)
+
+    def decode(self, addr, my_x = 0, my_y = 0):
+        """
+        Returns an AddressInfo() object.
+        """
+        info = AddressInfo()
+        if self.is_dram(addr):
+            info.set_dram()\
+                .set_global()\
+                .set_oiffset(self.dram_offset(addr))
+        elif self.is_remote(addr):
+            info.set_l1sp()\
+                .set_global()\
+                .set_offset(self.l1sp_offset(addr))\
+                .set_core_x(self.x(addr))\
+                .set_core_y(self.y(addr))
+        else:
+            info.set_l1sp()\
+                .set_local()\
+                .set_offset(self.l1sp_offset(addr))\
+                .set_core_x(my_x)\
+                .set_core_y(my_y)
+        return info
+
+    def encode(self, info):
+        """
+        Returns an address.
+        """
+        address = 0
+        # dram
+        if info.is_dram():
+            address = self.is_dram.set(address, 1)
+            address = self.dram_offset.set(address, info.offset())
+        # remote l1sp
+        elif info.is_l1sp() and info.is_global():
+            address = self.is_remote_bit.set(address, 1)
+            address = self.x.set(address, info.core_x())
+            address = self.y.set(address, info.core_y())
+            address = self.l1sp_offset.set(address, info.offset())
+        # local l1sp
+        elif info.is_l1sp() and info.is_local():
+            address = self.l1sp_offset.set(address, info.offset())
+        # return the address
+        return address
+
+def dram_range(bank_id, banks, memsize, interleave):
+    """
+    Address range for a dram bank.
+    return addr_start, addr_end, interleave, stride
+    """
+    address_map = AddressMap()
+    bank_size = memsize // banks
+
+    if banks == 1:
+        bank_id = 0
+
+    stride = interleave * banks
+    start = bank_id * interleave
+    stop = memsize - (banks - bank_id - 1) * interleave - 1
+
+    start_info = AddressInfo().set_dram().set_global().set_offset(start)
+    stop_info = AddressInfo().set_dram().set_global().set_offset(stop)
+    return (address_map.encode(start_info),
+            address_map.encode(stop_info),
+            interleave,
+            stride)
+
+def vcache_range(xdim, ydim, x, south_not_north, memsize, interleave):
+    """
+    Address range for a vcache bank.
+    return addr_start, addr_end, interleave, stride
+    """
+    banks = xdim*2 # north and south
+    snn = 1 if south_not_north else 0
+    bank_id = x + snn*xdim
+    return dram_range(bank_id, banks, memsize, interleave)
+
 
 class Mesh(object):
     def __init__(self):
@@ -107,7 +288,8 @@ class MemoryBuilder(Identifiable):
 
     def build(self, x, y):
         memory = Memory()
-        memory.controller = sst.Component(f"memory_{x}_{y}_mesh{self.meshid}", "memHierarchy.MemController")
+        memory.controller = sst.Component(f"memory_{x}_{y}_mesh{self.meshid}",
+                                          "memHierarchy.MemController")
         start = self.absid(x, y) * MemoryBuilder.size
         end = (self.absid(x, y) + 1) * MemoryBuilder.size - 1
         print(f"Memory {x} {y} {start:x}-{end:x}")
@@ -120,12 +302,14 @@ class MemoryBuilder(Identifiable):
             "interleave_size" : f"{MemoryBuilder.size}B",
             "interleave_step" : f"{X*Y*MemoryBuilder.size}B",
         })
-        memory.backend = memory.controller.setSubComponent("backend", "memHierarchy.simpleMem")
+        memory.backend = memory.controller.setSubComponent("backend",
+                                                           "memHierarchy.simpleMem")
         memory.backend.addParams({
             "access_time" : "1ns",
             "mem_size" : f"{MemoryBuilder.size}B",
         })
-        memory.nic = memory.controller.setSubComponent("cpulink", "memHierarchy.MemNIC")
+        memory.nic = memory.controller.setSubComponent("cpulink",
+                                                       "memHierarchy.MemNIC")
         memory.nic.addParams({
             "group" : "1",
             "network_bw" : "1024GB/s",
@@ -310,9 +494,8 @@ class VictimCacheBuilder(Identifiable):
     # use this to control all victim caches
     sysconfig = None
     banks = 0
-    bank_id = 0
-    memsize = 2**20
-    cache_line_size = 64
+    memsize = MEMSIZE
+    cache_line_size = CACHE_LINE_SIZE
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
 
@@ -323,27 +506,14 @@ class VictimCacheBuilder(Identifiable):
     def bank_size(self):
         return self.memsize // self.banks
     
-    @classmethod
-    def new_bank_id(cls):
-        r = cls.bank_id
-        cls.bank_id += 1
-        return r
-
-    def address(self, bank_id):
-        addrmap = self.addressmap()
-        builder = addressmap.DRAMAddressBuilder(addrmap, self.bank_size, self.cache_line_size, self.banks * self.cache_line_size)
-        start, stop, interleave, stride = builder(0, bank_id)
-        start -= 0xc000_0000_0000_0000
-        start += 0x0000_0000_8000_0000
-        stop  -= 0xc000_0000_0000_0000
-        stop  += 0x0000_0000_8000_0000
-        return (start, stop, interleave, stride)
-        
     def build(self, x, y):
-        bank_id = self.new_bank_id()
-        start, stop, interleave, stride = self.address(bank_id)
+        start, stop, interleave, stride \
+            = vcache_range(self.xdim, self.ydim, x, not (y==0), \
+                           self.memsize, self.cache_line_size)
+
         victim_cache = VictimCache()
-        victim_cache.cache = sst.Component(f"victim_cache_{x}_{y}_mesh{self.meshid}", "memHierarchy.Cache")
+        victim_cache.cache = sst.Component(f"victim_cache_{x}_{y}_mesh{self.meshid}",\
+                                           "memHierarchy.Cache")
         victim_cache.cache.addParams({
             "cache_frequency" : "1GHz",
             "cache_size" : "1KB",
@@ -420,13 +590,9 @@ if __name__ == "__main__":
     VictimCacheBuilder.banks = 2*X
 
     # create the memory address range
-    addrmap = addressmap.AddressMap(VictimCacheBuilder.sysconfig)
-    range_builder = addressmap.DRAMAddressBuilder(addrmap, VictimCacheBuilder.memsize, 0, 0)
-    start, stop, interleave, stride = range_builder(0, 0)
-    start -= 0xc000_0000_0000_0000
-    start += 0x0000_0000_8000_0000
-    stop  -= 0xc000_0000_0000_0000
-    stop  += 0x0000_0000_8000_0000
+    start, stop, interleave, stride \
+        = dram_range(0, 1, MEMSIZE, VictimCacheBuilder.cache_line_size)
+
     print(f"Memory range: {start:08x} - {stop:08x}")
 
     for x in range(X):
