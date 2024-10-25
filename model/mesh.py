@@ -3,6 +3,7 @@ import sst
 import enum
 import addressmap
 from addressmap import Bitfield
+from clock import Clock
 
 CORES_X = 16
 CORES_Y = 8
@@ -13,7 +14,12 @@ CACHE_LINE_SIZE = 64
 
 CPU_VERBOSE_LEVEL = 1
 NETWORK_DEBUG_LEVEL = 1
-UPDATES_PER_CORE = 100
+UPDATES_PER_CORE = 1000
+
+CORE_CLOCK = Clock(1e9)
+MEMORY_CLOCK = Clock(1e9)
+
+NETWORK_BANDWIDTH = f'{CORE_CLOCK * 24}B/s'
 
 class AddressType(enum.Enum):
     """
@@ -279,10 +285,11 @@ class Memory(object):
 
     @property
     def network_interface(self):
-        return (self.nic, "port", "1ns")
+        return (self.nic, "port", f'{CORE_CLOCK.cycle_ps}ps')
     
 class MemoryBuilder(Identifiable):
     size = 1024
+    bandwidth = 8e9 # 8GB/s
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
 
@@ -296,7 +303,7 @@ class MemoryBuilder(Identifiable):
         memory.controller.addParams({
             "debug_level" : 10,
             "verbose" : 0,
-            "clock" : "1GHz",
+            "clock" : f'{CORE_CLOCK}Hz',
             "addr_range_start" : start,
             "addr_range_end" : end,
             "interleave_size" : f"{MemoryBuilder.size}B",
@@ -305,14 +312,14 @@ class MemoryBuilder(Identifiable):
         memory.backend = memory.controller.setSubComponent("backend",
                                                            "memHierarchy.simpleMem")
         memory.backend.addParams({
-            "access_time" : "1ns",
+            "access_time" : f'{CORE_CLOCK.cycle_ps}ps',
             "mem_size" : f"{MemoryBuilder.size}B",
         })
         memory.nic = memory.controller.setSubComponent("cpulink",
                                                        "memHierarchy.MemNIC")
         memory.nic.addParams({
             "group" : "1",
-            "network_bw" : "1024GB/s",
+            "network_bw" : NETWORK_BANDWIDTH,
             "sources" : "0",
             "debug_level" : NETWORK_DEBUG_LEVEL,
             "debug" : 1,
@@ -328,7 +335,7 @@ class Core(object):
 
     @property
     def network_interface(self):
-        return (self.nic, "port", "1ns")
+        return (self.nic, "port", f'{CORE_CLOCK.cycle_ps}ps')
 
 class CoreBuilder(Identifiable):
     max_address = 0
@@ -351,8 +358,8 @@ class CoreBuilder(Identifiable):
             # todo: modify this to access DRAM
             "max_address" : CoreBuilder.max_address,
             "min_address" : CoreBuilder.min_address,
-            "count" : UPDATES_PER_CORE,
-            "clock" : "1GHz",
+            "count" : UPDATES_PER_CORE if x == 1 and y == 1 else 0,
+            "clock" : f'{CORE_CLOCK}Hz',
             "seed_a" : self.id(x, y),
             "seed_b" : 7*self.id(x, y)+1,
         })
@@ -360,7 +367,7 @@ class CoreBuilder(Identifiable):
         core.nic = core.interface.setSubComponent("memlink", "memHierarchy.MemNIC")
         core.nic.addParams({
             "group" : "0",
-            "network_bw" : "1024GB/s",
+            "network_bw" : NETWORK_BANDWIDTH,
             "destinations" : "1",
             "debug_level" : NETWORK_DEBUG_LEVEL,
             "debug" : 1,
@@ -376,12 +383,12 @@ class MeshTile(object):
     @property
     def network_interfaces(self):
         return {
-            MeshBuilder.WEST  : (self.router, f"port{MeshBuilder.west_port()}", "1ns"),
-            MeshBuilder.EAST  : (self.router, f"port{MeshBuilder.east_port()}", "1ns"),
-            MeshBuilder.NORTH : (self.router, f"port{MeshBuilder.north_port()}", "1ns"),
-            MeshBuilder.SOUTH : (self.router, f"port{MeshBuilder.south_port()}", "1ns"),
-            MeshBuilder.LOCAL0 : (self.router, f"port{MeshBuilder.portof(MeshBuilder.LOCAL0)}", "1ns"),
-            MeshBuilder.LOCAL1 : (self.router, f"port{MeshBuilder.portof(MeshBuilder.LOCAL1)}", "1ns"),
+            MeshBuilder.WEST  : (self.router, f"port{MeshBuilder.west_port()}", f'{CORE_CLOCK.cycle_ps}ps'),
+            MeshBuilder.EAST  : (self.router, f"port{MeshBuilder.east_port()}", f'{CORE_CLOCK.cycle_ps}ps'),
+            MeshBuilder.NORTH : (self.router, f"port{MeshBuilder.north_port()}", f'{CORE_CLOCK.cycle_ps}ps'),
+            MeshBuilder.SOUTH : (self.router, f"port{MeshBuilder.south_port()}", f'{CORE_CLOCK.cycle_ps}ps'),
+            MeshBuilder.LOCAL0 : (self.router, f"port{MeshBuilder.portof(MeshBuilder.LOCAL0)}", f'{CORE_CLOCK.cycle_ps}ps'),
+            MeshBuilder.LOCAL1 : (self.router, f"port{MeshBuilder.portof(MeshBuilder.LOCAL1)}", f'{CORE_CLOCK.cycle_ps}ps'),
         }
 
     @property
@@ -422,10 +429,10 @@ class MeshTileBuilder(Identifiable):
         router.addParams({
             "id" : self.id(x, y),
             "num_vns" : 2,
-            "xbar_bw" : "1024GB/s",
-            "link_bw" : "1024GB/s",
-            "input_latency" : "1ns",
-            "output_latency" : "1ns",
+            "xbar_bw" : NETWORK_BANDWIDTH,
+            "link_bw" : NETWORK_BANDWIDTH,
+            "input_latency" : f'{0*CORE_CLOCK.cycle_ps}ps',
+            "output_latency" : f'{0*CORE_CLOCK.cycle_ps}ps',
             "input_buf_size" : "1KB",
             "output_buf_size" : "1KB",
             "flit_size" : "8B",
@@ -484,11 +491,11 @@ class VictimCache(object):
 
     @property
     def network_interface(self):
-        return (self.cpulink, "port", "1ns")
+        return (self.cpulink, "port", f'{CORE_CLOCK.cycle_ps}ps')
 
     @property
     def memory_interface(self):
-        return (self.memlink, "port", "1ns")
+        return (self.memlink, "port", f'{CORE_CLOCK.cycle_ps}ps')
 
 class VictimCacheBuilder(Identifiable):
     # use this to control all victim caches
@@ -515,10 +522,10 @@ class VictimCacheBuilder(Identifiable):
         victim_cache.cache = sst.Component(f"victim_cache_{x}_{y}_mesh{self.meshid}",\
                                            "memHierarchy.Cache")
         victim_cache.cache.addParams({
-            "cache_frequency" : "1GHz",
+            "cache_frequency" : f'{CORE_CLOCK}Hz',
             "cache_size" : "1KB",
             "associativity" : "2",
-            "access_latency_cycles" : "1",
+            "access_latency_cycles" : '1',
             "replacement_policy" : "lru",
             "mshr_num_entries" : "2",
             "L1" : "true",
@@ -533,7 +540,7 @@ class VictimCacheBuilder(Identifiable):
         victim_cache.cpulink = victim_cache.cache.setSubComponent("cpulink", "memHierarchy.MemNIC")
         victim_cache.cpulink.addParams({
             "group" : 1,
-            "network_bw" : "1024GB/s",
+            "network_bw" : NETWORK_BANDWIDTH,
         })
         victim_cache.memlink = victim_cache.cache.setSubComponent("memlink", "memHierarchy.MemLink")
         return victim_cache
@@ -605,7 +612,7 @@ if __name__ == "__main__":
     # create a memory
     memory = sst.Component("memory", "memHierarchy.MemController")
     memory.addParams({
-        "clock" : "1GHz",
+        "clock" : f'{MEMORY_CLOCK}Hz',
         "addr_range_start" : start,
         "addr_range_end" : stop,
         "interleave_size" : f'{interleave}B',
@@ -615,20 +622,23 @@ if __name__ == "__main__":
     backend = memory.setSubComponent("backend", "memHierarchy.simpleMem")
     backend.addParams({
         "mem_size" : f"{VictimCacheBuilder.memsize}B",
-        "access_time" : "1ns",
+        "access_time" : f'{MEMORY_CLOCK.cycle_ps * 2}ps',
     })
     memlink = memory.setSubComponent("cpulink", "memHierarchy.MemLink")
 
     # create a bus
     bus = sst.Component("bus", "memHierarchy.Bus")
     bus.addParams({
-        "bus_frequency" : "1GHz",
-        "bus_latency" : "1ns",
+        "bus_frequency" : f'{CORE_CLOCK}Hz',
+        "bus_latency" : f'{CORE_CLOCK.cycle_ps}ps',
     })
 
     # connect memory to bus
     link = sst.Link("link_memory_bus")
-    link.connect((memlink, "port", "1ns"), (bus, "low_network_0", "1ns"))
+    link.connect(
+        (memlink, "port", f'{CORE_CLOCK.cycle_ps}ps'),
+        (bus, "low_network_0", f'{CORE_CLOCK.cycle_ps}ps')
+    )
 
     # build the mesh
     mesh = mesh_builder.build()
