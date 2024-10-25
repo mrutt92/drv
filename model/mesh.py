@@ -4,6 +4,9 @@ import enum
 import addressmap
 from addressmap import Bitfield
 from clock import Clock
+from cmdline import parse_args
+
+ARGUMENTS = parse_args()
 
 CORES_X = 16
 CORES_Y = 8
@@ -19,7 +22,8 @@ UPDATES_PER_CORE = 1000
 CORE_CLOCK = Clock(1e9)
 MEMORY_CLOCK = Clock(1e9)
 
-NETWORK_BANDWIDTH = f'{CORE_CLOCK * 24}B/s'
+NETWORK_BANDWIDTH = f'{CORE_CLOCK * 8 * 3}B/s'
+XBAR_BANDWIDTH = f'{CORE_CLOCK * 8 * 3 * 6}B/s'
 
 class AddressType(enum.Enum):
     """
@@ -288,7 +292,7 @@ class Memory(object):
         return (self.nic, "port", f'{CORE_CLOCK.cycle_ps}ps')
     
 class MemoryBuilder(Identifiable):
-    size = 1024
+    size = 4*1024
     bandwidth = 8e9 # 8GB/s
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
@@ -299,7 +303,6 @@ class MemoryBuilder(Identifiable):
                                           "memHierarchy.MemController")
         start = self.absid(x, y) * MemoryBuilder.size
         end = (self.absid(x, y) + 1) * MemoryBuilder.size - 1
-        print(f"Memory {x} {y} {start:x}-{end:x}")
         memory.controller.addParams({
             "debug_level" : 10,
             "verbose" : 0,
@@ -337,7 +340,7 @@ class Core(object):
     def network_interface(self):
         return (self.nic, "port", f'{CORE_CLOCK.cycle_ps}ps')
 
-class CoreBuilder(Identifiable):
+class MirandaCoreBuilder(Identifiable):
     max_address = 0
     min_address = 0
     def __init__(self, xdim, ydim, meshid):
@@ -356,8 +359,8 @@ class CoreBuilder(Identifiable):
         core.generator.addParams({
             "verbose" : 4,
             # todo: modify this to access DRAM
-            "max_address" : CoreBuilder.max_address,
-            "min_address" : CoreBuilder.min_address,
+            "max_address" : MirandaCoreBuilder.max_address,
+            "min_address" : MirandaCoreBuilder.min_address,
             "count" : UPDATES_PER_CORE if x == 1 and y == 1 else 0,
             "clock" : f'{CORE_CLOCK}Hz',
             "seed_a" : self.id(x, y),
@@ -374,6 +377,50 @@ class CoreBuilder(Identifiable):
         })
         return core
 
+class DrvXCoreBuilder(Identifiable):
+    def __init__(self, xdim, ydim, meshid):
+        super().__init__(xdim, ydim, meshid)
+
+    def core_id(self, x, y):
+        return x + (y-1) * self.xdim
+    
+    def build(self, x, y):
+        core = Core()
+        core.core = sst.Component(f"core_{x}_{y}_mesh{self.meshid}", "Drv.DrvCore")
+        core.core.addParams({
+            "clock" : f'{CORE_CLOCK}Hz',
+            "max_idle" : 2,
+            "threads" : 1,
+            "executable" : ARGUMENTS.program,
+            "argv" : ' '.join(ARGUMENTS.argv),
+            "id" : self.core_id(x, y),
+            "pod" : 0,
+            "pxn" : 0,
+            "sys_num_pxn" : 1,
+            "sys_pxn_pods" : 1,
+            "sys_pod_cores" : CORES_X*CORES_Y,
+            "sys_core_threads" : 1,
+            "sys_core_clock" : f'{CORE_CLOCK}Hz',
+            "sys_core_l1sp_size" : MemoryBuilder.size,
+            "sys_pod_l2sp_size" : 0,
+            "sys_pod_l2sp_banks" : 0,
+            "sys_pod_l2sp_interleave_size" : 0,
+            "sys_nw_flit_dwords" : 1,
+            "sys_nw_obuf_dwords" : 24,
+            "sys_cp_present" : False,
+        })
+        core.memory = core.core.setSubComponent("memory", "Drv.DrvStdMemory")
+        core.interface = core.memory.setSubComponent("memory", "memHierarchy.standardInterface")
+        core.nic = core.interface.setSubComponent("memlink", "memHierarchy.MemNIC")
+        core.nic.addParams({
+            "group" : "0",
+            "network_bw" : NETWORK_BANDWIDTH,
+            "destinations" : "1",
+            "debug_level" : NETWORK_DEBUG_LEVEL,
+            "debug" : 1,
+        })
+        return core
+    
 class MeshTile(object):
     def __init__(self):
         self.router = None
@@ -429,12 +476,12 @@ class MeshTileBuilder(Identifiable):
         router.addParams({
             "id" : self.id(x, y),
             "num_vns" : 2,
-            "xbar_bw" : NETWORK_BANDWIDTH,
-            "link_bw" : NETWORK_BANDWIDTH,
+            "xbar_bw" : XBAR_BANDWIDTH,
+            "link_bw" : XBAR_BANDWIDTH,
             "input_latency" : f'{0*CORE_CLOCK.cycle_ps}ps',
             "output_latency" : f'{0*CORE_CLOCK.cycle_ps}ps',
-            "input_buf_size" : "1KB",
-            "output_buf_size" : "1KB",
+            "input_buf_size" : f"{2*3*8}B",
+            "output_buf_size" : f"{2*3*8}B",
             "flit_size" : "8B",
             "num_ports" : self.num_ports,
         })
@@ -466,7 +513,7 @@ class ComputeTile(MeshTile):
 
 class ComputeTileBuilder(MeshTileBuilder):
     def __init__(self, xdim, ydim, meshid):
-        self.core = CoreBuilder(xdim, ydim, meshid)
+        self.core = DrvXCoreBuilder(xdim, ydim, meshid)
         self.memory = MemoryBuilder(xdim, ydim, meshid)
         super().__init__(xdim, ydim, meshid)
 
@@ -474,7 +521,7 @@ class ComputeTileBuilder(MeshTileBuilder):
         return ComputeTile()
 
     def build_local_endpoints(self, x, y, tile):
-        print(f"ComputeTile {x} {y}")
+        #print(f"ComputeTile {x} {y}")
         tile.core = self.core.build(x, y)
         link = sst.Link(f"link_core_router_{x}_{y}_mesh{self.meshid}")
         link.connect(tile.core.network_interface, tile.local0)
@@ -600,14 +647,14 @@ if __name__ == "__main__":
     start, stop, interleave, stride \
         = dram_range(0, 1, MEMSIZE, VictimCacheBuilder.cache_line_size)
 
-    print(f"Memory range: {start:08x} - {stop:08x}")
+    #print(f"Memory range: {start:08x} - {stop:08x}")
 
     for x in range(X):
         mesh_builder.tile_builder[(x,0)]   = VictimCacheTileBuilder
         mesh_builder.tile_builder[(x,Y-1)] = VictimCacheTileBuilder
 
-    CoreBuilder.max_address = stop-8
-    CoreBuilder.min_address = start
+    MirandaCoreBuilder.max_address = stop-8
+    MirandaCoreBuilder.min_address = start
 
     # create a memory
     memory = sst.Component("memory", "memHierarchy.MemController")
