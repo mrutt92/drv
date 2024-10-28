@@ -1,5 +1,6 @@
 import argparse
 
+def parser()
 def parse_args():
     print("Parsing arguments")
     parser = argparse.ArgumentParser()

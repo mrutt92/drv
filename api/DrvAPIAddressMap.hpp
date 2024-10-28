@@ -10,7 +10,6 @@
 #include <sstream>
 #include <DrvAPIAddress.hpp>
 #include <DrvAPISysConfig.hpp>
-#include <DrvAPICoreXY.hpp>
 #include <DrvAPIBits.hpp>
 namespace DrvAPI
 {

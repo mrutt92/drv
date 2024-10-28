@@ -8,6 +8,7 @@
 #include <DrvAPISysConfig.hpp>
 #include <DrvAPISystem.hpp>
 #include <DrvAPIAddressMap.hpp>
+#include <DrvAPIBits.hpp>
 #include <boost/coroutine2/all.hpp>
 #include <memory>
 namespace DrvAPI
@@ -89,6 +90,30 @@ public:
    * @brief get the core id
    */
   int coreId() const { return core_id_; } //!< Get the core id
+
+  int coreXFromId(int id) const { return core_x_(id); } //!< Get the core x from id
+
+  int coreYFromId(int id) const { return core_y_(id); } //!< Get the core y from id
+
+  /**
+   * @brief get the core x
+   */
+    int coreX() const { return core_x_(coreId()); } //!< Get the core x
+
+    /**
+    * @brief get the core y
+    */
+    int coreY() const { return core_y_(coreId()); } //!< Get the core y
+
+    /**
+     * @brief get the core id from x and y
+     */
+    int coreIdFromXY(int x, int y) const {
+        int id = 0;
+        core_x_.setbits(id, x);
+        core_y_.setbits(id, y);
+        return id;
+    }
 
   /**
    * @brief number of threads on this core
@@ -217,6 +242,8 @@ private:
   int core_threads_; //!< Number of threads on this core
   int pod_id_; //!< Pod id in PXN
   int pxn_id_; //!< Pxn id
+  bits::dynamic_bitfield<int> core_x_= {2,0};
+  bits::dynamic_bitfield<int> core_y_= {5,3};
   int tag_ = 0; //!< Execution tag
   bool stack_in_modeled_memory_ = false; //!< Stack is in modeled memory
   DrvAPIAddressDecoder decoder_; //!< Address decoder

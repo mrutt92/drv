@@ -168,7 +168,6 @@ function (drv_add_run_target run_target executable cpexecutable)
       --core-threads=${MODEL_CORE_THREADS}
       $<TARGET_FILE:${executable}> # the application to run
       $<TARGET_PROPERTY:${run_target},DRV_APPLICATION_ARGV> # arguments for the application
-      2>&1 | tee $<TARGET_PROPERTY:${run_target},SST_RUN_DIR>/log.txt # log the output
       DEPENDS ${executable} Drv
       )
     set_target_properties(
