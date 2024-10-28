@@ -34,6 +34,7 @@ if (NOT DEFINED ARCH_RV64)
     DrvAPIThread.hpp
     DrvAPIVar.hpp
     DrvAPISection.hpp
+    DrvAPIBits.hpp
     )
 
 
