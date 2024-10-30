@@ -2,181 +2,79 @@ import itertools
 import sst
 import enum
 import addressmap
-from addressmap import Bitfield
+from addressmap import Bitfield, AddressMap, AddressInfo
 from clock import Clock
-from cmdline import parse_args
+from cmdline import parser
+import numpy as np
 
-ARGUMENTS = parse_args()
+p = parser()
+p.add_argument("--cores-x", type=int, default=16, help="Number of cores in the x dimension")
+p.add_argument("--cores-y", type=int, default=8, help="Number of cores in the y dimension")
 
-CORES_X = 16
-CORES_Y = 8
+ARGUMENTS = p.parse_args()
+
+if ARGUMENTS.pod_cores != (ARGUMENTS.cores_x * ARGUMENTS.cores_y):
+    print(f"Warning: pod_cores {ARGUMENTS.pod_cores} " +
+          f"not equal to cores_x {ARGUMENTS.cores_x} x " +
+          f"cores_y {ARGUMENTS.cores_y} " +
+          f"= {ARGUMENTS.cores_x*ARGUMENTS.cores_y}")
+
+CORES_X = ARGUMENTS.cores_x
+CORES_Y = ARGUMENTS.cores_y
 X = CORES_X
 Y = CORES_Y+2
+if ARGUMENTS.with_command_processor:
+    Y += 1
+
+BASE_CORE_X = 0
+BASE_CORE_Y = 1 if not ARGUMENTS.with_command_processor else 2
+
+def get_core_id(x, y, xdim, ydim):
+    x = x - BASE_CORE_X
+    y = y - BASE_CORE_Y
+    return x + y*xdim
+
+def hostcore_coordinate():
+    return (0,0)
+
+def core_coordinates():
+    return itertools.product(
+        (BASE_CORE_X + x for x in range(CORES_X)),
+        (BASE_CORE_Y + y for y in range(CORES_Y))
+    )
+
+def vcache_coordinates():
+    return itertools.product(
+        (x for x in range(X)),
+        (BASE_CORE_Y-1, Y-1)
+    )
+        
+    
 MEMSIZE = 2**31
 CACHE_LINE_SIZE = 64
 
-CPU_VERBOSE_LEVEL = 1
-NETWORK_DEBUG_LEVEL = 1
+CPU_VERBOSE_LEVEL = 0
+NETWORK_DEBUG_LEVEL = 0
 UPDATES_PER_CORE = 1000
 
-CORE_CLOCK = Clock(1e9)
+CORE_CLOCK = Clock(1.5e9)
 MEMORY_CLOCK = Clock(1e9)
 
 NETWORK_BANDWIDTH = f'{CORE_CLOCK * 8 * 3}B/s'
 XBAR_BANDWIDTH = f'{CORE_CLOCK * 8 * 3 * 6}B/s'
 
-class AddressType(enum.Enum):
-    """
-    An address type.
-    """
-    L1SP = 0
-    DRAM = 1
-    CTRL = 2
-
-class AddressInfo(object):
-    """
-    A decoded address.
-    """
-    def __init__(self):
-        self.address_type = AddressType.DRAM
-        self._offset = 0
-        self.core_x = 0
-        self.core_y = 0
-        self.pod = 0
-        self.local = False
-
-    def __str__(self):
-        if self.address_type in (AddressType.L1SP, AddressType.CTRL):
-            return f"<{self.address_type.name} pod={self.pod} y={self.core_x} x={self.core_y} {self._offset:08x}>"
-        return f"<{self.address_type.name} pod={self.pod} {self._offset:08x}>"
-
-    def is_l1sp(self):
-        return self.address_type == AddressType.L1SP
-
-    def set_l1sp(self):
-        self.address_type = AddressType.L1SP
-        return self
-
-    def is_dram(self):
-        return self.address_type == AddressType.DRAM
-
-    def set_dram(self):
-        self.address_type = AddressType.DRAM
-        return self
-
-    def is_ctrl(self):
-        return self.address_type == AddressType.CTRL
-
-    def set_ctrl(self):
-        self.address_type = AddressType.CTRL
-        return self
-
-    def offset(self):
-        return self._offset
-
-    def set_offset(self, offset):
-        self._offset = offset
-        return self
-
-    def core_x(self):
-        return self.core_x
-
-    def set_core_x(self, core_x):
-        self.core_x = core_x
-        return self
-
-    def core_y(self):
-        return self.core_y
-
-    def set_core_y(self, core_y):
-        self.core_y = core_y
-
-    def pod(self):
-        return self.pod
-
-    def set_pod(self, pod):
-        self.pod = pod
-        return self
-
-    def is_local(self):
-        return self.local
-
-    def set_local(self):
-        self.local = True
-        return self
-
-    def is_global(self):
-        return not self.local
-
-    def set_global(self):
-        self.local = False
-        return self
-
-class AddressMap(object):
-    """
-    Decodes and encodes addresses.
-    """
-    def __init__(self):
-        self.is_dram = Bitfield(31)
-        self.is_remote_bit = Bitfield(29)
-        self.y = Bitfield(28, 24)
-        self.x = Bitfield(23, 18)
-        self.dram_offset = Bitfield(30, 0)
-        self.l1sp_offset = Bitfield(17, 0)
-
-    def is_remote(self, addr):
-        return not self.is_dram(addr) and self.is_remote_bit(addr)
-
-    def decode(self, addr, my_x = 0, my_y = 0):
-        """
-        Returns an AddressInfo() object.
-        """
-        info = AddressInfo()
-        if self.is_dram(addr):
-            info.set_dram()\
-                .set_global()\
-                .set_oiffset(self.dram_offset(addr))
-        elif self.is_remote(addr):
-            info.set_l1sp()\
-                .set_global()\
-                .set_offset(self.l1sp_offset(addr))\
-                .set_core_x(self.x(addr))\
-                .set_core_y(self.y(addr))
-        else:
-            info.set_l1sp()\
-                .set_local()\
-                .set_offset(self.l1sp_offset(addr))\
-                .set_core_x(my_x)\
-                .set_core_y(my_y)
-        return info
-
-    def encode(self, info):
-        """
-        Returns an address.
-        """
-        address = 0
-        # dram
-        if info.is_dram():
-            address = self.is_dram.set(address, 1)
-            address = self.dram_offset.set(address, info.offset())
-        # remote l1sp
-        elif info.is_l1sp() and info.is_global():
-            address = self.is_remote_bit.set(address, 1)
-            address = self.x.set(address, info.core_x())
-            address = self.y.set(address, info.core_y())
-            address = self.l1sp_offset.set(address, info.offset())
-        # local l1sp
-        elif info.is_l1sp() and info.is_local():
-            address = self.l1sp_offset.set(address, info.offset())
-        # return the address
-        return address
+class sysconfig(object):
+    def cores(self): return CORES_X * CORES_Y
+    def pods(self): return 1
+    def pxns(self): return 1
+        
 
 def dram_range(bank_id, banks, memsize, interleave):
     """
     Address range for a dram bank.
     return addr_start, addr_end, interleave, stride
     """
-    address_map = AddressMap()
+    address_map = AddressMap(sysconfig())
     bank_size = memsize // banks
 
     if banks == 1:
@@ -186,8 +84,14 @@ def dram_range(bank_id, banks, memsize, interleave):
     start = bank_id * interleave
     stop = memsize - (banks - bank_id - 1) * interleave - 1
 
-    start_info = AddressInfo().set_dram().set_global().set_offset(start)
-    stop_info = AddressInfo().set_dram().set_global().set_offset(stop)
+    start_info = AddressInfo().set_dram()\
+                              .set_absolute()\
+                              .set_offset(start)
+
+    stop_info = AddressInfo().set_dram()\
+                             .set_absolute()\
+                             .set_offset(stop)
+
     return (address_map.encode(start_info),
             address_map.encode(stop_info),
             interleave,
@@ -203,6 +107,24 @@ def vcache_range(xdim, ydim, x, south_not_north, memsize, interleave):
     bank_id = x + snn*xdim
     return dram_range(bank_id, banks, memsize, interleave)
 
+def l1sp_range(xdim, ydim, core_id, memsize):
+    """
+    Address range for a scratchpad memory
+    return addr_start, addr_end, interleave, stride
+    """
+    addressmap = AddressMap(sysconfig())
+    start_info = AddressInfo().set_l1sp()\
+                              .set_absolute()\
+                              .set_core(core_id)\
+                              .set_offset(0)
+    stop_info = AddressInfo().set_l1sp()\
+                             .set_absolute()\
+                             .set_core(core_id)\
+                             .set_offset(memsize-1)
+    return (addressmap.encode(start_info),
+            addressmap.encode(stop_info),
+            0,
+            0)
 
 class Mesh(object):
     def __init__(self):
@@ -245,7 +167,7 @@ class MeshBuilder(object):
         self.ydim = ydim
         self.meshid = meshid
         self.tile_builder = {
-            (x,y) : ComputeTileBuilder for (x,y) in itertools.product(range(xdim), range(ydim))
+            (x,y) : EmptyTileBuilder for (x,y) in itertools.product(range(xdim), range(ydim))
         }
 
     def build(self):
@@ -281,7 +203,7 @@ class Identifiable(object):
     def absid(self, x, y):
         return self.id(x, y) + self.meshid * self.xdim * self.ydim
 
-class Memory(object):
+class L1SP(object):
     def __init__(self):
         self.controller = None
         self.backend = None
@@ -291,33 +213,44 @@ class Memory(object):
     def network_interface(self):
         return (self.nic, "port", f'{CORE_CLOCK.cycle_ps}ps')
     
-class MemoryBuilder(Identifiable):
-    size = 4*1024
+class L1SPBuilder(Identifiable):
+    size = 128*1024
     bandwidth = 8e9 # 8GB/s
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
 
+    def core_id(self, x, y):
+        return get_core_id(x, y, self.xdim, self.ydim)
+
     def build(self, x, y):
-        memory = Memory()
-        memory.controller = sst.Component(f"memory_{x}_{y}_mesh{self.meshid}",
+        memory = L1SP()
+        memory.controller = sst.Component(f"l1sp_{x}_{y}_mesh{self.meshid}",
                                           "memHierarchy.MemController")
-        start = self.absid(x, y) * MemoryBuilder.size
-        end = (self.absid(x, y) + 1) * MemoryBuilder.size - 1
+        start, end, *_ = l1sp_range(self.xdim, self.ydim, self.core_id(x, y), L1SPBuilder.size)
+        #print(f"L1SP {x},{y} range {start:x} - {end:x}")
+        
         memory.controller.addParams({
             "debug_level" : 10,
             "verbose" : 0,
             "clock" : f'{CORE_CLOCK}Hz',
             "addr_range_start" : start,
             "addr_range_end" : end,
-            "interleave_size" : f"{MemoryBuilder.size}B",
-            "interleave_step" : f"{X*Y*MemoryBuilder.size}B",
+            "interleave_size" : f"{L1SPBuilder.size}B",
+            "interleave_step" : f"{X*Y*L1SPBuilder.size}B",
         })
         memory.backend = memory.controller.setSubComponent("backend",
-                                                           "memHierarchy.simpleMem")
+                                                           "Drv.DrvSimpleMemBackend")
         memory.backend.addParams({
             "access_time" : f'{CORE_CLOCK.cycle_ps}ps',
-            "mem_size" : f"{MemoryBuilder.size}B",
+            "mem_size" : f"{L1SPBuilder.size}B",
         })
+        memory.cmdhandler = memory.controller.setSubComponent("customCmdHandler",
+                                                              "Drv.DrvCmdMemHandler")
+        memory.cmdhandler.addParams({
+            "cache_line_size" : VictimCacheBuilder.cache_line_size,
+            "shootdowns" : "true",
+        })
+
         memory.nic = memory.controller.setSubComponent("cpulink",
                                                        "memHierarchy.MemNIC")
         memory.nic.addParams({
@@ -335,7 +268,7 @@ class Core(object):
         self.generator = None
         self.interface = None
         self.nic = None
-
+    
     @property
     def network_interface(self):
         return (self.nic, "port", f'{CORE_CLOCK.cycle_ps}ps')
@@ -382,8 +315,8 @@ class DrvXCoreBuilder(Identifiable):
         super().__init__(xdim, ydim, meshid)
 
     def core_id(self, x, y):
-        return x + (y-1) * self.xdim
-    
+        return get_core_id(x, y, self.xdim, self.ydim)
+
     def build(self, x, y):
         core = Core()
         core.core = sst.Component(f"core_{x}_{y}_mesh{self.meshid}", "Drv.DrvCore")
@@ -399,15 +332,15 @@ class DrvXCoreBuilder(Identifiable):
             "sys_num_pxn" : 1,
             "sys_pxn_pods" : 1,
             "sys_pod_cores" : CORES_X*CORES_Y,
-            "sys_core_threads" : 1,
+            "sys_core_threads" : ARGUMENTS.core_threads,
             "sys_core_clock" : f'{CORE_CLOCK}Hz',
-            "sys_core_l1sp_size" : MemoryBuilder.size,
+            "sys_core_l1sp_size" : L1SPBuilder.size,
             "sys_pod_l2sp_size" : 0,
             "sys_pod_l2sp_banks" : 0,
             "sys_pod_l2sp_interleave_size" : 0,
             "sys_nw_flit_dwords" : 1,
             "sys_nw_obuf_dwords" : 24,
-            "sys_cp_present" : False,
+            "sys_cp_present" : bool(ARGUMENTS.core_threads),
         })
         core.memory = core.core.setSubComponent("memory", "Drv.DrvStdMemory")
         core.interface = core.memory.setSubComponent("memory", "memHierarchy.standardInterface")
@@ -420,12 +353,103 @@ class DrvXCoreBuilder(Identifiable):
             "debug" : 1,
         })
         return core
+
+class DrvRCoreBuilder(Identifiable):
+    def __init__(self, xdim, ydim, meshid):
+        super().__init__(xdim, ydim, meshid)
+
+    def core_id(self, x, y):
+        return get_core_id(x, y, self.xdim, self.ydim)
+
+    def build(self, x, y):
+        core = Core()
+        core.core = sst.Component(f"core_{x}_{y}_mesh{self.meshid}", "Drv.RISCVCore")
+        core.core.addParams({
+            "clock" : f'{CORE_CLOCK}Hz',
+            "num_harts" : ARGUMENTS.core_threads,
+            "program" : ARGUMENTS.program,
+            "argv" : ' '.join(ARGUMENTS.argv),
+            "core" : self.core_id(x, y),
+            "verbose" : CPU_VERBOSE_LEVEL,
+            "debug_clock" : ARGUMENTS.debug_clock,
+            "pod" : 0,
+            "pxn" : 0,
+            "sys_num_pxn" : 1,
+            "sys_pxn_pods" : 1,
+            "sys_pod_cores" : CORES_X*CORES_Y,
+            "sys_core_threads" : ARGUMENTS.core_threads,
+            "sys_core_clock" : f'{CORE_CLOCK}Hz',
+            "sys_core_l1sp_size" : L1SPBuilder.size,
+            "sys_pod_l2sp_size" : 0,
+            "sys_pod_l2sp_banks" : 0,
+            "sys_pod_l2sp_interleave_size" : 0,
+            "sys_nw_flit_dwords" : 1,
+            "sys_nw_obuf_dwords" : 24,
+            "sys_cp_present" : bool(ARGUMENTS.core_threads),
+        })
+        core.interface = core.core.setSubComponent("memory", "memHierarchy.standardInterface")
+        core.nic = core.interface.setSubComponent("memlink", "memHierarchy.MemNIC")
+        core.nic.addParams({
+            "group" : "0",
+            "network_bw" : NETWORK_BANDWIDTH,
+            "destinations" : "1",
+            "debug_level" : NETWORK_DEBUG_LEVEL,
+            "debug" : 1,
+        })
+        return core
+
+class HostCoreBuilder(Identifiable):
+    def __init__(self, xdim, ydim, meshid):
+        super().__init__(xdim, ydim, meshid)
+
+    @property
+    def core_id(self):
+        return -1
+
+    def build(self, x, y):
+        core = Core()
+        core.core = sst.Component(f"hostcore_{x}_{y}_mesh{self.meshid}", "Drv.DrvCore")
+        core.core.addParams({
+            "clock" : f'{CORE_CLOCK}Hz',
+            "max_idle" : 2,
+            "threads" : 1,
+            "executable" : ARGUMENTS.with_command_processor,
+            "argv" : ' '.join([ARGUMENTS.program] + ARGUMENTS.argv),
+            "id" : self.core_id,
+            "pod" : 0,
+            "pxn" : 0,
+            "sys_num_pxn" : 1,
+            "sys_pxn_pods" : 1,
+            "sys_pod_cores" : CORES_X*CORES_Y,
+            "sys_core_threads" : 1,
+            "sys_core_clock" : f'{CORE_CLOCK}Hz',
+            "sys_core_l1sp_size" : L1SPBuilder.size,
+            "sys_pod_l2sp_size" : 0,
+            "sys_pod_l2sp_banks" : 0,
+            "sys_pod_l2sp_interleave_size" : 0,
+            "sys_nw_flit_dwords" : 1,
+            "sys_nw_obuf_dwords" : 24,
+            "sys_cp_present" : bool(ARGUMENTS.with_command_processor),
+        })
+        core.memory = core.core.setSubComponent("memory", "Drv.DrvStdMemory")
+        core.interface = core.memory.setSubComponent("memory", "memHierarchy.standardInterface")
+        core.nic = core.interface.setSubComponent("memlink", "memHierarchy.MemNIC")
+        core.nic.addParams({
+            "group" : "0",
+            "network_bw" : NETWORK_BANDWIDTH,
+            "destinations" : "0,1",
+            "debug_level" : NETWORK_DEBUG_LEVEL,
+            "debug" : 1,
+        })
+        return core
+    
     
 class MeshTile(object):
     def __init__(self):
         self.router = None
         self.memory = None
         self.core = None
+        self.visual_id = 'X'
 
     @property
     def network_interfaces(self):
@@ -480,8 +504,8 @@ class MeshTileBuilder(Identifiable):
             "link_bw" : XBAR_BANDWIDTH,
             "input_latency" : f'{0*CORE_CLOCK.cycle_ps}ps',
             "output_latency" : f'{0*CORE_CLOCK.cycle_ps}ps',
-            "input_buf_size" : f"{2*3*8}B",
-            "output_buf_size" : f"{2*3*8}B",
+            "input_buf_size" : f"{64*2*3*8}B",
+            "output_buf_size" : f"{64*2*3*8}B",
             "flit_size" : "8B",
             "num_ports" : self.num_ports,
         })
@@ -505,16 +529,54 @@ class MeshTileBuilder(Identifiable):
     def build_local_endpoints(self, x, y, mesh_tile):
         raise NotImplementedError("MeshTile.build_local_endpoints")
 
+class EmptyTile(MeshTile):
+    def __init__(self):
+        super().__init__()
+        self.visual_id = '*'
+    
+class EmptyTileBuilder(MeshTileBuilder):
+    def __init__(self, xdim, ydim, meshid):
+        super().__init__(xdim, ydim, meshid)
+
+    def make_mesh_tile(self):
+        return EmptyTile()
+
+    def build_local_endpoints(self, x, y, tile):
+        pass
+
+
+class HostCoreTile(MeshTile):
+    def __init__(self):
+        super().__init__()
+        self.core = None
+        self.visual_id = 'H'
+
+class HostCoreTileBuilder(MeshTileBuilder):
+    def __init__(self, xdim, ydim, meshid):
+        self.core = HostCoreBuilder(xdim, ydim, meshid)
+        super().__init__(xdim, ydim, meshid)
+
+    def make_mesh_tile(self):
+        return HostCoreTile()
+
+    def build_local_endpoints(self, x, y, tile):
+        #print(f"HostCoreTile {x} {y}")
+        tile.core = self.core.build(x, y)
+        link = sst.Link(f"link_core_router_{x}_{y}_mesh{self.meshid}")
+        link.connect(tile.core.network_interface, tile.local0)
+    
 class ComputeTile(MeshTile):
     def __init__(self):
         super().__init__()
         self.core = None
         self.memory = None
+        self.visual_id = 'C'
 
 class ComputeTileBuilder(MeshTileBuilder):
+    core_builder = DrvXCoreBuilder
     def __init__(self, xdim, ydim, meshid):
-        self.core = DrvXCoreBuilder(xdim, ydim, meshid)
-        self.memory = MemoryBuilder(xdim, ydim, meshid)
+        self.core = self.core_builder(xdim, ydim, meshid)
+        self.memory = L1SPBuilder(xdim, ydim, meshid)
         super().__init__(xdim, ydim, meshid)
 
     def make_mesh_tile(self):
@@ -562,9 +624,11 @@ class VictimCacheBuilder(Identifiable):
     
     def build(self, x, y):
         start, stop, interleave, stride \
-            = vcache_range(self.xdim, self.ydim, x, not (y==0), \
+            = vcache_range(self.xdim, self.ydim, x, not (y==BASE_CORE_Y-1), \
                            self.memsize, self.cache_line_size)
 
+        #print(f"VCACHE {x} {y} {start:x} {stop:x} {interleave:x} {stride:x}")
+        
         victim_cache = VictimCache()
         victim_cache.cache = sst.Component(f"victim_cache_{x}_{y}_mesh{self.meshid}",\
                                            "memHierarchy.Cache")
@@ -596,6 +660,7 @@ class VictimCacheTile(MeshTile):
     def __init__(self):
         super().__init__()
         self.victim_cache = None
+        self.visual_id = '$'
 
 class VictimCacheTileBuilder(MeshTileBuilder):
     def __init__(self, xdim, ydim, meshid):
@@ -610,54 +675,36 @@ class VictimCacheTileBuilder(MeshTileBuilder):
         link = sst.Link(f"link_router_memory_{x}_{y}_mesh{self.meshid}")
         link.connect(tile.victim_cache.network_interface, tile.local0)
         
-class EmptyTile(MeshTile):
-    def __init__(self):
-        super().__init__()
-
-class EmptyTileBuilder(MeshTileBuilder):
-    def __init__(self, xdim, ydim, meshid):
-        super().__init__(xdim, ydim, meshid)
-
-    def make_mesh_tile(self):
-        return EmptyTile()
-
-    def build_local_endpoints(self, x, y, tile):
-        pass
-
-class Sysconfig(object):
-    def __init__(self, num_cores):
-        self.num_cores = num_cores
-
-    def cores(self):
-        return self.num_cores
-
-    def pxns(self):
-        return 1
-
-    def pods(self):
-        return 1
-
 if __name__ == "__main__":
     mesh_builder = MeshBuilder(X, Y, 0)
-    VictimCacheBuilder.sysconfig = Sysconfig(CORES_X*CORES_Y)
+    VictimCacheBuilder.sysconfig = sysconfig()
     VictimCacheBuilder.memsize = MEMSIZE
     VictimCacheBuilder.banks = 2*X
 
+    ComputeTileBuilder.core_builder = DrvRCoreBuilder
+    
     # create the memory address range
     start, stop, interleave, stride \
         = dram_range(0, 1, MEMSIZE, VictimCacheBuilder.cache_line_size)
 
-    #print(f"Memory range: {start:08x} - {stop:08x}")
-
-    for x in range(X):
-        mesh_builder.tile_builder[(x,0)]   = VictimCacheTileBuilder
-        mesh_builder.tile_builder[(x,Y-1)] = VictimCacheTileBuilder
+    #print(f"DRAM {start:x} {stop:x} {interleave:x} {stride:x}")
+    
+    if (ARGUMENTS.with_command_processor):
+        mesh_builder.tile_builder[hostcore_coordinate()] = HostCoreTileBuilder
+    
+    # create the mesh
+    for (x,y) in core_coordinates():
+        mesh_builder.tile_builder[(x,y)] = ComputeTileBuilder
+    
+    # south and north victim caches
+    for (x,y) in vcache_coordinates():
+        mesh_builder.tile_builder[(x,y)]   = VictimCacheTileBuilder
 
     MirandaCoreBuilder.max_address = stop-8
     MirandaCoreBuilder.min_address = start
 
     # create a memory
-    memory = sst.Component("memory", "memHierarchy.MemController")
+    memory = sst.Component("memory", "memHierarchy.CoherentMemController")
     memory.addParams({
         "clock" : f'{MEMORY_CLOCK}Hz',
         "addr_range_start" : start,
@@ -666,11 +713,18 @@ if __name__ == "__main__":
         "interleave_step" : f'{stride}B',
         "max_requests_per_cycle" : 1,
     })
-    backend = memory.setSubComponent("backend", "memHierarchy.simpleMem")
+    backend = memory.setSubComponent("backend", "Drv.DrvSimpleMemBackend")
     backend.addParams({
         "mem_size" : f"{VictimCacheBuilder.memsize}B",
         "access_time" : f'{MEMORY_CLOCK.cycle_ps * 2}ps',
     })
+
+    cmdhandler = memory.setSubComponent("customCmdHandler", "Drv.DrvCmdMemHandler")
+    cmdhandler.addParams({
+        "cache_line_size" : VictimCacheBuilder.cache_line_size,
+        "shootdowns" : "true",
+    })
+
     memlink = memory.setSubComponent("cpulink", "memHierarchy.MemLink")
 
     # create a bus
@@ -691,10 +745,18 @@ if __name__ == "__main__":
     mesh = mesh_builder.build()
 
     # connect bus to vcs
-    for (i, (x,y)) in enumerate(itertools.product(range(X), (0, Y-1))):
+    for (i, (x,y)) in enumerate(vcache_coordinates()):
         # connect vc to memory backend
         vc_tile = mesh.tiles[(x,y)]
         link = sst.Link(f"link_vc_memory_{x}_{y}_mesh0")
         link.connect(vc_tile.victim_cache.memory_interface, (bus, f"high_network_{i}", "1ns"))
 
+        
+mesh_str = ""
+for y in range(Y):
+    for x in range(X):
+        mesh_str += f'{mesh.tiles[(x,y)].visual_id} '
+    mesh_str += "\n"
 
+print(mesh_str)
+    
