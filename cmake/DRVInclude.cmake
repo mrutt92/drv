@@ -14,6 +14,16 @@ define_property(TARGET PROPERTY DRV_MODEL_OPTIONS
   FULL_DOCS "Parameters to pass to the model"
   )
 
+define_property(TARGET PROPERTY DRV_MODEL_OPTION0
+  BRIEF_DOCS "Parameters to pass to the model"
+  FULL_DOCS "Parameters to pass to the model"
+  )
+
+define_property(TARGET PROPERTY DRV_MODEL_OPTION1
+  BRIEF_DOCS "Parameters to pass to the model"
+  FULL_DOCS "Parameters to pass to the model"
+  )
+
 define_property(TARGET PROPERTY DRV_MODEL_NUM_PXN
   BRIEF_DOCS "Number of PXNs"
   FULL_DOCS "Number of PXNs"
@@ -150,6 +160,9 @@ function (drv_add_run_target run_target executable cpexecutable)
     set(BUILD_CORE_THREADS_SET "$<BOOL:${BUILD_CORE_THREADS}>")
     set(MODEL_CORE_THREADS "$<IF:${BUILD_CORE_THREADS_SET},${BUILD_CORE_THREADS},$<TARGET_PROPERTY:${run_target},DRV_MODEL_CORE_THREADS>>")
 
+    set(MODEL_OPTIONS "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTIONS>")
+    set(MODEL_OPTION0 "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTION0>")
+    set(MODEL_OPTION1 "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTION1>")
     add_custom_target(
       ${run_target}
       COMMAND
@@ -161,7 +174,9 @@ function (drv_add_run_target run_target executable cpexecutable)
       $<TARGET_PROPERTY:${run_target},DRV_MODEL> # the model to simulate
       --
       ${CP_OPT} # the command processor
-      $<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTIONS> # options for the model
+      ${MODEL_OPTIONS} # options for the model
+      ${MODEL_OPTION0}
+      ${MODEL_OPTION1}
       --num-pxn=${MODEL_NUM_PXN}
       --pxn-pods=${MODEL_PXN_PODS}
       --pod-cores=${MODEL_POD_CORES}
