@@ -229,7 +229,7 @@ class L1SPBuilder(Identifiable):
     """
     Builds a scratchpad memory.
     """
-    size = 128*1024
+    size = ARGUMENTS.core_l1sp_size
     bandwidth = 8e9 # 8GB/s
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
@@ -742,14 +742,14 @@ class VictimCacheTileBuilder(MeshTileBuilder):
         tile.victim_cache = self.victim_cache_builder.build(x, y)
         link = sst.Link(f"link_router_memory_{x}_{y}_mesh{self.meshid}")
         link.connect(tile.victim_cache.network_interface, tile.local0)
-        
-if __name__ == "__main__":
+
+def build_hammerblade(core_builder):
     mesh_builder = MeshBuilder(X, Y, 0)
     VictimCacheBuilder.sysconfig = sysconfig()
     VictimCacheBuilder.memsize = MEMSIZE
     VictimCacheBuilder.banks = 2*X
 
-    ComputeTileBuilder.core_builder = DrvRCoreBuilder
+    ComputeTileBuilder.core_builder = core_builder
     
     # create the memory address range
     start, stop, interleave, stride \
@@ -820,11 +820,11 @@ if __name__ == "__main__":
         link.connect(vc_tile.victim_cache.memory_interface, (bus, f"high_network_{i}", "1ns"))
 
         
-mesh_str = ""
-for y in range(Y):
-    for x in range(X):
-        mesh_str += f'{mesh.tiles[(x,y)].visual_id} '
-    mesh_str += "\n"
+    mesh_str = ""
+    for y in range(Y):
+        for x in range(X):
+            mesh_str += f'{mesh.tiles[(x,y)].visual_id} '
+        mesh_str += "\n"
 
-print(mesh_str)
+    print(mesh_str)
     

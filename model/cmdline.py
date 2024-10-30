@@ -23,7 +23,7 @@ def parser():
     p.add_argument("--core-threads", type=int, default=16, help="number of threads per core")
     p.add_argument("--core-clock", type=str, default="1GHz", help="clock frequency of cores")
     p.add_argument("--core-max-idle", type=int, default=1, help="max idle time of cores")
-    p.add_argument("--core-l1sp-size", type=int, default=128*1024, help="size of l1sp per core")
+    p.add_argument("--core-l1sp-size", type=int, default=4*1024, help="size of l1sp per core")
 
     p.add_argument("--pod-l2sp-banks", type=int, default=1, help="number of l2sp banks per pod")
     p.add_argument("--pod-l2sp-interleave", type=int, default=0, help="interleave size of l2sp addresses (defaults to no  interleaving)")
