@@ -6,6 +6,7 @@ if (NOT DEFINED ARCH_RV64)
     drvx_set_run_target_properties(
       drvx-run-${name}
       PROPERTIES
+      DRV_MODEL ${DRV_SOURCE_DIR}/model/hammerblade-x.py
       DRV_MODEL_NUM_PXN 1
       DRV_MODEL_PXN_PODS 1
       DRV_MODEL_PODS_CORES 1
@@ -20,6 +21,7 @@ if (NOT DEFINED ARCH_RV64)
     drvx_set_run_target_properties(
       drvx-run-${name}
       PROPERTIES
+      DRV_MODEL ${DRV_SOURCE_DIR}/model/mesh.py
       DRV_MODEL_NUM_PXN 1
       DRV_MODEL_PXN_PODS 1
       DRV_MODEL_PODS_CORES 1
@@ -115,7 +117,7 @@ if (NOT DEFINED ARCH_RV64)
   drvx_test(gups_multi_node) # more of a microbenchmark than a test
 
   math(EXPR gups_table_size "1 << 26")
-  math(EXPR gups_thread_updates "1<<10")
+  math(EXPR gups_thread_updates "1<<4")
   drvx_set_run_target_properties(
     drvx-run-gups
     PROPERTIES
