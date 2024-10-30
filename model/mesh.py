@@ -50,7 +50,7 @@ def vcache_coordinates():
     )
         
     
-MEMSIZE = 2**31
+MEMSIZE = ARGUMENTS.pxn_dram_size
 CACHE_LINE_SIZE = 64
 
 CPU_VERBOSE_LEVEL = 0
@@ -127,10 +127,16 @@ def l1sp_range(xdim, ydim, core_id, memsize):
             0)
 
 class Mesh(object):
+    """
+    A mesh. Composed of tiles indexed by (x,y).
+    """
     def __init__(self):
         self.tiles = {}
 
 class MeshBuilder(object):
+    """
+    Builds a mesh. Composed of tile builders for each point in the mesh.
+    """
     # x direction
     EAST =  (0, 0)
     WEST =  (0, 1)
@@ -191,6 +197,9 @@ class MeshBuilder(object):
         return mesh
 
 class Identifiable(object):
+    """
+    Base class for objects that have an id in a mesh.
+    """
     def __init__(self, xdim, ydim, meshid):
         self.xdim = xdim
         self.ydim = ydim
@@ -204,6 +213,9 @@ class Identifiable(object):
         return self.id(x, y) + self.meshid * self.xdim * self.ydim
 
 class L1SP(object):
+    """
+    Scratchpad memory.
+    """
     def __init__(self):
         self.controller = None
         self.backend = None
@@ -214,6 +226,9 @@ class L1SP(object):
         return (self.nic, "port", f'{CORE_CLOCK.cycle_ps}ps')
     
 class L1SPBuilder(Identifiable):
+    """
+    Builds a scratchpad memory.
+    """
     size = 128*1024
     bandwidth = 8e9 # 8GB/s
     def __init__(self, xdim, ydim, meshid):
@@ -263,6 +278,9 @@ class L1SPBuilder(Identifiable):
         return memory
 
 class Core(object):
+    """
+    A core. Has a cpu model and a memory network interface.
+    """
     def __init__(self):
         self.core = None
         self.generator = None
@@ -274,6 +292,9 @@ class Core(object):
         return (self.nic, "port", f'{CORE_CLOCK.cycle_ps}ps')
 
 class MirandaCoreBuilder(Identifiable):
+    """
+    Build a Miranda Core.
+    """
     max_address = 0
     min_address = 0
     def __init__(self, xdim, ydim, meshid):
@@ -311,6 +332,9 @@ class MirandaCoreBuilder(Identifiable):
         return core
 
 class DrvXCoreBuilder(Identifiable):
+    """
+    Build a DrvX core.
+    """
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
 
@@ -334,10 +358,13 @@ class DrvXCoreBuilder(Identifiable):
             "sys_pod_cores" : CORES_X*CORES_Y,
             "sys_core_threads" : ARGUMENTS.core_threads,
             "sys_core_clock" : f'{CORE_CLOCK}Hz',
-            "sys_core_l1sp_size" : L1SPBuilder.size,
+            "sys_core_l1sp_size" : L1SPBuilder.size,            
             "sys_pod_l2sp_size" : 0,
             "sys_pod_l2sp_banks" : 0,
             "sys_pod_l2sp_interleave_size" : 0,
+            "sys_pxn_dram_size" : ARGUMENTS.pxn_dram_size,
+            "sys_pxn_dram_ports" : 1,
+            "sys_pxn_dram_interleave_size" : 0,
             "sys_nw_flit_dwords" : 1,
             "sys_nw_obuf_dwords" : 24,
             "sys_cp_present" : bool(ARGUMENTS.core_threads),
@@ -355,6 +382,9 @@ class DrvXCoreBuilder(Identifiable):
         return core
 
 class DrvRCoreBuilder(Identifiable):
+    """
+    Builds a DrvR Core.
+    """
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
 
@@ -399,6 +429,9 @@ class DrvRCoreBuilder(Identifiable):
         return core
 
 class HostCoreBuilder(Identifiable):
+    """
+    Builds a host core.
+    """
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
 
@@ -445,6 +478,9 @@ class HostCoreBuilder(Identifiable):
     
     
 class MeshTile(object):
+    """
+    All mesh tiles have a router.
+    """
     def __init__(self):
         self.router = None
         self.memory = None
@@ -487,6 +523,9 @@ class MeshTile(object):
         return self.network_interfaces[MeshBuilder.LOCAL1]
     
 class MeshTileBuilder(Identifiable):
+    """
+    A base class for building a mesh tile.
+    """
     def __init__(self, xdim, ydim, meshid):
         self.local_ports = 2
         super().__init__(xdim, ydim, meshid)
@@ -530,11 +569,17 @@ class MeshTileBuilder(Identifiable):
         raise NotImplementedError("MeshTile.build_local_endpoints")
 
 class EmptyTile(MeshTile):
+    """
+    An empty tile has just a router.
+    """
     def __init__(self):
         super().__init__()
         self.visual_id = '*'
     
 class EmptyTileBuilder(MeshTileBuilder):
+    """
+    Builds an empty tile.
+    """
     def __init__(self, xdim, ydim, meshid):
         super().__init__(xdim, ydim, meshid)
 
@@ -546,12 +591,18 @@ class EmptyTileBuilder(MeshTileBuilder):
 
 
 class HostCoreTile(MeshTile):
+    """
+    A host core tile has a core.
+    """
     def __init__(self):
         super().__init__()
         self.core = None
         self.visual_id = 'H'
 
 class HostCoreTileBuilder(MeshTileBuilder):
+    """
+    Builds a host core tile.
+    """
     def __init__(self, xdim, ydim, meshid):
         self.core = HostCoreBuilder(xdim, ydim, meshid)
         super().__init__(xdim, ydim, meshid)
@@ -566,6 +617,9 @@ class HostCoreTileBuilder(MeshTileBuilder):
         link.connect(tile.core.network_interface, tile.local0)
     
 class ComputeTile(MeshTile):
+    """
+    A compute tile has a core and memory.
+    """
     def __init__(self):
         super().__init__()
         self.core = None
@@ -573,6 +627,9 @@ class ComputeTile(MeshTile):
         self.visual_id = 'C'
 
 class ComputeTileBuilder(MeshTileBuilder):
+    """
+    Builds a compute tile.
+    """
     core_builder = DrvXCoreBuilder
     def __init__(self, xdim, ydim, meshid):
         self.core = self.core_builder(xdim, ydim, meshid)
@@ -593,6 +650,9 @@ class ComputeTileBuilder(MeshTileBuilder):
         link.connect(tile.memory.network_interface, tile.local1)
 
 class VictimCache(object):
+    """
+    A victim cache
+    """
     def __init__(self):
         self.cache = None
         self.cpulink = None
@@ -607,7 +667,9 @@ class VictimCache(object):
         return (self.memlink, "port", f'{CORE_CLOCK.cycle_ps}ps')
 
 class VictimCacheBuilder(Identifiable):
-    # use this to control all victim caches
+    """
+    Builds a victim cache
+    """
     sysconfig = None
     banks = 0
     memsize = MEMSIZE
@@ -657,12 +719,18 @@ class VictimCacheBuilder(Identifiable):
         return victim_cache
 
 class VictimCacheTile(MeshTile):
+    """
+    A vcache tile
+    """
     def __init__(self):
         super().__init__()
         self.victim_cache = None
         self.visual_id = '$'
 
 class VictimCacheTileBuilder(MeshTileBuilder):
+    """
+    Builds a vcache tile
+    """
     def __init__(self, xdim, ydim, meshid):
         self.victim_cache_builder = VictimCacheBuilder(xdim, ydim, meshid)
         super().__init__(xdim, ydim, meshid)
