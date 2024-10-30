@@ -15,7 +15,9 @@ endfunction()
 function (drvr_test_nostdlib executable)
   set(sources ${ARGN})
   drvr_test(${executable} ${sources})
-  drvr_target_link_options(drvr_${executable} PRIVATE -nostdlib)
+  drvr_target_link_options(drvr_${executable}
+    PRIVATE -nostdlib -T${PROJECT_SOURCE_DIR}/pandohammer/bsg_link.ld
+    )
   set(DRVR_TESTS ${DRVR_TESTS} drvr-run-${executable} PARENT_SCOPE)
 endfunction()
 
