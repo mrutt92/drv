@@ -87,7 +87,8 @@ class CoreBuilder(object):
         return {
             "sys_num_pxn" : system_builder.pxns,
             "sys_pxn_pods" : system_builder.pxn.pods,
-            "sys_pod_cores" : system_builder.pxn.pod.cores,
+            "sys_pod_cores_x" : system_builder.pxn.pod.cores,
+            "sys_pod_cores_y" : 1,
             "sys_core_threads" : system_builder.pxn.pod.compute.core.threads,
             "sys_core_clock" : "1GHz",
             "sys_core_l1sp_size" : system_builder.pxn.pod.compute.l1sp.size,

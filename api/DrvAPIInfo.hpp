@@ -85,6 +85,14 @@ inline int numPodCores() {
     return DrvAPISysConfig::Get()->numPodCores();
 }
 
+inline int numPodCoresX() {
+    return DrvAPISysConfig::Get()->numPodCoresX();
+}
+
+inline int numPodCoresY() {
+    return DrvAPISysConfig::Get()->numPodCoresY();
+}
+
 inline int numCoreThreads() {
     return DrvAPISysConfig::Get()->numCoreThreads();
 }

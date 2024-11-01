@@ -20,7 +20,8 @@ public:
 #define DRV_SYS_CONFIG_PARAMETERS                                       \
     {"sys_num_pxn", "Number of PXN in system", "1"},                    \
     {"sys_pxn_pods", "Number of pods per PXN", "1"},                    \
-    {"sys_pod_cores", "Number of cores per pod", "1"},                  \
+    {"sys_pod_cores_x", "Number of core columns per pod", "1"},         \
+    {"sys_pod_cores_y", "Number of core rows per pod", "1"},            \
     {"sys_core_threads", "Number of threads per core", "16"},                  \
     {"sys_nw_flit_dwords", "Number of dwords in a flit", "1"},          \
     {"sys_nw_obuf_dwords", "Number of dwords in an output buffer", "1"}, \
@@ -38,7 +39,8 @@ public:
     void init(Params &params) {
         data_.num_pxn_ = params.find<int64_t>("sys_num_pxn", 1);
         data_.pxn_pods_ = params.find<int64_t>("sys_pxn_pods", 1);
-        data_.pod_cores_ = params.find<int64_t>("sys_pod_cores", 1);
+        data_.pod_cores_x_ = params.find<int64_t>("sys_pod_cores_x", 1);
+        data_.pod_cores_y_ = params.find<int64_t>("sys_pod_cores_y", 1);
         data_.core_threads_ = params.find<int64_t>("sys_core_threads", 16);
         data_.nw_flit_dwords_ = params.find<int16_t>("sys_nw_flit_dwords", 1);
         data_.nw_obuf_dwords_ = params.find<int16_t>("sys_nw_obuf_dwords", 1);

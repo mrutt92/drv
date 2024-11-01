@@ -13,8 +13,9 @@ class PANDOHammer(object):
         Initialize the PANDOHammer Simulation
         arguments are parsed from the command line
         """
+        pod_cores = arguments.pod_cores_x*arguments.pod_cores_y
         bandwidth_bytes_per_second_per_core = 24e9
-        bandwidth_bytes_per_second_per_pod = bandwidth_bytes_per_second_per_core*arguments.pod_cores
+        bandwidth_bytes_per_second_per_pod = bandwidth_bytes_per_second_per_core*pod_cores
         bandwidth_bytes_per_second_per_pxn = bandwidth_bytes_per_second_per_pod*arguments.pxn_pods
 
         # l1sp
@@ -51,7 +52,7 @@ class PANDOHammer(object):
         pod = PodBuilder()
         pod.compute = compute
         pod.l2sp = l2sp
-        pod.cores = arguments.pod_cores
+        pod.cores = pod_cores
         pod.l2sp_size = arguments.pod_l2sp_size
         pod.l2sp_banks = arguments.pod_l2sp_banks
         pod.l2sp_interleave = arguments.pod_l2sp_interleave
