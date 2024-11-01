@@ -30,6 +30,8 @@ public:
      */
     virtual ~RISCVSimulator() {}
 
+    void visit(RISCVHart &hart, RISCVInstruction &instruction) override;
+
     // load/stores
     void visitLB(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitLH(RISCVHart &hart, RISCVInstruction &instruction) override;

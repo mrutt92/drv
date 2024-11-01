@@ -19,6 +19,12 @@ namespace SST {
 namespace Drv {
 using namespace SST::Interfaces;
 
+void RISCVSimulator::visit(RISCVHart &hart, RISCVInstruction &instruction) {
+    RISCVSimHart &shart = static_cast<RISCVSimHart &>(hart);
+    // check the scoreboard
+    RISCVInterpreter::visit(hart, instruction);
+}
+
 bool RISCVSimulator::isMMIO(SST::Interfaces::StandardMem::Addr addr) {
     return (addr >= MMIO_BASE) && (addr < MMIO_BASE + MMIO_SIZE);
 }
