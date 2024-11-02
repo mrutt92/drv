@@ -7,7 +7,7 @@ from clock import Clock
 from cmdline import parser
 import numpy as np
 
-p = parser()
+p = parser(core_l1sp_size=4*1024)
 
 ARGUMENTS = p.parse_args()
 
