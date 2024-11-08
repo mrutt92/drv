@@ -400,8 +400,11 @@ uint64_t RISCVSimulator::visitCSRRWUnderMask(RISCVHart &hart, uint64_t csr, uint
     case CSR_MCOREHARTS: // read-only
         rval = core_->numHarts();
         break;
-    case CSR_MPODCORES: // read-only
-        rval = core_->sys().numPodCores();
+    case CSR_MPODCORESX: // read-only
+        rval = core_->sys().numPodCoresX();
+        break;
+    case CSR_MPODCORESY: // read-only
+        rval = core_->sys().numPodCoresY();
         break;
     case CSR_MPXNPODS: // read-only
         rval = core_->sys().numPXNPods();

@@ -6,14 +6,13 @@ function (drvr_test executable)
   drvr_add_run_target(drvr-run-${executable} drvr_${executable})
   drvr_set_run_target_properties(drvr-run-${executable}
     PROPERTIES
-    DRV_MODEL ${DRV_SOURCE_DIR}/model/hammerblade-r.py
-    DRV_MODEL_OPTION0 --cores-x=16
-    DRV_MODEL_OPTION1 --cores-y=8
+    DRV_MODEL ${DRV_SOURCE_DIR}/model/drvr.py
     )
   drvr_set_build_target_properties(drvr_${executable}
     PROPERTIES
     DRV_BUILD_CORE_THREADS 1
-    DRV_BUILD_POD_CORES 128
+    DRV_BUILD_POD_CORES_X 1
+    DRV_BUILD_POD_CORES_Y 1
     )
 endfunction()
 

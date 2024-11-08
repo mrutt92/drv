@@ -780,7 +780,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("output", choices=["ldscript","cheader"])
     parser.add_argument("--core-threads", type=int, default=1)
-    parser.add_argument("--pod-cores", type=int, default=1)
+    parser.add_argument("--pod-cores-x", type=int, default=1)
+    parser.add_argument("--pod-cores-y", type=int, default=1)
     parser.add_argument("--pxn-pods", type=int, default=1)
     parser.add_argument("--num-pxn", type=int, default=1)
     arguments = parser.parse_args()
@@ -791,7 +792,7 @@ if __name__ == '__main__':
         def pods(self):
             return arguments.pxn_pods
         def cores(self):
-            return arguments.pod_cores
+            return arguments.pod_cores_x * arguments.pod_cores_y
 
     adressmap = AddressMap(sysconfig())
 

@@ -9,7 +9,8 @@ if (NOT DEFINED ARCH_RV64)
       DRV_MODEL ${DRV_SOURCE_DIR}/model/hammerblade-x.py
       DRV_MODEL_NUM_PXN 1
       DRV_MODEL_PXN_PODS 1
-      DRV_MODEL_PODS_CORES 1
+      DRV_MODEL_POD_CORES_X 1
+      DRV_MODEL_POD_CORES_Y 1      
       DRV_MODEL_CORE_THREADS 1
       )
     set(DRVX_TESTS ${DRVX_TESTS} drvx-run-${name} PARENT_SCOPE)
@@ -24,7 +25,8 @@ if (NOT DEFINED ARCH_RV64)
       DRV_MODEL ${DRV_SOURCE_DIR}/model/mesh.py
       DRV_MODEL_NUM_PXN 1
       DRV_MODEL_PXN_PODS 1
-      DRV_MODEL_PODS_CORES 1
+      DRV_MODEL_PODS_CORES_X 1
+      DRV_MODEL_PODS_CORES_Y 1
       DRV_MODEL_CORE_THREADS 1
       )
     set(DRVX_TESTS ${DRVX_TESTS} drvx-run-${name} PARENT_SCOPE)
@@ -66,6 +68,12 @@ if (NOT DEFINED ARCH_RV64)
 
   drvx_test(globals) # google test candidate
   drvx_test(info) # google test candidate? maybe a tough one
+  drvx_set_run_target_properties(
+    drvx-run-info
+    PROPERTIES
+    DRV_MODEL_POD_CORES_X 3
+    DRV_MODEL_POD_CORES_Y 2
+    )
   drvx_test(lock) # google test candidate
   drvx_set_run_target_properties(
     drvx-run-lock
@@ -121,7 +129,8 @@ if (NOT DEFINED ARCH_RV64)
   drvx_set_run_target_properties(
     drvx-run-gups
     PROPERTIES
-    DRV_MODEL_POD_CORES 2
+    DRV_MODEL_POD_CORES_X 16
+    DRV_MODEL_POD_CORES_Y 16
     DRV_MODEL_PXN_PODS 1
     DRV_MODEL_OPTIONS "--pod-l2sp-banks=1 --pxn-dram-banks=4"
     DRV_APPLICATION_ARGV "${gups_table_size} ${gups_thread_updates}"

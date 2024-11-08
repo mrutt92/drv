@@ -1,6 +1,7 @@
 import argparse
 
-def parser():
+# kwargs are defaults
+def parser(core_l1sp_size=128*1024):
     p = argparse.ArgumentParser(description="PANDO SST Simulator")
     p.add_argument("program", help="program to run")
     p.add_argument("argv", nargs=argparse.REMAINDER, help="arguments to program")
@@ -17,13 +18,14 @@ def parser():
     p.add_argument("--debug-clock", action="store_true", help="enable debug of clock ticks")
     p.add_argument("--debug-mmio", action="store_true", help="enable debug of mmio requests to the core")
     p.add_argument("--verbose-memory", type=int, default=0, help="verbosity of memory")
-    p.add_argument("--pod-cores", type=int, default=8, help="number of cores per pod")
+    p.add_argument("--pod-cores-x", type=int, default=1, help="number of cores in x dimension of pod")
+    p.add_argument("--pod-cores-y", type=int, default=1, help="number of cores in y dimension of pod")
     p.add_argument("--pxn-pods", type=int, default=1, help="number of pods")
     p.add_argument("--num-pxn", type=int, default=1, help="number of pxns")
     p.add_argument("--core-threads", type=int, default=16, help="number of threads per core")
     p.add_argument("--core-clock", type=str, default="1GHz", help="clock frequency of cores")
     p.add_argument("--core-max-idle", type=int, default=1, help="max idle time of cores")
-    p.add_argument("--core-l1sp-size", type=int, default=4*1024, help="size of l1sp per core")
+    p.add_argument("--core-l1sp-size", type=int, default=core_l1sp_size, help="size of l1sp per core")
 
     p.add_argument("--pod-l2sp-banks", type=int, default=1, help="number of l2sp banks per pod")
     p.add_argument("--pod-l2sp-interleave", type=int, default=0, help="interleave size of l2sp addresses (defaults to no  interleaving)")

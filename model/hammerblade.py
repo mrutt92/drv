@@ -7,20 +7,12 @@ from clock import Clock
 from cmdline import parser
 import numpy as np
 
-p = parser()
-p.add_argument("--cores-x", type=int, default=16, help="Number of cores in the x dimension")
-p.add_argument("--cores-y", type=int, default=8, help="Number of cores in the y dimension")
+p = parser(core_l1sp_size=4*1024)
 
 ARGUMENTS = p.parse_args()
 
-if ARGUMENTS.pod_cores != (ARGUMENTS.cores_x * ARGUMENTS.cores_y):
-    print(f"Warning: pod_cores {ARGUMENTS.pod_cores} " +
-          f"not equal to cores_x {ARGUMENTS.cores_x} x " +
-          f"cores_y {ARGUMENTS.cores_y} " +
-          f"= {ARGUMENTS.cores_x*ARGUMENTS.cores_y}")
-
-CORES_X = ARGUMENTS.cores_x
-CORES_Y = ARGUMENTS.cores_y
+CORES_X = ARGUMENTS.pod_cores_x
+CORES_Y = ARGUMENTS.pod_cores_y
 X = CORES_X
 Y = CORES_Y+2
 if ARGUMENTS.with_command_processor:
@@ -355,7 +347,8 @@ class DrvXCoreBuilder(Identifiable):
             "pxn" : 0,
             "sys_num_pxn" : 1,
             "sys_pxn_pods" : 1,
-            "sys_pod_cores" : CORES_X*CORES_Y,
+            "sys_pod_cores_x" : CORES_X,
+            "sys_pod_cores_y" : CORES_Y,
             "sys_core_threads" : ARGUMENTS.core_threads,
             "sys_core_clock" : f'{CORE_CLOCK}Hz',
             "sys_core_l1sp_size" : L1SPBuilder.size,            
@@ -406,7 +399,8 @@ class DrvRCoreBuilder(Identifiable):
             "pxn" : 0,
             "sys_num_pxn" : 1,
             "sys_pxn_pods" : 1,
-            "sys_pod_cores" : CORES_X*CORES_Y,
+            "sys_pod_cores_x" : CORES_X,
+            "sys_pod_cores_y" : CORES_Y,
             "sys_core_threads" : ARGUMENTS.core_threads,
             "sys_core_clock" : f'{CORE_CLOCK}Hz',
             "sys_core_l1sp_size" : L1SPBuilder.size,
@@ -453,7 +447,8 @@ class HostCoreBuilder(Identifiable):
             "pxn" : 0,
             "sys_num_pxn" : 1,
             "sys_pxn_pods" : 1,
-            "sys_pod_cores" : CORES_X*CORES_Y,
+            "sys_pod_cores_x" : CORES_X,
+            "sys_pod_cores_y" : CORES_Y,
             "sys_core_threads" : 1,
             "sys_core_clock" : f'{CORE_CLOCK}Hz',
             "sys_core_l1sp_size" : L1SPBuilder.size,

@@ -34,7 +34,12 @@ define_property(TARGET PROPERTY DRV_MODEL_PXN_PODS
   FULL_DOCS "Number of pods per PXN"
   )
 
-define_property(TARGET PROPERTY DRV_MODEL_POD_CORES
+define_property(TARGET PROPERTY DRV_MODEL_POD_CORES_Y
+  BRIEF_DOCS "Number of cores per pod"
+  FULL_DOCS "Number of cores per pod"
+  )
+
+define_property(TARGET PROPERTY DRV_MODEL_POD_CORES_X
   BRIEF_DOCS "Number of cores per pod"
   FULL_DOCS "Number of cores per pod"
   )
@@ -54,7 +59,12 @@ define_property(TARGET PROPERTY DRV_BUILD_PXN_PODS
   FULL_DOCS "Number of pods per PXN (used for building)"
   )
 
-define_property(TARGET PROPERTY DRV_BUILD_POD_CORES
+define_property(TARGET PROPERTY DRV_BUILD_POD_CORES_X
+  BRIEF_DOCS "Number of cores per pod (used for building)"
+  FULL_DOCS "Number of cores per pod (used for building)"
+  )
+
+define_property(TARGET PROPERTY DRV_BUILD_POD_CORES_Y
   BRIEF_DOCS "Number of cores per pod (used for building)"
   FULL_DOCS "Number of cores per pod (used for building)"
   )
@@ -150,11 +160,13 @@ function (drv_add_run_target run_target executable cpexecutable)
     set(BUILD_PXN_PODS "$<TARGET_PROPERTY:${run_target},DRV_BUILD_PXN_PODS>")
     set(MODEL_PXN_PODS "$<IF:${BUILD_PXN_PODS_SET},${BUILD_PXN_PODS},$<TARGET_PROPERTY:${run_target},DRV_MODEL_PXN_PODS>>")
 
-    set(BUILD_POD_CORES "$<TARGET_PROPERTY:${executable},DRV_BUILD_POD_CORES>")
-    set(BUILD_POD_CORES_SET "$<BOOL:${BUILD_POD_CORES}>")
-    set(MODEL_POD_CORES "$<IF:${BUILD_POD_CORES_SET},${BUILD_POD_CORES},$<TARGET_PROPERTY:${run_target},DRV_MODEL_POD_CORES>>")
-    #set(MODEL_POD_CORES "$<IF:${BUILD_POD_CORES_SET},${BUILD_POD_CORES},${BUILD_POD_CORES}>")
-    #set(MODEL_POD_CORES "$<IF:${BUILD_POD_CORES_SET},yes,no>")
+    set(BUILD_POD_CORES_X "$<TARGET_PROPERTY:${executable},DRV_BUILD_POD_CORES_X>")
+    set(BUILD_POD_CORES_X_SET "$<BOOL:${BUILD_POD_CORES_X}>")
+    set(MODEL_POD_CORES_X "$<IF:${BUILD_POD_CORES_X_SET},${BUILD_POD_CORES_X},$<TARGET_PROPERTY:${run_target},DRV_MODEL_POD_CORES_X>>")
+
+    set(BUILD_POD_CORES_Y "$<TARGET_PROPERTY:${executable},DRV_BUILD_POD_CORES_Y>")
+    set(BUILD_POD_CORES_Y_SET "$<BOOL:${BUILD_POD_CORES_Y}>")
+    set(MODEL_POD_CORES_Y "$<IF:${BUILD_POD_CORES_Y_SET},${BUILD_POD_CORES_Y},$<TARGET_PROPERTY:${run_target},DRV_MODEL_POD_CORES_Y>>")
 
     set(BUILD_CORE_THREADS "$<TARGET_PROPERTY:${executable},DRV_BUILD_CORE_THREADS>")
     set(BUILD_CORE_THREADS_SET "$<BOOL:${BUILD_CORE_THREADS}>")
@@ -179,7 +191,8 @@ function (drv_add_run_target run_target executable cpexecutable)
       ${MODEL_OPTION1}
       --num-pxn=${MODEL_NUM_PXN}
       --pxn-pods=${MODEL_PXN_PODS}
-      --pod-cores=${MODEL_POD_CORES}
+      --pod-cores-x=${MODEL_POD_CORES_X}
+      --pod-cores-y=${MODEL_POD_CORES_Y}
       --core-threads=${MODEL_CORE_THREADS}
       $<TARGET_FILE:${executable}> # the application to run
       $<TARGET_PROPERTY:${run_target},DRV_APPLICATION_ARGV> # arguments for the application
@@ -356,7 +369,8 @@ function (drvr_add_executable name)
       PROPERTIES
       IMPORTED_LOCATION ${PROJECT_RV64_BINARY_DIR}/${path}/${name}
       DRV_BUILD_CORE_THREADS 1
-      DRV_BUILD_POD_CORES 1
+      DRV_BUILD_POD_CORES_X 1
+      DRV_BUILD_POD_CORES_Y 1
       DRV_BUILD_PXN_PODS 1
       DRV_BUILD_NUM_PXN 1
       )
@@ -369,7 +383,8 @@ function (drvr_add_executable name)
       mkdir -p ${include_dir} &&
       python3 ${DRV_SOURCE_DIR}/py/addressmap.py
       --core-threads $<TARGET_PROPERTY:${name},DRV_BUILD_CORE_THREADS>
-      --pod-cores $<TARGET_PROPERTY:${name},DRV_BUILD_POD_CORES>
+      --pod-cores-x $<TARGET_PROPERTY:${name},DRV_BUILD_POD_CORES_X>
+      --pod-cores-y $<TARGET_PROPERTY:${name},DRV_BUILD_POD_CORES_Y>
       --pxn-pods $<TARGET_PROPERTY:${name},DRV_BUILD_PXN_PODS>
       --num-pxn $<TARGET_PROPERTY:${name},DRV_BUILD_NUM_PXN>
       cheader > ${include_dir}/address_map.h
@@ -378,7 +393,8 @@ function (drvr_add_executable name)
     set_target_properties(${name}
       PROPERTIES
       DRV_BUILD_CORE_THREADS 1
-      DRV_BUILD_POD_CORES 1
+      DRV_BUILD_POD_CORES_X 1
+      DRV_BUILD_POD_CORES_Y 1
       DRV_BUILD_PXN_PODS 1
       DRV_BUILD_NUM_PXN 1
       )
