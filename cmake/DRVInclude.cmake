@@ -138,6 +138,12 @@ function (drvx_target_compile_options)
   endif()
 endfunction()
 
+function (drvx_target_include_directories)
+  if (NOT DEFINED ARCH_RV64)
+    target_include_directories(${ARGV})
+  endif()
+endfunction()
+
 # creates a drv run target
 # ${run_target} should be the name of the target to create
 # ${executable} should be a target created with drv(x|r)_add_executable
@@ -175,6 +181,8 @@ function (drv_add_run_target run_target executable cpexecutable)
     set(MODEL_OPTIONS "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTIONS>")
     set(MODEL_OPTION0 "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTION0>")
     set(MODEL_OPTION1 "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTION1>")
+
+    set(APP_ARGV "$<TARGET_GENEX_EVAL:${run_target},$<TARGET_PROPERTY:${run_target},DRV_APPLICATION_ARGV>>")
     add_custom_target(
       ${run_target}
       COMMAND
@@ -195,7 +203,8 @@ function (drv_add_run_target run_target executable cpexecutable)
       --pod-cores-y=${MODEL_POD_CORES_Y}
       --core-threads=${MODEL_CORE_THREADS}
       $<TARGET_FILE:${executable}> # the application to run
-      $<TARGET_PROPERTY:${run_target},DRV_APPLICATION_ARGV> # arguments for the application
+      ${APP_ARGV} # the arguments to the application
+      | tee $<TARGET_PROPERTY:${run_target},SST_RUN_DIR>/output.txt
       DEPENDS ${executable} Drv
       )
     set_target_properties(
@@ -303,11 +312,23 @@ function (drvr_target_compile_options target)
   endif()
 endfunction()
 
+function (drv_run_target_dependencies target)
+  if (NOT DEFINED ARCH_RV64)
+    add_dependencies(${target} ${ARGN})
+  endif()
+endfunction()
+
 function (drvr_target_link_libraries target)
   if ( DEFINED ARCH_RV64 )
     target_link_libraries(${target} ${ARGN})
   else()
     add_dependencies(${target} ${ARGN})
+  endif()
+endfunction()
+
+function (drvr_target_include_directories target)
+  if ( DEFINED ARCH_RV64 )
+    target_include_directories(${target} ${ARGN})
   endif()
 endfunction()
 
