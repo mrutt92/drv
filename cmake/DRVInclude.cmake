@@ -181,6 +181,8 @@ function (drv_add_run_target run_target executable cpexecutable)
     set(MODEL_OPTIONS "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTIONS>")
     set(MODEL_OPTION0 "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTION0>")
     set(MODEL_OPTION1 "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTION1>")
+
+    set(APP_ARGV "$<TARGET_GENEX_EVAL:${run_target},$<TARGET_PROPERTY:${run_target},DRV_APPLICATION_ARGV>>")
     add_custom_target(
       ${run_target}
       COMMAND
@@ -201,7 +203,7 @@ function (drv_add_run_target run_target executable cpexecutable)
       --pod-cores-y=${MODEL_POD_CORES_Y}
       --core-threads=${MODEL_CORE_THREADS}
       $<TARGET_FILE:${executable}> # the application to run
-      $<TARGET_PROPERTY:${run_target},DRV_APPLICATION_ARGV> # arguments for the application
+      ${APP_ARGV} # the arguments to the application
       DEPENDS ${executable} Drv
       )
     set_target_properties(
