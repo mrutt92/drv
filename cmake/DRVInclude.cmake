@@ -138,6 +138,12 @@ function (drvx_target_compile_options)
   endif()
 endfunction()
 
+function (drvx_target_include_directories)
+  if (NOT DEFINED ARCH_RV64)
+    target_include_directories(${ARGV})
+  endif()
+endfunction()
+
 # creates a drv run target
 # ${run_target} should be the name of the target to create
 # ${executable} should be a target created with drv(x|r)_add_executable
