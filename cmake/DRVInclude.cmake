@@ -326,6 +326,12 @@ function (drvr_target_link_libraries target)
   endif()
 endfunction()
 
+function (drvr_target_include_directories target)
+  if ( DEFINED ARCH_RV64 )
+    target_include_directories(${target} ${ARGN})
+  endif()
+endfunction()
+
 function (drvr_target_link_options target)
   if ( DEFINED ARCH_RV64 )
     target_link_options(${target} ${ARGN})
