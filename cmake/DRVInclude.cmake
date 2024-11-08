@@ -312,6 +312,12 @@ function (drvr_target_compile_options target)
   endif()
 endfunction()
 
+function (drv_run_target_dependencies target)
+  if (NOT DEFINED ARCH_RV64)
+    add_dependencies(${target} ${ARGN})
+  endif()
+endfunction()
+
 function (drvr_target_link_libraries target)
   if ( DEFINED ARCH_RV64 )
     target_link_libraries(${target} ${ARGN})
