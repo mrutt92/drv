@@ -74,6 +74,12 @@ private:
     void visitAMOADDW_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOADDW_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOADDW_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+
+
+    void visitAMOORW(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOORW_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOORW_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOORW_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
     
     void visitAMOSWAPD(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOSWAPD_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
@@ -84,6 +90,11 @@ private:
     void visitAMOADDD_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOADDD_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
     void visitAMOADDD_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+
+    void visitAMOORD(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOORD_RL(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOORD_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
+    void visitAMOORD_RL_AQ(RISCVHart &hart, RISCVInstruction &instruction) override;
 
     template <typename T>
     void visitAMOCAS(RISCVHart &hart, RISCVInstruction &i);
