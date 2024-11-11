@@ -355,11 +355,11 @@ class DrvXCoreBuilder(Identifiable):
             "sys_pod_l2sp_size" : 0,
             "sys_pod_l2sp_banks" : 0,
             "sys_pod_l2sp_interleave_size" : 0,
-            "sys_pxn_dram_size" : ARGUMENTS.pxn_dram_size,
+            "sys_pxn_dram_size" : MEMSIZE,
             "sys_pxn_dram_ports" : 1,
-            "sys_pxn_dram_interleave_size" : 0,
+            "sys_pxn_dram_interleave_size" : 0, # set this to make dma work
             "sys_nw_flit_dwords" : 1,
-            "sys_nw_obuf_dwords" : 24,
+            "sys_nw_obuf_dwords" : CACHE_LINE_SIZE//8,
             "sys_cp_present" : bool(ARGUMENTS.core_threads),
         })
         core.memory = core.core.setSubComponent("memory", "Drv.DrvStdMemory")
@@ -407,8 +407,11 @@ class DrvRCoreBuilder(Identifiable):
             "sys_pod_l2sp_size" : 0,
             "sys_pod_l2sp_banks" : 0,
             "sys_pod_l2sp_interleave_size" : 0,
+            "sys_pxn_dram_size" : MEMSIZE,
+            "sys_pxn_dram_ports" : 1,
+            "sys_pxn_dram_interleave_size" : 0, # set this to make dma work
             "sys_nw_flit_dwords" : 1,
-            "sys_nw_obuf_dwords" : 24,
+            "sys_nw_obuf_dwords" : CACHE_LINE_SIZE//8,
             "sys_cp_present" : bool(ARGUMENTS.core_threads),
         })
         core.interface = core.core.setSubComponent("memory", "memHierarchy.standardInterface")
@@ -455,8 +458,11 @@ class HostCoreBuilder(Identifiable):
             "sys_pod_l2sp_size" : 0,
             "sys_pod_l2sp_banks" : 0,
             "sys_pod_l2sp_interleave_size" : 0,
+            "sys_pxn_dram_size" : MEMSIZE,
+            "sys_pxn_dram_ports" : 1,
+            "sys_pxn_dram_interleave_size" : 0, # set this to make dma work
             "sys_nw_flit_dwords" : 1,
-            "sys_nw_obuf_dwords" : 24,
+            "sys_nw_obuf_dwords" : CACHE_LINE_SIZE//8,
             "sys_cp_present" : bool(ARGUMENTS.with_command_processor),
         })
         core.memory = core.core.setSubComponent("memory", "Drv.DrvStdMemory")
@@ -776,6 +782,7 @@ def build_hammerblade(core_builder):
         "interleave_step" : f'{stride}B',
         "max_requests_per_cycle" : 1,
     })
+    print(f"memory size = {VictimCacheBuilder.memsize}B")
     backend = memory.setSubComponent("backend", "Drv.DrvSimpleMemBackend")
     backend.addParams({
         "mem_size" : f"{VictimCacheBuilder.memsize}B",
