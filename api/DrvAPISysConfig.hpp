@@ -25,6 +25,10 @@ struct DrvAPISysConfigData
     uint64_t pxn_dram_size_; //!< size of the PXN DRAM
     int32_t  pxn_dram_ports_; //!< number of banks in the PXN DRAM
     uint32_t  pxn_dram_interleave_size_; //!< size of the address interleave in the PXN DRAM
+    int32_t  pxn_dram_cache_sets_; //!< number of sets in the PXN DRAM cache array (0 if no cache)
+    int32_t  pxn_dram_cache_ways_; //!< number of ways in the PXN DRAM cache array (0 if no cache)
+    int32_t  pxn_dram_cache_line_size_; //!< size of the cache line in the PXN DRAM cache array (0 if no cache)
+    int32_t  pxn_dram_cache_banks_; //!< number of banks in the PXN DRAM cache array (0 if no cache)
     int32_t  pod_l2sp_banks_; //!< number of banks in the PXN L2 scratchpad
     uint32_t  pod_l2sp_interleave_size_; //!< size of the address interleave in the PXN L2 scratchpad
 };
@@ -57,6 +61,10 @@ public:
     uint64_t podL2SPSize() const { return data_.pod_l2sp_size_; }
     uint64_t pxnDRAMSize() const { return data_.pxn_dram_size_; }
     int32_t pxnDRAMPortCount() const { return data_.pxn_dram_ports_; }
+    int32_t pxnDRAMCacheBankCount() const { return data_.pxn_dram_cache_banks_; }
+    int32_t pxnDRAMCacheSets() const { return data_.pxn_dram_cache_sets_; }
+    int32_t pxnDRAMCacheWays() const { return data_.pxn_dram_cache_ways_; }
+    int32_t pxnDRAMCacheLineSize() const { return data_.pxn_dram_cache_line_size_; }
     uint32_t pxnDRAMInterleaveSize() const { return data_.pxn_dram_interleave_size_; }
     int32_t podL2SPBankCount() const { return data_.pod_l2sp_banks_; }
     uint32_t podL2SPInterleaveSize() const { return data_.pod_l2sp_interleave_size_; }

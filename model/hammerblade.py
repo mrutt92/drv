@@ -21,6 +21,11 @@ if ARGUMENTS.with_command_processor:
 BASE_CORE_X = 0
 BASE_CORE_Y = 1 if not ARGUMENTS.with_command_processor else 2
 
+VICTIM_CACHES = CORES_X*2
+VICTIM_CACHE_ASSOCIATIVITY = 2
+VICTIM_CACHE_SIZE = 1024
+CACHE_LINE_SIZE = 64
+VICTIM_CACHE_SETS = VICTIM_CACHE_SIZE // (VICTIM_CACHE_ASSOCIATIVITY * CACHE_LINE_SIZE) 
 def get_core_id(x, y, xdim, ydim):
     x = x - BASE_CORE_X
     y = y - BASE_CORE_Y
@@ -43,10 +48,10 @@ def vcache_coordinates():
         
     
 MEMSIZE = ARGUMENTS.pxn_dram_size
-CACHE_LINE_SIZE = 64
 
-CPU_VERBOSE_LEVEL = 0
+CPU_VERBOSE_LEVEL   = 0
 NETWORK_DEBUG_LEVEL = 0
+MEMORY_DEBUG_LEVEL  = 0
 UPDATES_PER_CORE = 1000
 
 CORE_CLOCK = Clock(1.5e9)
@@ -237,7 +242,8 @@ class L1SPBuilder(Identifiable):
         #print(f"L1SP {x},{y} range {start:x} - {end:x}")
         
         memory.controller.addParams({
-            "debug_level" : 10,
+            "debug_level" : MEMORY_DEBUG_LEVEL,
+            "debug" : 1,
             "verbose" : 0,
             "clock" : f'{CORE_CLOCK}Hz',
             "addr_range_start" : start,
@@ -357,7 +363,10 @@ class DrvXCoreBuilder(Identifiable):
             "sys_pod_l2sp_interleave_size" : 0,
             "sys_pxn_dram_size" : MEMSIZE,
             "sys_pxn_dram_ports" : 1,
-            "sys_pxn_dram_interleave_size" : 0, # set this to make dma work
+            "sys_pxn_dram_cache_banks" : VICTIM_CACHES,
+            "sys_pxn_dram_cache_sets" : VICTIM_CACHE_SETS,
+            "sys_pxn_dram_cache_ways" : VICTIM_CACHE_ASSOCIATIVITY,
+            "sys_pxn_dram_interleave_size" : CACHE_LINE_SIZE, # set this to make dma work
             "sys_nw_flit_dwords" : 1,
             "sys_nw_obuf_dwords" : CACHE_LINE_SIZE//8,
             "sys_cp_present" : bool(ARGUMENTS.core_threads),
@@ -409,7 +418,8 @@ class DrvRCoreBuilder(Identifiable):
             "sys_pod_l2sp_interleave_size" : 0,
             "sys_pxn_dram_size" : MEMSIZE,
             "sys_pxn_dram_ports" : 1,
-            "sys_pxn_dram_interleave_size" : 0, # set this to make dma work
+            "sys_pxn_dram_cache_banks" : VICTIM_CACHES,            
+            "sys_pxn_dram_interleave_size" : CACHE_LINE_SIZE, # set this to make dma work
             "sys_nw_flit_dwords" : 1,
             "sys_nw_obuf_dwords" : CACHE_LINE_SIZE//8,
             "sys_cp_present" : bool(ARGUMENTS.core_threads),
@@ -460,7 +470,8 @@ class HostCoreBuilder(Identifiable):
             "sys_pod_l2sp_interleave_size" : 0,
             "sys_pxn_dram_size" : MEMSIZE,
             "sys_pxn_dram_ports" : 1,
-            "sys_pxn_dram_interleave_size" : 0, # set this to make dma work
+            "sys_pxn_dram_cache_banks" : VICTIM_CACHES,            
+            "sys_pxn_dram_interleave_size" : CACHE_LINE_SIZE, # set this to make dma work
             "sys_nw_flit_dwords" : 1,
             "sys_nw_obuf_dwords" : CACHE_LINE_SIZE//8,
             "sys_cp_present" : bool(ARGUMENTS.with_command_processor),
@@ -697,15 +708,17 @@ class VictimCacheBuilder(Identifiable):
                                            "memHierarchy.Cache")
         victim_cache.cache.addParams({
             "cache_frequency" : f'{CORE_CLOCK}Hz',
-            "cache_size" : "1KB",
-            "associativity" : "2",
+            "cache_size" : f'{VICTIM_CACHE_SIZE}B',
+            "associativity" : VICTIM_CACHE_ASSOCIATIVITY,
             "access_latency_cycles" : '1',
             "replacement_policy" : "lru",
             "mshr_num_entries" : "2",
+            "debug_level" : MEMORY_DEBUG_LEVEL,
+            "debug" : 1,
             "L1" : "true",
+            "coherence" : "mesi",
+            "cache_type" : "inclusive",            
             "cache_line_size" : self.cache_line_size,
-            "coherence_protocol" : "mesi",
-            "cache_type" : "inclusive",
             "addr_range_start" : start,
             "addr_range_end" : stop,
             "interleave_size" : f'{interleave}B',
@@ -781,6 +794,8 @@ def build_hammerblade(core_builder):
         "interleave_size" : f'{interleave}B',
         "interleave_step" : f'{stride}B',
         "max_requests_per_cycle" : 1,
+        "debug_level" : MEMORY_DEBUG_LEVEL,
+        "debug" : 1,
     })
     print(f"memory size = {VictimCacheBuilder.memsize}B")
     backend = memory.setSubComponent("backend", "Drv.DrvSimpleMemBackend")

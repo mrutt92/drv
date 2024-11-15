@@ -10,6 +10,7 @@ if (NOT DEFINED ARCH_RV64)
     DrvAPIThread.cpp
     DrvAPIThreadState.cpp
     DrvAPISection.cpp
+    DrvAPIMemory.cpp
     )
 
   set(
