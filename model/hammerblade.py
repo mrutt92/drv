@@ -843,5 +843,15 @@ def build_hammerblade(core_builder):
             mesh_str += f'{mesh.tiles[(x,y)].visual_id} '
         mesh_str += "\n"
 
+    print(
+        f"""
+        Core Clock: {CORE_CLOCK} Hz
+        Pod Size: {CORES_X}x{CORES_Y}
+        L1SP Size: {L1SPBuilder.size}
+        DRAM Clock: {MEMORY_CLOCK} Hz
+        DRAM Size: {MEMSIZE}
+        $-Assoc: {VICTIM_CACHE_ASSOCIATIVITY}
+        $-Size:  {VICTIM_CACHE_SIZE*VICTIM_CACHES} B
+        """)
     print(mesh_str)
     
