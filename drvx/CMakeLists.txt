@@ -160,7 +160,15 @@ if (NOT DEFINED ARCH_RV64)
     DRV_MODEL_POD_CORES 1
     DRV_MODEL_CORE_THREADS 1
     )
-  
+
+  drvx_test(dma)
+  drvx_set_run_target_properties(
+    drvx-run-dma
+    PROPERTIES
+    DRV_MODEL_NUM_PXN 1
+    DRV_MODEL_POD_CORES 1
+    DRV_MODEL_CORE_THREADS 1
+    )
 
   add_custom_target(drvx-run-all
     DEPENDS "${DRVX_TESTS}"

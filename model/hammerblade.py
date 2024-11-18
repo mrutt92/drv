@@ -797,7 +797,7 @@ def build_hammerblade(core_builder):
         "debug_level" : MEMORY_DEBUG_LEVEL,
         "debug" : 1,
     })
-    print(f"memory size = {VictimCacheBuilder.memsize}B")
+
     backend = memory.setSubComponent("backend", "Drv.DrvSimpleMemBackend")
     backend.addParams({
         "mem_size" : f"{VictimCacheBuilder.memsize}B",
