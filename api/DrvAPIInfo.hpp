@@ -126,6 +126,48 @@ inline int numPXNDRAMPorts() {
 }
 
 /**
+ * number of banks in the dram cache array
+ */
+inline int numPXNDRAMCacheBanks() {
+    return DrvAPISysConfig::Get()->pxnDRAMCacheBankCount();
+}
+
+/**
+ * number of sets in the dram cache
+ */
+inline int numPXNDRAMCacheSets() {
+    return DrvAPISysConfig::Get()->pxnDRAMCacheSets();
+}
+
+/**
+ * number of ways in the dram cache
+ */
+inline int numPXNDRAMCacheWays() {
+    return DrvAPISysConfig::Get()->pxnDRAMCacheWays();
+}
+
+/**
+ * size of a cache line in the dram cache
+ */
+inline int numPXNDRAMCacheLineSize() {
+    return DrvAPISysConfig::Get()->pxnDRAMCacheLineSize();
+}
+
+/**
+ * number of cache lines in a dram cache bank
+ */
+inline int numPXNDRAMCacheLines() {
+    return numPXNDRAMCacheSets() * numPXNDRAMCacheWays();
+}
+
+/**
+ * return true if the dram has a cache
+ */
+inline int pxnDRAMHasCache() {
+    return numPXNDRAMCacheBanks() > 0;
+}
+
+/**
  * size of the address interleave for dram
  */
 inline uint64_t pxnDRAMAddressInterleave() {

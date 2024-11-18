@@ -94,6 +94,7 @@ class CoreBuilder(object):
             "sys_core_l1sp_size" : system_builder.pxn.pod.compute.l1sp.size,
             "sys_pxn_dram_size" : system_builder.pxn.dram_size,
             "sys_pxn_dram_ports" : system_builder.pxn.dram_banks,
+            "sys_pxn_dram_cache_banks" : system_builder.pxn.dram_banks if system_builder.dram == CachedDRAMBuilder else 0,
             "sys_pxn_dram_interleave_size" : system_builder.pxn.dram_interleave,
             "sys_pod_l2sp_size" : system_builder.pxn.pod.l2sp_size,
             "sys_pod_l2sp_banks" : system_builder.pxn.pod.l2sp_banks,

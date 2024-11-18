@@ -10,6 +10,8 @@ if (NOT DEFINED ARCH_RV64)
     DrvAPIThread.cpp
     DrvAPIThreadState.cpp
     DrvAPISection.cpp
+    DrvAPIMemory.cpp
+    DrvAPIDMA.cpp
     )
 
   set(
@@ -35,6 +37,7 @@ if (NOT DEFINED ARCH_RV64)
     DrvAPIVar.hpp
     DrvAPISection.hpp
     DrvAPIBits.hpp
+    DrvAPIDMA.hpp
     )
 
 
