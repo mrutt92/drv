@@ -573,6 +573,12 @@ DrvAPIAddress encodeAddressInfo(const DrvAPIAddressInfo &info);
  */
 DrvAPIAddress toAbsoluteAddress(DrvAPIAddress addr);
 
+
+/**
+ * Converts an address that may be absolute to a relative address
+ */
+DrvAPIAddress toRelativeAddress(DrvAPIAddress addr);
+
 }
 
 #endif
