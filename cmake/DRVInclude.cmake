@@ -239,7 +239,7 @@ function (drvx_add_run_target_with_command_processor run_target executable cpexe
     set_target_properties(
       ${run_target}
       PROPERTIES
-      DRV_MODEL ${DRV_SOURCE_DIR}/model/drvx.py
+      DRV_MODEL ${DRV_SOURCE_DIR}/model/hammerblade-x.py
       )
   endif()
 endfunction()
@@ -263,7 +263,7 @@ function (drvr_add_run_target_with_command_processor run_target rvexecutable cpe
     set_target_properties(
       ${run_target}
       PROPERTIES
-      DRV_MODEL ${DRV_SOURCE_DIR}/model/drvr.py
+      DRV_MODEL ${DRV_SOURCE_DIR}/model/hammerblade-r.py
       )
     add_dependencies(${run_target} ${rvexecutable})
   endif()
