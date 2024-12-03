@@ -84,6 +84,11 @@ define_property(TARGET PROPERTY SST_SIM_OPTIONS
   FULL_DOCS "Parameters to pass to the simulator"
   )
 
+define_property(TARGET PROPERTY SST_SIM_THREADS
+  BRIEF_DOCS "Number of threads to use in the simulator"
+  FULL_DOCS "Number of threads to use in the simulator"
+  )
+
 define_property(TARGET PROPERTY SST_RUN_DIR
   BRIEF_DOCS "Directory in which to run the simulation"
   FULL_DOCS "Directory in which to run the simulation"
@@ -182,6 +187,9 @@ function (drv_add_run_target run_target executable cpexecutable)
     set(MODEL_OPTION0 "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTION0>")
     set(MODEL_OPTION1 "$<TARGET_PROPERTY:${run_target},DRV_MODEL_OPTION1>")
 
+    set(SIM_THREADS "-n $<TARGET_PROPERTY:${run_target},SST_SIM_THREADS>")
+    set(SIM_OPTIONS "$<TARGET_PROPERTY:${run_target},SST_SIM_OPTIONS>")
+    set(SIM_ALL_SIM_OPTIONS "${SIM_THREADS} ${SIM_OPTIONS}")
     set(APP_ARGV "$<TARGET_GENEX_EVAL:${run_target},$<TARGET_PROPERTY:${run_target},DRV_APPLICATION_ARGV>>")
     add_custom_target(
       ${run_target}
@@ -190,7 +198,7 @@ function (drv_add_run_target run_target executable cpexecutable)
       cd $<TARGET_PROPERTY:${run_target},SST_RUN_DIR> &&
       PYTHONPATH=${DRV_SOURCE_DIR}/py::${DRV_SOURCE_DIR}/model
       $<TARGET_FILE:SST::SST> # the simulator
-      $<TARGET_PROPERTY:${run_target},SST_SIM_OPTIONS> # options for the simulator
+      ${SIM_ALL_SIM_OPTIONS} # options for the simulator
       $<TARGET_PROPERTY:${run_target},DRV_MODEL> # the model to simulate
       --
       ${CP_OPT} # the command processor
@@ -219,6 +227,7 @@ function (drv_add_run_target run_target executable cpexecutable)
       DRV_MODEL_PXN_PODS 1
       DRV_MODEL_POD_CORES 1
       DRV_MODEL_CORE_THREADS 1
+      SST_SIM_THREADS 1
       )
     add_dependencies(
       ${run_target}
