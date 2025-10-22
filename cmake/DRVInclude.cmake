@@ -225,7 +225,8 @@ function (drv_add_run_target run_target executable cpexecutable)
       PROPERTIES
       DRV_MODEL_NUM_PXN 1
       DRV_MODEL_PXN_PODS 1
-      DRV_MODEL_POD_CORES 1
+      DRV_MODEL_POD_CORES_X 1
+      DRV_MODEL_POD_CORES_Y 1      
       DRV_MODEL_CORE_THREADS 1
       SST_SIM_THREADS 1
       )
@@ -351,33 +352,7 @@ endfunction()
 function (drvr_add_disassemble_target dis_target executable)
   if (NOT DEFINED ARCH_RV64)
     set(objdump ${GNU_RISCV_TOOLCHAIN_PREFIX}/bin/riscv64-unknown-elfpandodrvsim-objdump)
-    set(objdump_flags -D)
-    add_custom_target(${dis_target}
-      COMMAND ${objdump} ${objdump_flags} $<TARGET_FILE:${executable}> | tee $<TARGET_FILE:${executable}>.dis
-      DEPENDS ${executable}
-      VERBATIM
-      )
-  endif()
-endfunction()
-
-# create a drvr disassembly target
-function (drvr_add_disassemble_target dis_target executable)
-  if (NOT DEFINED ARCH_RV64)
-    set(objdump ${GNU_RISCV_TOOLCHAIN_PREFIX}/bin/riscv64-unknown-elfpandodrvsim-objdump)
-    set(objdump_flags -D)
-    add_custom_target(${dis_target}
-      COMMAND ${objdump} ${objdump_flags} $<TARGET_FILE:${executable}> | tee $<TARGET_FILE:${executable}>.dis
-      DEPENDS ${executable}
-      VERBATIM
-      )
-  endif()
-endfunction()
-
-# create a drvr disassembly target
-function (drvr_add_disassemble_target dis_target executable)
-  if (NOT DEFINED ARCH_RV64)
-    set(objdump ${GNU_RISCV_TOOLCHAIN_PREFIX}/bin/riscv64-unknown-elfpandodrvsim-objdump)
-    set(objdump_flags -D)
+    set(objdump_flags -dx)
     add_custom_target(${dis_target}
       COMMAND ${objdump} ${objdump_flags} $<TARGET_FILE:${executable}> | tee $<TARGET_FILE:${executable}>.dis
       DEPENDS ${executable}
