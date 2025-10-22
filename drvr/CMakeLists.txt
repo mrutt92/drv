@@ -6,7 +6,7 @@ function (drvr_test executable)
   drvr_add_run_target(drvr-run-${executable} drvr_${executable})
   drvr_set_run_target_properties(drvr-run-${executable}
     PROPERTIES
-    DRV_MODEL ${DRV_SOURCE_DIR}/model/drvr.py
+    DRV_MODEL ${DRV_SOURCE_DIR}/model/hammerblade-r.py
     )
   drvr_set_build_target_properties(drvr_${executable}
     PROPERTIES
